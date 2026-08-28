@@ -1,0 +1,26 @@
+{
+  "machines": [
+    {
+      "machineId": "rising-01",
+      "displayName": "RISING 1番台",
+      "machineType": "rising",
+      "gameUrl": "http://127.0.0.1:18887/jag.html",
+      "poolId": "",
+      "capabilities": {
+        "completeLimit": true,
+        "jackpot": false
+      }
+    },
+    {
+      "machineId": "jackspot-01",
+      "displayName": "JACsPOT 1番台",
+      "machineType": "jackspot",
+      "gameUrl": "http://127.0.0.1:18888/jackspot.html",
+      "poolId": "jackspot-main",
+      "capabilities": {
+        "completeLimit": false,
+        "jackpot": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VERTEX 管理画面</title>
+  <style>
+    *{box-sizing:border-box} body{margin:0;background:#111318;color:#f7f4ea;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Yu Gothic",sans-serif} header{position:sticky;top:0;z-index:5;background:#171a21;border-bottom:1px solid #303641;padding:14px 20px;display:flex;gap:12px;align-items:center;justify-content:space-between} h1{font-size:20px;margin:0} main{padding:20px;display:grid;gap:18px}.panel{background:#1b1f28;border:1px solid #313846;border-radius:8px;padding:16px}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.field{display:grid;gap:6px;min-width:150px}.field input,.field select,.settingMini{height:38px;border-radius:6px;border:1px solid #3d4656;background:#0f1218;color:#fff;padding:0 10px}button{height:38px;border:0;border-radius:6px;padding:0 13px;font-weight:800;cursor:pointer;background:#f0c85a;color:#1b1300}.ghost{background:#293140;color:#f3f7ff}.danger{background:#d54a4a;color:#fff}.muted{color:#9aa4b5;font-size:13px}.machines{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.machine{background:#151922;border:1px solid #2d3440;border-radius:8px;padding:12px;display:grid;gap:9px}.machine h3{margin:0;font-size:18px;display:flex;justify-content:space-between}.pill{font-size:12px;border-radius:999px;padding:3px 8px;background:#303848}.pill.on{background:#1f7a48}.pill.lock{background:#8a5422}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.adminSlumpGraph{width:100%;height:150px;background:#0b0e14;border:1px solid #2b3342;border-radius:6px}.graphStats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.debugBox{border-top:1px solid #2d3440;padding-top:9px;display:grid;gap:8px}.debugBtns{display:flex;gap:6px;flex-wrap:wrap}.debugBtns button{height:34px;padding:0 10px}.debugSelect{height:34px;border-radius:6px;border:1px solid #3d4656;background:#0f1218;color:#fff;padding:0 8px}.stat{background:#0f1218;border-radius:6px;padding:8px}.stat span{display:block;color:#97a3b8;font-size:12px}.stat b{font-size:16px}.passwordList,.results{display:grid;gap:7px;max-height:260px;overflow:auto}.item{display:grid;grid-template-columns:110px 1fr 90px 140px;gap:8px;align-items:center;background:#10141c;border:1px solid #2b3340;border-radius:6px;padding:8px}.code{font-size:20px;letter-spacing:.08em;color:#ffe07c;font-weight:1000}.ok{color:#6aff9e}.bad{color:#ff8b8b}body.locked header,body.locked main{display:none}.authGate{min-height:100vh;display:grid;place-items:center;padding:20px;background:#111318}.authPanel{width:min(420px,100%);background:#1b1f28;border:1px solid #313846;border-radius:8px;padding:22px;display:grid;gap:14px}.authPanel h1{font-size:22px}.authPanel input{width:100%;height:44px;border-radius:6px;border:1px solid #3d4656;background:#0f1218;color:#fff;padding:0 12px}.authPanel button{width:100%;height:44px}body:not(.locked) .authGate{display:none}.topActions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}button:disabled{opacity:.45;cursor:not-allowed}@media(max-width:980px){.machines{grid-template-columns:1fr}.item{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
+    .sectionHead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.sectionHead h2{margin:0}.floorControlRow{margin:12px 0 14px;display:grid;grid-template-columns:minmax(390px,1.15fr) minmax(520px,2fr);gap:10px;align-items:stretch}.floorProfit{padding:12px 16px;background:#0f1218;border:1px solid #3d4656;border-radius:6px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.floorMetric{display:flex;align-items:baseline;justify-content:space-between;gap:10px}.floorMetric+.floorMetric{border-left:1px solid #303847;padding-left:14px}.floorMetric span{color:#cbd3df;font-weight:800}.floorMetric b{font-size:28px;color:#f7f4ea;white-space:nowrap}.floorMetric b.positive{color:#62ff9a}.floorMetric b.negative{color:#ff6b7d}.floorMetric b.rtp{color:#ffe07c}.bulkControls{padding:10px;background:#151922;border:1px solid #3d4656;border-radius:6px;display:flex;align-items:end;justify-content:flex-end;gap:8px;flex-wrap:wrap}.bulkControls .field{min-width:115px}.bulkControls .completeField{min-width:170px}.bulkStatus{min-height:18px;margin:-7px 0 12px;text-align:right}.viewSwitch{display:grid;grid-template-columns:1fr 1fr;border:1px solid #414a5a;border-radius:6px;overflow:hidden}.viewSwitch button{min-width:92px;border-radius:0;background:#242b37;color:#cbd3df}.viewSwitch button+button{border-left:1px solid #414a5a}.viewSwitch button.active{background:#f0c85a;color:#1b1300}.machineViewLabel{color:#ffe07c;font-size:12px;font-weight:800}@media(max-width:1180px){.floorControlRow{grid-template-columns:1fr}.bulkControls{justify-content:flex-start}.bulkStatus{text-align:left}}@media(max-width:620px){.floorProfit{grid-template-columns:1fr}.floorMetric+.floorMetric{border-left:0;border-top:1px solid #303847;padding:10px 0 0}}
+  </style>
+</head>
+<body class="locked">
+<div id="authGate" class="authGate"><form id="authForm" class="authPanel"><h1><span class="storeName">VERTEX</span> 管理画面</h1><p class="muted">管理パスを入力してください。</p><input id="gatePassword" type="password" autocomplete="current-password" placeholder="管理パス"><button type="submit">入室</button><div id="authError" class="bad"></div></form></div>
+<header><h1><span class="storeName">VERTEX</span> 管理画面</h1><div class="topActions"><a class="muted" href="/machines.html" target="_blank">台選びページ</a><a class="muted" href="/play.html" target="_blank">プレイ入口</a><button id="logoutBtn" class="ghost">退出</button></div></header>
+<main>
+  <section class="panel">
+    <h2>パスワード発行</h2>
+    <div class="row">
+      <label class="field"><span>名前</span><input id="playerName" placeholder="お客様名"></label>
+      <label class="field"><span>使用台</span><select id="machineSelect"></select></label>
+      <button id="issueBtn">発行</button>
+      <b id="issueResult" class="code"></b>
+    </div>
+    <p class="muted">発行したパスワードは一度だけ使えます。お客様は `/play.html` で入力します。</p>
+  </section>
+
+  <section class="panel">
+    <div class="sectionHead">
+      <h2><span id="machineCountLabel">0台</span>状況</h2>
+      <div class="viewSwitch" role="group" aria-label="表示データ切替">
+        <button id="machineTotalViewBtn" type="button">台累計</button>
+        <button id="machinePlayerViewBtn" type="button">個人</button>
+      </div>
+    </div>
+    <div class="floorControlRow">
+      <div class="floorProfit">
+        <div class="floorMetric"><span>全台合計 現在損益pt</span><b id="floorCurrentProfit">+0</b></div>
+        <div class="floorMetric"><span>全台平均機械割</span><b id="floorAverageRtp" class="rtp">90.0%</b></div>
+      </div>
+      <div class="bulkControls">
+        <button class="bulkAction danger" type="button" onclick="resetAllMachines()">全台リセット</button>
+      </div>
+    </div>
+    <div id="bulkStatus" class="bulkStatus muted"></div>
+    <div id="machines" class="machines"></div>
+  </section>
+
+  <section class="panel">
+    <h2>発行済みパスワード</h2>
+    <div id="passwordList" class="passwordList"></div>
+  </section>
+
+  <section class="panel">
+    <h2>終了履歴</h2>
+    <div id="results" class="results"></div>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let machines = [];
+let sessionResults = [];
+const ADMIN_STORAGE_KEY = 'vertexAdminPassword';
+const MACHINE_VIEW_STORAGE_KEY = 'vertexAdminMachineView';
+let adminSecret = sessionStorage.getItem(ADMIN_STORAGE_KEY) || '';
+let machineDataView = sessionStorage.getItem(MACHINE_VIEW_STORAGE_KEY) === 'player' ? 'player' : 'total';
+const BULK_SETTING_RTP = Object.freeze([90, 93, 96, 101, 104, 108]);
+const ADDITIVE_STAT_KEYS = ['totalSessions','totalFee','totalPaid','totalSpins','normalSpins','highSpins','bigCount','midCount','premiumBigCount','grapeCount','smallCount','bellCount','diagonalBellCount','replayCount','suikaCount','cherryCount'];
+function adminHeaders(){ return adminSecret ? {'X-Admin-Password':adminSecret} : {}; }
+function fmt(n){ return Number(n || 0).toLocaleString('ja-JP'); }
+function signed(n){ n = Number(n || 0); return (n >= 0 ? '+' : '') + fmt(n); }
+function machineLabel(machine){ return machine && (machine.displayName || machine.machineId) || '不明な台'; }
+function machineLabelById(machineId){ return machineLabel(machineRows().find(machine=>String(machine.machineId) === String(machineId)) || {machineId}); }
+function machineTypeLabel(machine){ return String(machine && machine.machineType || 'generic') === 'jackspot' ? 'JACsPOT' : String(machine && machine.machineType || 'generic').toUpperCase(); }
+function machineRows(){ return Array.isArray(machines) ? machines : []; }
+function liveMachines(){ return machineRows(); }
+function status(machine){ if(machine.currentSessionId || machine.locked) return ['使用中','lock']; return ['空き','']; }
+function num(value){ return Number(value) || 0; }
+function stat(stats, key){ return num(stats && stats[key]); }
+function statsProfit(stats){ return num(stats && (stats.profit ?? (num(stats.totalPaid) - num(stats.totalFee)))); }
+function normalizeHistory(points){
+  const normalized = (Array.isArray(points) ? points : [])
+    .map(point=>({spin:Math.max(0, num(point && point.spin)), profit:num(point && point.profit)}))
+    .sort((a,b)=>a.spin-b.spin);
+  const deduped = [];
+  for(const point of normalized){
+    const last = deduped[deduped.length - 1];
+    if(last && last.spin === point.spin) deduped[deduped.length - 1] = point;
+    else deduped.push(point);
+  }
+  if(!deduped.length || deduped[0].spin !== 0) deduped.unshift({spin:0, profit:0});
+  return deduped;
+}
+function appendPoint(points, point){
+  const next = {spin:Math.max(0, num(point.spin)), profit:num(point.profit)};
+  const last = points[points.length - 1];
+  if(last && last.spin === next.spin){
+    points[points.length - 1] = next;
+  }else if(!last || last.spin < next.spin){
+    points.push(next);
+  }
+}
+function individualHistory(endStats, startStats, playerStats){
+  const startSpin = Math.max(0, stat(startStats, 'totalSpins'));
+  const startProfit = statsProfit(startStats);
+  const endSpin = Math.max(0, stat(playerStats, 'totalSpins'));
+  const endProfit = statsProfit(playerStats);
+  const points = [{spin:0, profit:0}];
+  for(const point of normalizeHistory(endStats && endStats.slumpHistory)){
+    if(point.spin < startSpin) continue;
+    appendPoint(points, {spin:point.spin - startSpin, profit:point.profit - startProfit});
+  }
+  appendPoint(points, {spin:endSpin, profit:endProfit});
+  return points;
+}
+function playerStatsFrom(endStats, startStats={}, explicit={}){
+  const countersReset = stat(endStats, 'totalSpins') < stat(startStats, 'totalSpins')
+    || stat(endStats, 'totalFee') < stat(startStats, 'totalFee')
+    || stat(endStats, 'totalPaid') < stat(startStats, 'totalPaid');
+  const baselineStats = countersReset ? {} : startStats;
+  const result = {};
+  for(const key of ADDITIVE_STAT_KEYS){
+    result[key] = Math.max(0, stat(endStats, key) - stat(baselineStats, key));
+  }
+  const explicitMap = {
+    totalSpins:'playerSpins',
+    bigCount:'playerBigCount',
+    midCount:'playerRegCount',
+    grapeCount:'playerGrapeCount',
+    totalFee:'playerTotalFee',
+    totalPaid:'playerTotalPaid'
+  };
+  for(const [key, explicitKey] of Object.entries(explicitMap)){
+    if(explicit[explicitKey] !== undefined && explicit[explicitKey] !== null) result[key] = Math.max(0, num(explicit[explicitKey]));
+  }
+  result.profit = explicit.playerProfit !== undefined && explicit.playerProfit !== null
+    ? num(explicit.playerProfit)
+    : statsProfit(endStats) - statsProfit(baselineStats);
+  if(result.totalSpins === 0 && result.totalFee === 0 && result.totalPaid === 0) result.profit = 0;
+  result.slumpHistory = individualHistory(endStats, baselineStats, result);
+  return result;
+}
+function playerViewForMachine(machine){
+  if(machine.currentSessionId && String(machine.playSessionId || '') !== String(machine.currentSessionId)){
+    const empty = emptyAggregate();
+    return {stats:empty.stats, history:empty.history, label:`個人 / ${machine.currentPlayerName || '利用者なし'}`};
+  }
+  const endStats = machine.stats || {};
+  const startStats = machine.playSessionStartStats || {};
+  const stats = machine.playSessionStartStats ? playerStatsFrom(endStats, startStats) : {...endStats, profit:statsProfit(endStats)};
+  const history = machine.playSessionStartStats
+    ? stats.slumpHistory
+    : normalizeHistory(endStats.slumpHistory || machine.slumpHistory);
+  stats.slumpHistory = history;
+  const playerName = machine.currentPlayerName || (machine.lastEndedSession && machine.lastEndedSession.playerName) || '利用者なし';
+  return {stats, history, label:`個人 / ${playerName}`};
+}
+function playerViewForResult(record){
+  const endStats = record.stats || {
+    totalSpins:record.totalSpins,
+    bigCount:record.bigCount,
+    midCount:record.regCount,
+    grapeCount:record.grapeCount,
+    totalFee:record.totalFee,
+    totalPaid:record.totalPaid,
+    profit:record.profit,
+    slumpHistory:record.slumpHistory
+  };
+  const stats = playerStatsFrom(endStats, record.startStats || {}, record);
+  return {stats, history:stats.slumpHistory};
+}
+function emptyAggregate(){
+  const stats = {profit:0, slumpHistory:[{spin:0, profit:0}]};
+  for(const key of ADDITIVE_STAT_KEYS) stats[key] = 0;
+  return {stats, history:stats.slumpHistory};
+}
+function appendPlayerView(aggregate, playerView){
+  const playerStats = playerView.stats || {};
+  const baseSpin = stat(aggregate.stats, 'totalSpins');
+  const baseProfit = statsProfit(aggregate.stats);
+  for(const key of ADDITIVE_STAT_KEYS) aggregate.stats[key] = stat(aggregate.stats, key) + stat(playerStats, key);
+  aggregate.stats.profit = baseProfit + statsProfit(playerStats);
+  appendPoint(aggregate.history, {spin:baseSpin, profit:baseProfit});
+  for(const point of normalizeHistory(playerView.history)){
+    appendPoint(aggregate.history, {spin:baseSpin + point.spin, profit:baseProfit + point.profit});
+  }
+  appendPoint(aggregate.history, {spin:stat(aggregate.stats, 'totalSpins'), profit:aggregate.stats.profit});
+  aggregate.stats.slumpHistory = aggregate.history;
+}
+function resultsForMachine(machine){
+  const serial = num(machine.resetSerial);
+  const unique = new Map();
+  const addRecord = (record, trustCurrentCycle=false)=>{
+    if(!record || String(record.machineId) !== String(machine.machineId)) return;
+    const hasSerial = record.resetSerial !== undefined && record.resetSerial !== null && record.resetSerial !== '';
+    if(!trustCurrentCycle && (!hasSerial || num(record.resetSerial) !== serial)) return;
+    if(trustCurrentCycle && hasSerial && num(record.resetSerial) !== serial) return;
+    const key = String(record.sessionId || `${record.endedAtMs || record.endedAt}-${record.playerName || ''}`);
+    if(!unique.has(key)) unique.set(key, record);
+  };
+  for(const record of sessionResults){
+    addRecord(record);
+  }
+  addRecord(machine.lastEndedSession && machine.lastEndedSession.record, true);
+  return [...unique.values()].sort((a,b)=>num(a.endedAtMs || Date.parse(a.endedAt))-num(b.endedAtMs || Date.parse(b.endedAt)));
+}
+function totalViewForMachine(machine){
+  const aggregate = emptyAggregate();
+  const records = resultsForMachine(machine);
+  for(const record of records) appendPlayerView(aggregate, playerViewForResult(record));
+  if(machine.currentSessionId) appendPlayerView(aggregate, playerViewForMachine(machine));
+  if(!records.length && !machine.currentSessionId && machine.stats){
+    const fallback = playerViewForMachine(machine);
+    appendPlayerView(aggregate, fallback);
+  }
+  return {...aggregate, label:'台累計 / 全利用者'};
+}
+function displayViewForMachine(machine){
+  return machineDataView === 'player' ? playerViewForMachine(machine) : totalViewForMachine(machine);
+}
+function historyFor(machine){ return machine._displayHistory || [{spin:0, profit:0}]; }
+function currentProfit(machine){ const points = historyFor(machine); return Number(points[points.length - 1].profit) || 0; }
+function graphBounds(machine){ const profits = historyFor(machine).map(p => Number(p.profit) || 0); return {min:Math.min(0, ...profits), max:Math.max(0, ...profits)}; }
+function drawableHistory(points){
+  const source = Array.isArray(points) ? points : [];
+  if(source.length < 4) return source;
+  const gaps = [];
+  for(let index = 1; index < source.length; index += 1){
+    const gap = (Number(source[index] && source[index].spin) || 0) - (Number(source[index - 1] && source[index - 1].spin) || 0);
+    if(gap > 0) gaps.push(gap);
+  }
+  if(!gaps.length) return source;
+  gaps.sort((a,b)=>a-b);
+  const medianGap = gaps[Math.floor(gaps.length / 2)] || 1;
+  const breakThreshold = Math.max(25, medianGap * 12);
+  let lastBreakIndex = -1;
+  for(let index = 1; index < source.length; index += 1){
+    const gap = (Number(source[index] && source[index].spin) || 0) - (Number(source[index - 1] && source[index - 1].spin) || 0);
+    if(gap > breakThreshold && source.length - index >= 3) lastBreakIndex = index;
+  }
+  return lastBreakIndex > 0 ? source.slice(lastBreakIndex) : source;
+}
+function drawSlump(canvas, points){
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+  canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  const w = rect.width, h = rect.height;
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle = '#0b0e14';
+  ctx.fillRect(0,0,w,h);
+  ctx.strokeStyle = '#273044';
+  ctx.lineWidth = 1;
+  for(let i=1;i<5;i++){ const y = h*i/5; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+  points = drawableHistory(Array.isArray(points) && points.length ? points : [{spin:0, profit:0}]);
+  const profits = points.map(p => Number(p.profit) || 0);
+  let min = Math.min(0, ...profits), max = Math.max(0, ...profits);
+  if(min === max){ min -= 100; max += 100; }
+  const firstSpin = Number(points[0] && points[0].spin) || 0;
+  const lastSpin = Number(points[points.length - 1] && points[points.length - 1].spin) || firstSpin;
+  const spinRange = Math.max(1, lastSpin - firstSpin);
+  const xFor = point => ((Number(point && point.spin) || 0) - firstSpin) * w / spinRange;
+  const yFor = v => h - ((v - min) / (max - min)) * h;
+  const zero = yFor(0);
+  ctx.strokeStyle = '#6b7280'; ctx.beginPath(); ctx.moveTo(0, zero); ctx.lineTo(w, zero); ctx.stroke();
+  ctx.strokeStyle = profits[profits.length - 1] >= 0 ? '#62ff9a' : '#ff5c70';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  points.forEach((p,i)=>{ const x = xFor(p), y = yFor(Number(p.profit) || 0); if(i) ctx.lineTo(x,y); else ctx.moveTo(x,y); });
+  ctx.stroke();
+}
+function renderAdminSlumpGraphs(){
+  for(const m of machineRows()){
+    const c = document.querySelector('canvas[data-machine="' + m.machineId + '"]');
+    if(c) drawSlump(c, historyFor(m));
+  }
+}
+function updateMachineViewControls(){
+  const totalBtn = $('machineTotalViewBtn');
+  const playerBtn = $('machinePlayerViewBtn');
+  if(totalBtn){
+    totalBtn.classList.toggle('active', machineDataView === 'total');
+    totalBtn.setAttribute('aria-pressed', machineDataView === 'total' ? 'true' : 'false');
+  }
+  if(playerBtn){
+    playerBtn.classList.toggle('active', machineDataView === 'player');
+    playerBtn.setAttribute('aria-pressed', machineDataView === 'player' ? 'true' : 'false');
+  }
+}
+function setMachineDataView(view){
+  machineDataView = view === 'player' ? 'player' : 'total';
+  sessionStorage.setItem(MACHINE_VIEW_STORAGE_KEY, machineDataView);
+  renderMachines();
+}
+function renderMachines(){
+  updateMachineViewControls();
+  const floorMachines = liveMachines();
+  const floorProfit = floorMachines.reduce((sum, machine) => sum + statsProfit(totalViewForMachine(machine).stats), 0);
+  const floorProfitEl = $('floorCurrentProfit');
+  if(floorProfitEl){
+    floorProfitEl.textContent = signed(floorProfit);
+    floorProfitEl.classList.toggle('positive', floorProfit > 0);
+    floorProfitEl.classList.toggle('negative', floorProfit < 0);
+  }
+  const floorAverageRtp = floorMachines.length
+    ? floorMachines.reduce((sum, machine) => sum + machineSettingRtp(machine), 0) / floorMachines.length
+    : 0;
+  const floorAverageRtpEl = $('floorAverageRtp');
+  if(floorAverageRtpEl) floorAverageRtpEl.textContent = `${floorAverageRtp.toFixed(1)}%`;
+  $('machineCountLabel').textContent = `${floorMachines.length}台`;
+  $('machineSelect').innerHTML = liveMachines().map(m => `<option value="${escapeHtml(m.machineId)}">${escapeHtml(machineLabel(m))}</option>`).join('');
+  $('machines').innerHTML = liveMachines().map(m => {
+    const view = displayViewForMachine(m);
+    const s = view.stats || {};
+    m._displayHistory = view.history;
+    const st = status(m);
+    const settingStats = m.stats || {};
+    return `<article class="machine">
+      <h3>${escapeHtml(machineLabel(m))} <span class="pill ${st[1]}">${st[0]}</span></h3>
+      <div class="muted">${escapeHtml(machineTypeLabel(m))}${m.poolId ? ' / プール: ' + escapeHtml(m.poolId) : ''}</div>
+      <div class="machineViewLabel">${escapeHtml(view.label)}</div>
+      <div class="muted">${m.currentPlayerName ? '利用者: ' + escapeHtml(m.currentPlayerName) : '利用者なし'} / ${m.currentSessionId ? '遊技中' : m.lastEndedSession ? '直前データ保持中' : 'リセット済み'}</div>
+      <canvas class="adminSlumpGraph" data-machine="${m.machineId}"></canvas>
+      <div class="stats">
+        <div class="stat"><span>G数</span><b>${fmt(stat(s,'totalSpins'))}</b></div>
+        <div class="stat"><span>投入</span><b>${fmt(stat(s,'totalFee'))}pt</b></div>
+        <div class="stat"><span>払出</span><b>${fmt(stat(s,'totalPaid'))}pt</b></div>
+        <div class="stat"><span>差pt</span><b>${signed(s.profit ?? ((s.totalPaid||0)-(s.totalFee||0)))}</b></div>
+      </div>
+      <div class="graphStats">
+        <div class="stat"><span>現在</span><b>${signed(currentProfit(m))}</b></div>
+        <div class="stat"><span>最高</span><b>${signed(graphBounds(m).max)}</b></div>
+        <div class="stat"><span>最低</span><b>${signed(graphBounds(m).min)}</b></div>
+      </div>
+      <div class="row">
+        <label class="field"><span>設定</span><select class="settingMini" id="setting-${m.machineId}">${[1,2,3,4,5,6].map(n => '<option value="' + n + '" ' + (String((settingStats.setting || m.assignedSetting || 1)) === String(n) ? 'selected' : '') + '>設定' + n + '</option>').join('')}</select></label>
+        ${m.capabilities && m.capabilities.completeLimit ? `<label class="field"><span>コンプリート発動枚数</span><input class="settingMini" id="complete-limit-${m.machineId}" type="number" min="1" max="999999" step="1" value="${Math.max(1, Number(m.settings && m.settings.completeLimitPt) || 19000)}"></label>` : ''}
+        <button onclick="applySetting('${m.machineId}')">設定反映</button>
+        <button class="danger" ${m.currentSessionId || m.lastEndedSession || m.stats ? '' : 'disabled'} onclick="forceEndMachine('${m.machineId}')">強制終了</button>
+        <button class="danger" onclick="resetMachine('${m.machineId}')">管理リセット</button>
+        <button class="ghost" onclick="location.href='/play.html?machine=${m.machineId}'">入口</button>
+      </div>
+    </article>`;
+  }).join('');
+  renderAdminSlumpGraphs();
+}
+function escapeHtml(v){ return String(v ?? '').replace(/[&<>'"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+async function loadMachines(){
+  const res = await fetch('/api/machines', {cache:'no-store'});
+  const data = await res.json().catch(() => null);
+  if(!res.ok || !Array.isArray(data)){
+    const statusEl = $('bulkStatus');
+    if(statusEl) statusEl.textContent = '台一覧の更新に失敗しました。前回の表示を維持しています。';
+    return false;
+  }
+  machines = data;
+  renderMachines();
+  return true;
+}
+async function loadPasswords(){
+  const res = await fetch('/api/admin/passwords', {headers:adminHeaders()});
+  if(!res.ok){ $('passwordList').innerHTML = '<div class="bad">管理パスが必要です</div>'; return; }
+  const data = await res.json().catch(() => []);
+  const rows = Array.isArray(data) ? data : [];
+  $('passwordList').innerHTML = rows.map(p => `<div class="item"><b class="code">${escapeHtml(p.password)}</b><span>${escapeHtml(p.playerName)} / ${escapeHtml(machineLabelById(p.machineId))}</span><span>${escapeHtml(p.status)}</span><span>${new Date(p.issuedAt).toLocaleString('ja-JP')}</span></div>`).join('') || '<div class="muted">まだありません</div>';
+}
+async function loadResults(){
+  const res = await fetch('/api/results', {headers:adminHeaders()});
+  if(!res.ok){ sessionResults = []; $('results').innerHTML = '<div class="bad">管理パスが必要です</div>'; renderMachines(); return; }
+  const data = await res.json().catch(() => []);
+  const rows = Array.isArray(data) ? data : [];
+  sessionResults = rows;
+  $('results').innerHTML = rows.map(r => `<div class="item"><b>${escapeHtml(r.machineName || machineLabelById(r.machineId))}</b><span>${escapeHtml(r.playerName)} / 利用差pt ${signed(r.playerProfit ?? r.profit)}pt / ${fmt(r.playerSpins ?? r.totalSpins)}G / 投入 ${fmt(r.playerTotalFee ?? r.totalFee)}pt / 払出 ${fmt(r.playerTotalPaid ?? r.totalPaid)}pt</span><span>${r.sheets && r.sheets.ok ? '<span class="ok">Sheets</span>' : '<span class="muted">local</span>'}</span><span>${new Date(r.endedAt).toLocaleString('ja-JP')}</span></div>`).join('') || '<div class="muted">まだありません</div>';
+  renderMachines();
+}
+async function issue(){
+  const body = {playerName:$('playerName').value, machineId:$('machineSelect').value};
+  const res = await fetch('/api/admin/issue-password', {method:'POST', headers:{'Content-Type':'application/json', ...adminHeaders()}, body:JSON.stringify(body)});
+  const data = await res.json();
+  if(!data.ok){ alert(data.error || '発行に失敗しました'); return; }
+  $('issueResult').textContent = data.issued.password;
+  $('playerName').value = '';
+  await loadPasswords();
+}
+async function applySetting(id){
+  const machine = machineRows().find(row=>String(row.machineId) === String(id));
+  const el = document.getElementById('setting-' + id);
+  const value = el ? el.value : '1';
+  const completeLimitEl = document.getElementById('complete-limit-' + id);
+  const completeLimitPt = Math.max(1, Math.min(999999, Math.round(Number(completeLimitEl && completeLimitEl.value) || 19000)));
+  const res = await fetch('/api/admin/machines/' + encodeURIComponent(id) + '/setting', {method:'POST', headers:{'Content-Type':'application/json', ...adminHeaders()}, body:JSON.stringify({setting:value, completeLimitPt})});
+  const data = await res.json();
+  if(!data.ok){ alert(data.error || '設定反映に失敗しました'); return; }
+  const completeText = machine && machine.capabilities && machine.capabilities.completeLimit ? '・コンプリート' + data.completeLimitPt + '枚' : '';
+  alert(machineLabelById(id) + 'へ設定' + data.setting + completeText + 'を反映しました');
+  await loadMachines();
+}
+function machineSettingValue(machine){
+  return Math.max(1, Math.min(6, Math.round(Number(machine && machine.settings && machine.settings.setting) || Number(machine && machine.assignedSetting) || 1)));
+}
+function machineSettingRtp(machine){
+  const profiles = {
+    rising:[90, 93, 96, 101, 104, 108],
+    jackspot:[90, 97, 98.5, 101.3, 103, 105],
+    generic:[90, 93, 96, 101, 104, 108]
+  };
+  const profile = profiles[String(machine && machine.machineType || 'generic')] || profiles.generic;
+  return profile[machineSettingValue(machine) - 1];
+}
+function machineCompleteLimitValue(machine){
+  return Math.max(1, Math.min(999999, Math.round(Number(machine && machine.settings && machine.settings.completeLimitPt) || 19000)));
+}
+function setBulkBusy(busy, message=''){
+  document.querySelectorAll('.bulkAction').forEach(button => { button.disabled = !!busy; });
+  const statusEl = $('bulkStatus');
+  if(statusEl) statusEl.textContent = message;
+}
+async function updateMachineSettings(machine, setting, completeLimitPt){
+  const res = await fetch('/api/admin/machines/' + encodeURIComponent(machine.machineId) + '/setting', {
+    method:'POST',
+    headers:{'Content-Type':'application/json', ...adminHeaders()},
+    body:JSON.stringify({setting, completeLimitPt})
+  });
+  const data = await res.json().catch(() => ({}));
+  if(!res.ok || !data.ok) throw new Error(data.error || '設定反映に失敗しました');
+  return data;
+}
+async function runBulkOperation(label, operation){
+  const targets = liveMachines();
+  if(!targets.length){ alert('対象台がありません'); return false; }
+  setBulkBusy(true, `${label}中... 0/${targets.length}台`);
+  let completed = 0;
+  const results = await Promise.allSettled(targets.map(async machine => {
+    try{
+      return await operation(machine);
+    }finally{
+      completed += 1;
+      setBulkBusy(true, `${label}中... ${completed}/${targets.length}台`);
+    }
+  }));
+  const failedIds = results.map((result, index) => result.status === 'rejected' ? targets[index].machineId : '').filter(Boolean);
+  setBulkBusy(false, failedIds.length ? `${label}失敗: ${failedIds.join('・')}番台` : `${label}完了: ${targets.length}台`);
+  await Promise.all([loadMachines(), loadResults()]);
+  if(failedIds.length){
+    alert(`${label}に失敗した台: ${failedIds.join('・')}番台`);
+    return false;
+  }
+  return true;
+}
+function randomBulkSettingPlan(targetRtp, machineCount){
+  const targetTotal = Math.round(Number(targetRtp) * machineCount);
+  const plans = [];
+  const collect = (settingIndex, remaining, total, counts) => {
+    if(settingIndex === BULK_SETTING_RTP.length - 1){
+      const nextCounts = [...counts, remaining];
+      const nextTotal = total + remaining * BULK_SETTING_RTP[settingIndex];
+      if(nextTotal === targetTotal && nextCounts.filter(Boolean).length >= 3) plans.push(nextCounts);
+      return;
+    }
+    for(let count = 0; count <= remaining; count += 1){
+      collect(settingIndex + 1, remaining - count, total + count * BULK_SETTING_RTP[settingIndex], [...counts, count]);
+    }
+  };
+  collect(0, machineCount, 0, []);
+  if(!plans.length) throw new Error(`${machineCount}台で平均機械割${targetRtp}%を構成できません`);
+  const counts = plans[Math.floor(Math.random() * plans.length)];
+  const settings = counts.flatMap((count, index) => Array(count).fill(index + 1));
+  for(let index = settings.length - 1; index > 0; index -= 1){
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [settings[index], settings[swapIndex]] = [settings[swapIndex], settings[index]];
+  }
+  return {counts, settings};
+}
+async function applyBulkRandomSettings(){
+  const targets = liveMachines();
+  const targetRtp = Math.max(90, Math.min(108, Math.round(Number($('bulkRtpTarget').value) || 96)));
+  let plan;
+  try{
+    plan = randomBulkSettingPlan(targetRtp, targets.length);
+  }catch(error){
+    alert(error.message || '設定配分を作成できませんでした');
+    return;
+  }
+  const assignmentById = new Map(targets.map((machine, index) => [String(machine.machineId), plan.settings[index]]));
+  const summary = plan.counts.map((count, index) => count ? `設定${index + 1}×${count}` : '').filter(Boolean).join(' / ');
+  if(!confirm(`全${targets.length}台を平均機械割${targetRtp}%になるようランダム設定します。\n${summary}\n\n各台のコンプリート枚数は変更しません。`)) return;
+  const ok = await runBulkOperation('ランダム一括設定', machine => updateMachineSettings(machine, assignmentById.get(String(machine.machineId)), machineCompleteLimitValue(machine)));
+  if(ok){
+    const statusEl = $('bulkStatus');
+    if(statusEl) statusEl.textContent = `平均${targetRtp}%を反映: ${summary}`;
+    alert(`全${targets.length}台へ平均機械割${targetRtp}%のランダム設定を反映しました\n${summary}`);
+  }
+}
+async function applyBulkCompleteLimit(){
+  const completeLimitPt = Math.max(1, Math.min(999999, Math.round(Number($('bulkCompleteLimit').value) || 19000)));
+  const targetCount = liveMachines().length;
+  $('bulkCompleteLimit').value = String(completeLimitPt);
+  if(!confirm(`全${targetCount}台のコンプリート発動枚数を${fmt(completeLimitPt)}ptへ変更します。\n各台の設定番号は変更しません。`)) return;
+  const ok = await runBulkOperation('コンプリート枚数一括変更', machine => updateMachineSettings(machine, machineSettingValue(machine), completeLimitPt));
+  if(ok) alert(`全${targetCount}台のコンプリート発動枚数を${fmt(completeLimitPt)}ptへ変更しました`);
+}
+async function resetAllMachines(){
+  const targets = liveMachines();
+  const activeCount = targets.filter(machine => machine.currentSessionId || machine.locked).length;
+  const warning = activeCount ? `\n\n現在使用中または終了待ちの台が${activeCount}台あります。` : '';
+  if(!confirm(`全${targets.length}台を管理リセットします。\nスランプグラフと終了保持データも消えます。${warning}`)) return;
+  const ok = await runBulkOperation('全台リセット', async machine => {
+    const res = await fetch(`/api/admin/machines/${encodeURIComponent(machine.machineId)}/reset`, {method:'POST', headers:adminHeaders()});
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.ok) throw new Error(data.error || 'リセット失敗');
+    return data;
+  });
+  if(ok) alert(`全${targets.length}台をリセットしました`);
+}
+async function forceEndMachine(id){
+  const label = machineLabelById(id);
+  if(!confirm(label + "の強制終了を実行しますか？\n\n最後に保存されたデータで清算し、空き台に戻します。")) return;
+  const res = await fetch("/api/admin/machines/" + encodeURIComponent(id) + "/force-end", {method:"POST", headers:adminHeaders()});
+  const data = await res.json();
+  if(!data.ok){ alert(data.error || "強制終了に失敗しました"); return; }
+  alert(data.queued
+    ? label + "へ強制終了指示を送信しました。お客様画面が再読み込みされ、最新データで終了します。"
+    : data.released
+      ? label + "の終了済みデータを保持したまま、空き台に戻しました。"
+      : data.forced
+        ? label + "を強制清算し、空き台に戻しました。"
+        : label + "を強制終了しました。空き台に戻しました");
+  await new Promise(resolve => setTimeout(resolve, data.queued ? 1800 : 0));
+  await Promise.all([loadMachines(), loadResults()]);
+}
+async function resetMachine(id){
+  if(!confirm(`${machineLabelById(id)}をリセットします。スランプグラフと終了保持データも消えます。`)) return;
+  const res = await fetch(`/api/admin/machines/${encodeURIComponent(id)}/reset`, {method:'POST', headers:adminHeaders()});
+  const data = await res.json();
+  if(!data.ok) alert(data.error || 'リセット失敗');
+  await Promise.all([loadMachines(), loadResults()]);
+}
+async function verifyAdminPassword(password){
+  try{
+    const res = await fetch('/api/admin/verify', {headers:password ? {'X-Admin-Password':password} : {}, cache:'no-store'});
+    return res.ok;
+  }catch(e){
+    return false;
+  }
+}
+async function loadVertexConfig(){
+  try{
+    const res = await fetch('/api/config', {cache:'no-store'});
+    const config = await res.json();
+    if(!res.ok || !config.storeName) return;
+    document.querySelectorAll('.storeName').forEach(element=>{ element.textContent = config.storeName; });
+    document.title = `${config.storeName} 管理画面`;
+    if($('machineCountLabel')) $('machineCountLabel').textContent = `${Number(config.machineCount) || 0}台`;
+  }catch(error){}
+}
+async function enterAdmin(password){
+  const value = String(password || '').trim();
+  $('authError').textContent = '';
+  const ok = await verifyAdminPassword(value);
+  if(!ok){ $('authError').textContent = '管理パスが違います'; return; }
+  adminSecret = value;
+  sessionStorage.setItem(ADMIN_STORAGE_KEY, value);
+  document.body.classList.remove('locked');
+  await Promise.allSettled([loadMachines(), loadPasswords(), loadResults()]);
+}
+function logoutAdmin(){
+  adminSecret = '';
+  sessionStorage.removeItem(ADMIN_STORAGE_KEY);
+  document.body.classList.add('locked');
+  $('gatePassword').value = '';
+  $('gatePassword').focus();
+}
+$('authForm').addEventListener('submit', e=>{ e.preventDefault(); enterAdmin($('gatePassword').value); });
+$('logoutBtn').addEventListener('click', logoutAdmin);
+$('issueBtn').addEventListener('click', issue);
+$('machineTotalViewBtn').addEventListener('click', ()=>setMachineDataView('total'));
+$('machinePlayerViewBtn').addEventListener('click', ()=>setMachineDataView('player'));
+window.addEventListener('resize', renderAdminSlumpGraphs);
+async function refreshAll(){
+  if(!adminSecret) return;
+  await loadMachines().catch(()=>false);
+}
+setInterval(refreshAll, 60000);
+loadVertexConfig();
+if(adminSecret){ enterAdmin(adminSecret); } else { $('gatePassword').focus(); }
+</script>
+</body>
+</html>

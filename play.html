@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VERTEX プレイ入口</title>
+  <style>
+    [hidden]{display:none!important}
+    *{box-sizing:border-box} body{margin:0;background:#05060c;color:#fff7df;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Yu Gothic",sans-serif}.login{min-height:100vh;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 20% 20%,rgba(255,54,93,.22),transparent 30%),linear-gradient(145deg,#05060c,#16091f)}.card{width:min(460px,92vw);background:#121722;border:1px solid rgba(255,211,106,.45);border-radius:8px;padding:24px;box-shadow:0 20px 70px rgba(0,0,0,.45)}h1{margin:0 0 14px;font-size:26px}.field{display:grid;gap:8px;margin:16px 0}.field input{height:48px;border-radius:6px;border:1px solid #3b4352;background:#070a10;color:#fff;font-size:22px;letter-spacing:.08em;text-align:center;text-transform:uppercase}button{height:44px;border:0;border-radius:6px;padding:0 16px;font-weight:900;cursor:pointer;background:#ffd36a;color:#1c1200}.muted{color:#aab2c2;font-size:13px}.bad{color:#ff8f8f}.topbar{height:54px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:#11151e;border-bottom:1px solid #333b49;padding:0 14px}.topbar b{color:#ffe07c}.danger{background:#d94b4b;color:#fff}.slotFrame{width:100%;height:calc(100vh - 54px);border:0;display:block;background:#05060c}.ended{min-height:100vh;display:grid;place-items:center;background:#10141c;text-align:center;padding:24px}.ended h2{font-size:34px;margin:0 0 12px}@media(max-width:700px){.topbar{height:auto;min-height:54px;align-items:flex-start;flex-direction:column;padding:10px}.slotFrame{height:calc(100vh - 96px)}}
+  </style>
+</head>
+<body>
+<div id="login" class="login">
+  <div class="card">
+    <h1><span id="storeName">VERTEX</span> <span id="entryMachineTitle"></span></h1>
+    <p class="muted" id="entryHelp">管理画面で発行されたパスワードを入力してください。</p>
+    <label class="field"><span>パスワード</span><input id="password" maxlength="12" autocomplete="one-time-code"></label>
+    <button id="startBtn">この台で開始</button>
+    <p id="error" class="bad"></p>
+  </div>
+</div>
+<div id="play" hidden>
+  <div class="topbar"><div><b id="machineLabel"></b> <span id="playerLabel"></span></div><button id="endBtn" class="danger">終了してデータ送信</button></div>
+  <iframe id="slot" class="slotFrame" allow="autoplay; fullscreen"></iframe>
+</div>
+<div id="ended" class="ended" hidden>
+  <div><h2>終了しました</h2><p>清算データを送信し、台を空席に戻しました。</p><p id="sendStatus" class="muted"></p></div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+let active = null;
+let machineNames = new Map();
+const params = new URLSearchParams(location.search);
+const entryMachineId = params.get('machine') || '';
+function machineName(machineId){ return machineNames.get(String(machineId)) || String(machineId || ''); }
+async function loadBranding(){
+  try{
+    const [configResponse, machinesResponse] = await Promise.all([fetch('/api/config'), fetch('/api/machines')]);
+    const config = await configResponse.json();
+    const machines = await machinesResponse.json();
+    if(config.storeName){ $('storeName').textContent = config.storeName; document.title = `${config.storeName} プレイ入口`; }
+    machineNames = new Map((Array.isArray(machines) ? machines : []).map(machine=>[String(machine.machineId), machine.displayName || machine.machineId]));
+  }catch(error){}
+  if(entryMachineId){
+    $('entryMachineTitle').textContent = machineName(entryMachineId);
+    $('entryHelp').textContent = machineName(entryMachineId) + '用のパスワードを入力してください。';
+  }else{
+    $('entryMachineTitle').textContent = '';
+  }
+}
+function friendlyError(error){
+  const map = {
+    "password not found":"パスワードが見つかりません",
+    "machine is busy":"この台はすでに使用中です。管理画面で強制終了またはリセットしてください",
+    "このパスワードは終了済みです":"このパスワードは終了済みです",
+    "このパスワードは別の台用です":"このパスワードは別の台用です"
+  };
+  return map[error] || error || "開始できません";
+}
+async function start(){
+  $('error').textContent = '';
+  $('startBtn').disabled = true;
+  $('startBtn').textContent = '確認中...';
+  const password = $('password').value.trim().toUpperCase();
+  if(!password){ $('error').textContent = 'パスワードを入力してください'; $('startBtn').disabled = false; $('startBtn').textContent = 'この台で開始'; return; }
+  const res = await fetch('/api/sessions/start', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password, requestedMachineId:entryMachineId})});
+  const data = await res.json();
+  if(!data.ok){ $('error').textContent = friendlyError(data.error); $('startBtn').disabled = false; $('startBtn').textContent = 'この台で開始'; return; }
+  active = data.session;
+  $('machineLabel').textContent = machineName(active.machineId);
+  $('playerLabel').textContent = active.playerName ? ` / ${active.playerName}` : '';
+  $('slot').src = data.iframeUrl;
+  $('login').hidden = true;
+  $('play').hidden = false;
+  $('startBtn').disabled = false;
+  $('startBtn').textContent = 'この台で開始';
+}
+function clearSlotLocalState(){
+  try{
+    const win = $("slot").contentWindow;
+    for(const name of ["__jackspotClearLocalPlayState", "__jagClearLocalPlayState"]){
+      if(win && typeof win[name] === "function"){ win[name](); break; }
+    }
+  }catch(e){}
+}
+function latestSlotSnapshot(){
+  try{
+    const win = $("slot").contentWindow;
+    for(const name of ["__jackspotPrepareEndSnapshot", "__jagPrepareEndSnapshot", "__jackspotAdminSnapshot", "__jagAdminSnapshot"]){
+      if(win && typeof win[name] === "function") return win[name]();
+    }
+  }catch(e){}
+  return null;
+}
+async function endSession(options={}){
+  if(!active) return;
+  if(!options.skipConfirm && !confirm('終了してデータを送信します。終了後はこのパスワードでは続きから遊べません。')) return;
+  $('endBtn').disabled = true;
+  let snapshot = options.snapshot || latestSlotSnapshot();
+  if(!snapshot){
+    $('endBtn').textContent = '最新データ同期中...';
+    try{
+      const prepareResponse = await fetch('/api/sessions/prepare-end', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(active)});
+      if(prepareResponse.ok) await new Promise(resolve=>setTimeout(resolve, 5600));
+    }catch(error){}
+    snapshot = latestSlotSnapshot();
+  }
+  $('endBtn').textContent = '送信中...';
+  const res = await fetch('/api/sessions/end', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...active, snapshot, forced:!!options.forced})});
+  const data = await res.json();
+  clearSlotLocalState();
+  active = null;
+  $('play').hidden = true;
+  $('slot').src = 'about:blank';
+  $('ended').hidden = false;
+  $('sendStatus').textContent = data.sheets && data.sheets.ok ? 'スプレッドシートへ送信済みです。' : 'ローカルに記録しました。スプレッドシート連携URLが未設定の場合はこの表示になります。';
+}
+window.addEventListener('message', event=>{
+  const msg = event.data || {};
+  if(!msg || !['jag-force-end', 'jackspot-force-end', 'vertex-force-end'].includes(msg.type)) return;
+  if(active && (!msg.machineId || String(msg.machineId) === String(active.machineId))){
+    endSession({skipConfirm:true, forced:true, snapshot:msg.snapshot || latestSlotSnapshot()});
+  }
+});
+$('startBtn').addEventListener('click', start);
+$('password').addEventListener('keydown', e=>{ if(e.key === 'Enter') start(); });
+$('endBtn').addEventListener('click', endSession);
+loadBranding();
+</script>
+</body>
+</html>

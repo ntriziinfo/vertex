@@ -1,0 +1,12 @@
+{
+  "name": "vertex-store-control",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node server.js",
+    "check": "node --check server.js && node --check machine-config.cjs && node --check api/index.mjs && node --check api/health.mjs"
+  },
+  "engines": {
+    "node": "20.x"
+  }
+}
