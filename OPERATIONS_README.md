@@ -34,11 +34,13 @@ GOOGLE_SHEETS_WEBHOOK_URL=任意
 
 台構成を変更するときは、Vercelの`VERTEX_MACHINES_JSON`へJSON配列を設定します。書式は`machines.example.json`を参照してください。ローカルだけで変更する場合は、同じ内容を`machines.local.json`として保存します。このファイルはGitへ登録されません。
 
+店舗ごとの正式な非機密設定は`store-configs/<store-id>.machines.json`でGit管理できます。`VERTEX_MACHINES_JSON`と`machines.local.json`が未設定の場合、`VERTEX_STORE_ID`に対応するファイルを自動で読み込みます。現在のロスベガス本番構成は`store-configs/store-las-vegas.machines.json`に保存され、JACsPOT 5台のみです。管理パス、Supabaseキー、Webhook URLなどの秘密情報はこのファイルへ書きません。
+
 店舗切替一覧は`VERTEX_STORES_JSON`で設定します。書式は`stores.example.json`を参照してください。3つのVercelプロジェクトへ同じ値を設定すると、管理画面の「店舗切替」から移動できます。未開設店舗の`adminUrl`を空にすると「準備中」と表示され、移動できません。管理パスはブラウザのオリジン単位で保持されるため、店舗を切り替えると移動先店舗の専用パスが必要です。
 
 `stores.example.json`はURLだけを扱う公開設定です。管理パス、Supabaseキー、Google Apps Script URLは書かず、Vercel環境変数だけに保存します。
 
-初期構成は次の6台です。
+店舗プリセットが存在しない環境の初期構成は次の6台です。
 
 - `rising-01`: RISING 1台
 - `jackspot-01`〜`jackspot-05`: JACsPOT 5台
@@ -46,7 +48,7 @@ GOOGLE_SHEETS_WEBHOOK_URL=任意
 
 ## Supabase準備
 
-各店舗のSupabase SQL Editorで`supabase_schema.sql`を実行します。既存テーブルにも`alter table ... add column if not exists`が適用されるため、再実行できます。
+各店舗のSupabase SQL Editorで`supabase_schema.sql`を実行します。既存テーブルにも`alter table ... add column if not exists`が適用されるため、再実行できます。全テーブルでRLSを有効化し、ブラウザ用キーからの直接アクセスを遮断します。VERTEX APIはservice roleで接続します。
 
 JACsPOT共有ジャックポット用の`jackpot_pools`と`jackpot_events`も店舗DB内に作成されます。各100pt BETから10ptを原子的に共有プールへ加算し、3rdステージのJP成立時は同一店舗・同一`poolId`の残高を1回のトランザクションで全額払い出して0へ戻します。10,000ptは固定払い出しのみで共有JPとは同時払い出ししません。`idempotency_key`により通信再送時の二重積立・二重払い出しを防止します。
 

@@ -96,6 +96,16 @@ create table if not exists public.jackpot_events (
 create index if not exists jackpot_events_pool_idx
   on public.jackpot_events(store_id, pool_id, created_at desc);
 
+-- ブラウザ用anon/authenticatedキーからの直接操作を遮断する。
+-- VERTEX APIはservice roleで接続するため、管理APIの動作には影響しない。
+alter table public.machine_states enable row level security;
+alter table public.issued_passwords enable row level security;
+alter table public.sessions enable row level security;
+alter table public.machine_commands enable row level security;
+alter table public.session_results enable row level security;
+alter table public.jackpot_pools enable row level security;
+alter table public.jackpot_events enable row level security;
+
 -- 1回転ごとの10%積立を、複数台から同時に受けても取りこぼさず加算する。
 create or replace function public.jackpot_pool_contribute(
   p_store_id text,

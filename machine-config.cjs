@@ -137,6 +137,18 @@ function loadMachineDefinitions(){
     }
   }
 
+  // 本番の非機密な台構成はGit管理し、店舗IDだけで復元できるようにする。
+  // VercelのVERTEX_MACHINES_JSONやローカル設定がある場合は、従来どおりそちらを優先する。
+  const storePresetPath = path.join(__dirname, "store-configs", `${STORE_ID}.machines.json`);
+  if(fs.existsSync(storePresetPath)){
+    try{
+      const parsed = parseMachineDefinitions(JSON.parse(fs.readFileSync(storePresetPath, "utf8")));
+      if(parsed.length) return parsed;
+    }catch(error){
+      console.warn(`${path.relative(__dirname, storePresetPath)}を読み込めません:`, error.message);
+    }
+  }
+
   return DEFAULT_MACHINE_DEFINITIONS.map(normalizeMachineDefinition);
 }
 

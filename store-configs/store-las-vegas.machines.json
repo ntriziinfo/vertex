@@ -1,0 +1,59 @@
+{
+  "machines": [
+    {
+      "machineId": "jackspot-01",
+      "displayName": "JACsPOT 1番台",
+      "machineType": "jackspot",
+      "gameUrl": "https://jackspot.vercel.app/jackspot.html",
+      "poolId": "jackspot-main",
+      "capabilities": {
+        "completeLimit": false,
+        "jackpot": true
+      }
+    },
+    {
+      "machineId": "jackspot-02",
+      "displayName": "JACsPOT 2番台",
+      "machineType": "jackspot",
+      "gameUrl": "https://jackspot.vercel.app/jackspot.html",
+      "poolId": "jackspot-main",
+      "capabilities": {
+        "completeLimit": false,
+        "jackpot": true
+      }
+    },
+    {
+      "machineId": "jackspot-03",
+      "displayName": "JACsPOT 3番台",
+      "machineType": "jackspot",
+      "gameUrl": "https://jackspot.vercel.app/jackspot.html",
+      "poolId": "jackspot-main",
+      "capabilities": {
+        "completeLimit": false,
+        "jackpot": true
+      }
+    },
+    {
+      "machineId": "jackspot-04",
+      "displayName": "JACsPOT 4番台",
+      "machineType": "jackspot",
+      "gameUrl": "https://jackspot.vercel.app/jackspot.html",
+      "poolId": "jackspot-main",
+      "capabilities": {
+        "completeLimit": false,
+        "jackpot": true
+      }
+    },
+    {
+      "machineId": "jackspot-05",
+      "displayName": "JACsPOT 5番台",
+      "machineType": "jackspot",
+      "gameUrl": "https://jackspot.vercel.app/jackspot.html",
+      "poolId": "jackspot-main",
+      "capabilities": {
+        "completeLimit": false,
+        "jackpot": true
+      }
+    }
+  ]
+}
