@@ -230,7 +230,67 @@ begin
 end;
 $$;
 
+-- 店舗管理画面から共有JPの獲得ptを設定する。設定変更・台リセットとは独立して保持する。
+create or replace function public.jackpot_pool_set(
+  p_store_id text,
+  p_pool_id text,
+  p_machine_id text,
+  p_current_pt bigint,
+  p_idempotency_key text
+)
+returns table(current_pt bigint, version bigint, applied boolean)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_previous_pt bigint;
+  v_current_pt bigint;
+  v_version bigint;
+begin
+  if coalesce(p_store_id, '') = '' or coalesce(p_pool_id, '') = '' then
+    raise exception 'store_id and pool_id are required';
+  end if;
+  if p_current_pt is null or p_current_pt < 0 or p_current_pt > 999999999 or coalesce(p_idempotency_key, '') = '' then
+    raise exception 'current_pt from 0 to 999999999 and idempotency_key are required';
+  end if;
+
+  insert into public.jackpot_pools(store_id, pool_id)
+  values (p_store_id, p_pool_id)
+  on conflict (store_id, pool_id) do nothing;
+
+  select jp.current_pt, jp.version
+    into v_previous_pt, v_version
+  from public.jackpot_pools jp
+  where jp.store_id = p_store_id and jp.pool_id = p_pool_id
+  for update;
+
+  if exists(select 1 from public.jackpot_events je where je.idempotency_key = p_idempotency_key) then
+    return query select v_previous_pt, v_version, false;
+    return;
+  end if;
+
+  update public.jackpot_pools jp
+  set current_pt = p_current_pt,
+      version = jp.version + 1,
+      updated_at = now()
+  where jp.store_id = p_store_id and jp.pool_id = p_pool_id
+  returning jp.current_pt, jp.version into v_current_pt, v_version;
+
+  insert into public.jackpot_events(
+    store_id, pool_id, machine_id, event_type, amount_pt, balance_after_pt, idempotency_key
+  ) values (
+    p_store_id, p_pool_id, coalesce(nullif(p_machine_id, ''), 'admin'),
+    'adjustment', v_current_pt - v_previous_pt, v_current_pt, p_idempotency_key
+  );
+
+  return query select v_current_pt, v_version, true;
+end;
+$$;
+
 revoke all on function public.jackpot_pool_contribute(text, text, text, bigint, text) from public, anon, authenticated;
 revoke all on function public.jackpot_pool_claim(text, text, text, text) from public, anon, authenticated;
+revoke all on function public.jackpot_pool_set(text, text, text, bigint, text) from public, anon, authenticated;
 grant execute on function public.jackpot_pool_contribute(text, text, text, bigint, text) to service_role;
 grant execute on function public.jackpot_pool_claim(text, text, text, text) to service_role;
+grant execute on function public.jackpot_pool_set(text, text, text, bigint, text) to service_role;

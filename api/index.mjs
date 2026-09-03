@@ -12,6 +12,7 @@ const SHEETS_WEBHOOK_URL = String(process.env.GOOGLE_SHEETS_WEBHOOK_URL || "").t
 const JACKPOT_CONTRIBUTION_RATE = 0.10;
 const JACKPOT_SPIN_COST_PT = 100;
 const JACKPOT_CONTRIBUTION_PT = Math.round(JACKPOT_SPIN_COST_PT * JACKPOT_CONTRIBUTION_RATE);
+const MAX_JACKPOT_PT = 999999999;
 
 function json(res, status, data){
   res.statusCode = status;
@@ -79,6 +80,18 @@ function jackpotMachineDefinition(id){
   const definition = machineDefinition(id);
   return definition && definition.capabilities && definition.capabilities.jackpot && definition.poolId
     ? definition
+    : null;
+}
+function jackpotPoolDefinition(poolId){
+  const normalized = String(poolId || "").trim();
+  return MACHINE_DEFINITIONS.find(definition=>
+    definition.capabilities && definition.capabilities.jackpot && String(definition.poolId || "") === normalized
+  ) || null;
+}
+function validJackpotAmount(value){
+  const amount = Number(value);
+  return Number.isFinite(amount) && Number.isInteger(amount) && amount >= 0 && amount <= MAX_JACKPOT_PT
+    ? amount
     : null;
 }
 function validIdempotencyKey(value){
@@ -232,6 +245,31 @@ async function claimJackpot(machineId, idempotencyKey){
     currentPt:Math.max(0, Number(row.current_pt || 0)),
     version:Math.max(0, Number(row.version || 0)),
     applied:row.applied !== false
+  };
+}
+async function setJackpotPoolAmount(poolId, currentPt){
+  if(!jackpotPoolDefinition(poolId)) throw new Error("jackpot pool not found");
+  const rows = await sb("rpc/jackpot_pool_set", {
+    method:"POST",
+    headers:{Prefer:"return=representation"},
+    body:JSON.stringify({
+      p_store_id:STORE_ID,
+      p_pool_id:String(poolId),
+      p_machine_id:"admin",
+      p_current_pt:currentPt,
+      p_idempotency_key:makeId("admin_set")
+    })
+  });
+  const row = Array.isArray(rows) ? (rows[0] || {}) : (rows || {});
+  return {
+    storeId:STORE_ID,
+    poolId:String(poolId),
+    currentPt:Math.max(0, Number(row.current_pt || 0)),
+    contributionRate:JACKPOT_CONTRIBUTION_RATE,
+    contributionPt:JACKPOT_CONTRIBUTION_PT,
+    version:Math.max(0, Number(row.version || 0)),
+    applied:row.applied !== false,
+    updatedAt:new Date().toISOString()
   };
 }
 function machineGameUrl(machine, adminOrigin, sessionId){
@@ -396,6 +434,16 @@ export default async function handler(req, res){
         return json(res, 409, {ok:false, error:"machine session mismatch"});
       }
       return json(res, 200, {ok:true, pool:await claimJackpot(machineId, idempotencyKey)});
+    }
+    const jackpotAmountMatch = pathname.match(/^\/api\/admin\/jackpot\/pools\/([^/]+)\/amount$/);
+    if(jackpotAmountMatch && req.method === "POST"){
+      if(!adminOk(req)) return json(res, 401, {ok:false, error:"admin password required"});
+      const poolId = decodeURIComponent(jackpotAmountMatch[1]);
+      if(!jackpotPoolDefinition(poolId)) return json(res, 404, {ok:false, error:"jackpot pool not found"});
+      const body = await readBody(req);
+      const currentPt = validJackpotAmount(body.currentPt);
+      if(currentPt === null) return json(res, 400, {ok:false, error:`currentPt must be an integer from 0 to ${MAX_JACKPOT_PT}`});
+      return json(res, 200, {ok:true, pool:await setJackpotPoolAmount(poolId, currentPt)});
     }
     if(pathname === "/api/machines" && req.method === "GET"){
       const machines = await getAllMachines();

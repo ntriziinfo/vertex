@@ -52,11 +52,15 @@ GOOGLE_SHEETS_WEBHOOK_URL=任意
 
 JACsPOT共有ジャックポット用の`jackpot_pools`と`jackpot_events`も店舗DB内に作成されます。各100pt BETから10ptを原子的に共有プールへ加算し、3rdステージのJP成立時は同一店舗・同一`poolId`の残高を1回のトランザクションで全額払い出して0へ戻します。10,000ptは固定払い出しのみで共有JPとは同時払い出ししません。`idempotency_key`により通信再送時の二重積立・二重払い出しを防止します。
 
-共有プールAPIは次の3つです。
+ゲーム用共有プールAPIは次の3つです。
 
 - `GET /api/jackpot/pool?machineId=jackspot-01`: 現在残高
 - `POST /api/jackpot/contribute`: 1回転分10ptの積立
 - `POST /api/jackpot/claim`: 3rdステージJP成立時の全額払い出しとリセット（10,000ptとは別当選）
+
+管理画面の「共有JACKPOT管理」では、店舗側がJP当選時の獲得pt（共有プール現在値）を設定できます。この操作は`jackpot_events`へ`adjustment`として記録されます。共有JP残高は台の設定変更・管理リセット・全台リセットから独立しており、それらの操作では増減・初期化されません。
+
+- `POST /api/admin/jackpot/pools/:poolId/amount`: 管理パスワード必須。`currentPt`を0～999,999,999ptの整数で指定
 
 ## 台をVERTEXへ接続する仕組み
 

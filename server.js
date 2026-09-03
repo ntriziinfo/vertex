@@ -23,6 +23,7 @@ const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || "");
 const JACKPOT_CONTRIBUTION_RATE = 0.10;
 const JACKPOT_SPIN_COST_PT = 100;
 const JACKPOT_CONTRIBUTION_PT = Math.round(JACKPOT_SPIN_COST_PT * JACKPOT_CONTRIBUTION_RATE);
+const MAX_JACKPOT_PT = 999999999;
 const machines = new Map();
 const adminClients = new Set();
 const commandClients = new Map();
@@ -100,6 +101,19 @@ function jackpotMachineDefinition(id){
     ? definition
     : null;
 }
+function jackpotPoolDefinition(poolId){
+  const normalized = String(poolId || "").trim();
+  return MACHINE_DEFINITIONS.find(definition=>
+    definition.capabilities && definition.capabilities.jackpot && String(definition.poolId || "") === normalized
+  ) || null;
+}
+
+function validJackpotAmount(value){
+  const amount = Number(value);
+  return Number.isFinite(amount) && Number.isInteger(amount) && amount >= 0 && amount <= MAX_JACKPOT_PT
+    ? amount
+    : null;
+}
 
 function jackpotPoolKey(poolId){ return `${STORE_ID}:${String(poolId)}`; }
 
@@ -166,6 +180,25 @@ function claimJackpot(machineId, idempotencyKey){
   pool.updatedAt = Date.now();
   state.jackpotEvents[idempotencyKey] = {type:"payout", machineId:String(machineId), amountPt:paidPt, balanceAfterPt:0, createdAt:Date.now()};
   return {...publicJackpotPool(pool), paidPt, applied:true};
+}
+
+function setJackpotPoolAmount(poolId, currentPt){
+  if(!jackpotPoolDefinition(poolId)) return null;
+  const pool = jackpotPoolFor(poolId);
+  const previousPt = Math.max(0, Number(pool.currentPt || 0));
+  pool.currentPt = currentPt;
+  pool.version = Math.max(0, Number(pool.version || 0)) + 1;
+  pool.updatedAt = Date.now();
+  const idempotencyKey = makeId("admin_set");
+  state.jackpotEvents = state.jackpotEvents || {};
+  state.jackpotEvents[idempotencyKey] = {
+    type:"adjustment",
+    machineId:"admin",
+    amountPt:currentPt - previousPt,
+    balanceAfterPt:currentPt,
+    createdAt:Date.now()
+  };
+  return {...publicJackpotPool(pool), applied:true};
 }
 
 function adminOk(req){
@@ -541,6 +574,20 @@ const server = http.createServer(async (req, res)=>{
       }
       const pool = claimJackpot(machineId, idempotencyKey);
       saveState();
+      return sendJson(res, 200, {ok:true, pool});
+    }
+
+    const jackpotAmountMatch = url.pathname.match(/^\/api\/admin\/jackpot\/pools\/([^/]+)\/amount$/);
+    if(jackpotAmountMatch && req.method === "POST"){
+      if(!adminOk(req)) return sendJson(res, 401, {ok:false, error:"admin password required"});
+      const poolId = decodeURIComponent(jackpotAmountMatch[1]);
+      if(!jackpotPoolDefinition(poolId)) return sendJson(res, 404, {ok:false, error:"jackpot pool not found"});
+      const body = await readBody(req);
+      const currentPt = validJackpotAmount(body.currentPt);
+      if(currentPt === null) return sendJson(res, 400, {ok:false, error:`currentPt must be an integer from 0 to ${MAX_JACKPOT_PT}`});
+      const pool = setJackpotPoolAmount(poolId, currentPt);
+      saveState();
+      broadcastMachines();
       return sendJson(res, 200, {ok:true, pool});
     }
 
