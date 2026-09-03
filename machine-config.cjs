@@ -6,8 +6,8 @@ const STORE_NAME = String(process.env.VERTEX_STORE_NAME || "VERTEX ローカル�
 
 const DEFAULT_STORE_DIRECTORY = [
   {storeId:"store-jag-one", storeName:"Vertex管理画面", adminUrl:""},
-  {storeId:"store-nebula", storeName:"Nebula", adminUrl:""},
-  {storeId:"store-las-vegas", storeName:"ロスベガス", adminUrl:""}
+  {storeId:"store-las-vegas", storeName:"ロスベガス管理画面", adminUrl:""},
+  {storeId:"store-debug", storeName:"デバッグ", adminUrl:""}
 ];
 
 function normalizeStoreDefinition(value, index=0){

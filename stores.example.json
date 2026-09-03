@@ -5,13 +5,13 @@
     "adminUrl": "https://vertex-inky-ten.vercel.app/admin.html"
   },
   {
-    "storeId": "store-nebula",
-    "storeName": "Nebula",
-    "adminUrl": "https://nebula-control.example.com/admin.html"
+    "storeId": "store-las-vegas",
+    "storeName": "ロスベガス管理画面",
+    "adminUrl": "https://lasvegas-control.example.com/admin.html"
   },
   {
-    "storeId": "store-las-vegas",
-    "storeName": "ロスベガス",
-    "adminUrl": "https://lasvegas-control.example.com/admin.html"
+    "storeId": "store-debug",
+    "storeName": "デバッグ",
+    "adminUrl": "https://vertex-debug.example.com/admin.html"
   }
 ]

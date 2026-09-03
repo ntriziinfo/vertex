@@ -9,10 +9,10 @@ RISINGやJACsPOTなどのゲーム本体から独立した、店舗単位の管�
 
 | 項目 | 店舗1 | 店舗2 | 店舗3 |
 | --- | --- | --- | --- |
-| 管理画面名 | Vertex管理画面 | Nebula | ロスベガス |
-| Vercelプロジェクト | vertex | nebula-control | lasvegas-control |
-| `VERTEX_STORE_ID` | store-jag-one | store-nebula | store-las-vegas |
-| `VERTEX_STORE_NAME` | Vertex管理画面 | Nebula | ロスベガス |
+| 管理画面名 | Vertex管理画面 | ロスベガス管理画面 | デバッグ |
+| Vercelプロジェクト | vertex | lasvegas-control | vertex-debug |
+| `VERTEX_STORE_ID` | store-jag-one | store-las-vegas | store-debug |
+| `VERTEX_STORE_NAME` | Vertex管理画面 | ロスベガス管理画面 | デバッグ |
 | `ADMIN_PASSWORD` | 店舗1専用 | 店舗2専用 | 店舗3専用 |
 | Supabase | 店舗1専用 | 店舗2専用 | 店舗3専用 |
 
