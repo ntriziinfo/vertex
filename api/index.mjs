@@ -141,6 +141,8 @@ async function upsertMachine(machine){
 function machineGameUrl(machine, adminOrigin, sessionId){
   if(!machine || !machine.gameUrl) return "";
   const url = new URL(machine.gameUrl, adminOrigin);
+  url.searchParams.set("controller", "vertex");
+  url.searchParams.set("storeId", STORE_ID);
   url.searchParams.set("machine", machine.machineId);
   url.searchParams.set("server", adminOrigin);
   url.searchParams.set("creditBaseline", "0");

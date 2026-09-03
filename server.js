@@ -229,6 +229,8 @@ function machineGameUrl(machine, adminOrigin, sessionId=""){
   if(!machine || !machine.gameUrl) return "";
   try{
     const target = new URL(machine.gameUrl, adminOrigin);
+    target.searchParams.set("controller", "vertex");
+    target.searchParams.set("storeId", STORE_ID);
     target.searchParams.set("machine", machine.machineId);
     target.searchParams.set("server", adminOrigin);
     target.searchParams.set("creditBaseline", "0");

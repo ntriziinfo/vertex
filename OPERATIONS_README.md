@@ -49,7 +49,9 @@ JACsPOT共有ジャックポット用の`jackpot_pools`と`jackpot_events`も店
 VERTEXがプレイ開始時にゲームURLへ以下を自動付加します。
 
 ```text
-?machine=jackspot-01
+?controller=vertex
+&storeId=store-a
+&machine=jackspot-01
 &server=https%3A%2F%2Fvertex-store-a.example.com
 &creditBaseline=0
 &playSessionId=...
