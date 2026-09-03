@@ -7,11 +7,11 @@
   {
     "storeId": "store-las-vegas",
     "storeName": "ロスベガス管理画面",
-    "adminUrl": "https://lasvegas-control.example.com/admin.html"
+    "adminUrl": "https://lasvegas-control.vercel.app/admin.html"
   },
   {
     "storeId": "store-debug",
     "storeName": "デバッグ",
-    "adminUrl": "https://vertex-debug.example.com/admin.html"
+    "adminUrl": "https://vertex-debug.vercel.app/admin.html"
   }
 ]
