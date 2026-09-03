@@ -129,10 +129,8 @@ async function getMachine(id){
 async function getAllMachines(){
   const rows = await sb("machine_states?select=*&order=machine_id.asc");
   const byId = new Map(rows.map(row=>[String(row.machine_id), machineFromRow(row)]));
-  const configured = MACHINE_DEFINITIONS.map(definition=>byId.get(definition.machineId) || emptyMachine(definition.machineId));
-  const configuredIds = new Set(MACHINE_DEFINITIONS.map(definition=>definition.machineId));
-  const extras = rows.filter(row=>!configuredIds.has(String(row.machine_id))).map(machineFromRow);
-  return [...configured, ...extras];
+  // 旧管理DBの行は移管後も監査用に残すが、VERTEXでは店舗構成に登録した台だけを扱う。
+  return MACHINE_DEFINITIONS.map(definition=>byId.get(definition.machineId) || emptyMachine(definition.machineId));
 }
 async function upsertMachine(machine){
   const row = {machine_id:String(machine.machineId), store_id:STORE_ID, display_name:machine.displayName || machineLabel(machine.machineId), machine_type:machine.machineType || "generic", game_url:machine.gameUrl || "", pool_id:machine.poolId || "", capabilities:machine.capabilities || {}, locked:!!machine.locked, reset_serial:Number(machine.resetSerial || 0), current_session_id:machine.currentSessionId || "", current_player_name:machine.currentPlayerName || "", last_snapshot:machine.lastSnapshot || null, last_ended_session:machine.lastEndedSession || null, updated_at_ms:Number(machine.updatedAt || 0), assigned_setting:Number(machine.assignedSetting || 1)};
@@ -212,7 +210,8 @@ async function restoreResultResetSerials(records){
 }
 async function recentResultRecords(limit=200){
   const rows = await sb("session_results?select=record&order=id.desc&limit=" + Math.max(1, Number(limit) || 200));
-  return restoreResultResetSerials(rows.map(row=>row.record));
+  const configuredRecords = rows.map(row=>row.record).filter(record=>record && validMachineId(record.machineId));
+  return restoreResultResetSerials(configuredRecords);
 }
 function postJson(urlString, payload){
   return new Promise((resolve, reject)=>{
