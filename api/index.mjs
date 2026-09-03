@@ -310,7 +310,9 @@ export default async function handler(req, res){
     if(pathname === "/api/admin/passwords" && req.method === "GET"){
       if(!adminOk(req)) return json(res, 401, {ok:false, error:"admin password required"});
       const rows = await sb("issued_passwords?select=*&order=issued_at_ms.desc&limit=80");
-      return json(res, 200, rows.map(row=>({password:row.password, machineId:String(row.machine_id), playerName:row.player_name || "", status:row.status, issuedAt:Number(row.issued_at_ms || 0), usedAt:Number(row.used_at_ms || 0), sessionId:row.session_id || ""})));
+      return json(res, 200, rows
+        .filter(row=>validMachineId(row.machine_id))
+        .map(row=>({password:row.password, machineId:String(row.machine_id), playerName:row.player_name || "", status:row.status, issuedAt:Number(row.issued_at_ms || 0), usedAt:Number(row.used_at_ms || 0), sessionId:row.session_id || ""})));
     }
     if(pathname === "/api/sessions/start" && req.method === "POST"){
       const body = await readBody(req);
@@ -318,6 +320,7 @@ export default async function handler(req, res){
       const requestedMachineId = String(body.requestedMachineId || "").trim();
       const issued = await getIssued(password);
       if(!issued) return json(res, 403, {ok:false, error:"password not found"});
+      if(!validMachineId(issued.machineId)) return json(res, 403, {ok:false, error:"このパスワードは旧構成用です"});
       if(requestedMachineId && requestedMachineId !== String(issued.machineId)) return json(res, 403, {ok:false, error:"このパスワードは別の台用です"});
       const machine = await getMachine(issued.machineId);
       const existingSession = issued.sessionId ? await getSession(issued.sessionId) : null;
