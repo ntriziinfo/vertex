@@ -319,6 +319,7 @@ function renderMachines(){
     return `<article class="machine">
       <h3>${escapeHtml(machineLabel(m))} <span class="pill ${st[1]}">${st[0]}</span></h3>
       <div class="muted">${escapeHtml(machineTypeLabel(m))}${m.poolId ? ' / プール: ' + escapeHtml(m.poolId) : ''}</div>
+      ${m.capabilities && m.capabilities.jackpot ? `<div class="stat"><span>5台共有JACKPOT</span><b>${fmt(m.jackpotPool && m.jackpotPool.currentPt)}pt</b></div>` : ''}
       <div class="machineViewLabel">${escapeHtml(view.label)}</div>
       <div class="muted">${m.currentPlayerName ? '利用者: ' + escapeHtml(m.currentPlayerName) : '利用者なし'} / ${m.currentSessionId ? '遊技中' : m.lastEndedSession ? '直前データ保持中' : 'リセット済み'}</div>
       <canvas class="adminSlumpGraph" data-machine="${m.machineId}"></canvas>

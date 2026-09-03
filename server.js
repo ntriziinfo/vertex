@@ -20,6 +20,9 @@ const STATE_FILE = path.join(DATA_DIR, "admin-state.json");
 const RESULTS_FILE = path.join(DATA_DIR, "session-results.jsonl");
 const SHEETS_WEBHOOK_URL = String(process.env.GOOGLE_SHEETS_WEBHOOK_URL || "").trim();
 const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || "");
+const JACKPOT_CONTRIBUTION_RATE = 0.10;
+const JACKPOT_SPIN_COST_PT = 100;
+const JACKPOT_CONTRIBUTION_PT = Math.round(JACKPOT_SPIN_COST_PT * JACKPOT_CONTRIBUTION_RATE);
 const machines = new Map();
 const adminClients = new Set();
 const commandClients = new Map();
@@ -59,6 +62,8 @@ let state = {
   issuedPasswords:{},
   sessions:{},
   commands:[],
+  jackpotPools:{},
+  jackpotEvents:{},
   updatedAt:Date.now()
 };
 
@@ -68,7 +73,7 @@ function loadState(){
   ensureDataDir();
   try{
     const parsed = JSON.parse(fs.readFileSync(STATE_FILE, "utf8"));
-    state = {...state, ...parsed, machines:parsed.machines || {}, issuedPasswords:parsed.issuedPasswords || {}, sessions:parsed.sessions || {}, commands:Array.isArray(parsed.commands) ? parsed.commands : []};
+    state = {...state, ...parsed, machines:parsed.machines || {}, issuedPasswords:parsed.issuedPasswords || {}, sessions:parsed.sessions || {}, commands:Array.isArray(parsed.commands) ? parsed.commands : [], jackpotPools:parsed.jackpotPools || {}, jackpotEvents:parsed.jackpotEvents || {}};
   }catch(e){}
   for(const definition of MACHINE_DEFINITIONS){
     const id = definition.machineId;
@@ -87,6 +92,80 @@ function saveState(){
   const serializable = {...state, machines:{}};
   for(const [id, machine] of machines.entries()) serializable.machines[id] = machine;
   fs.writeFileSync(STATE_FILE, JSON.stringify(serializable, null, 2));
+}
+
+function jackpotMachineDefinition(id){
+  const definition = machineDefinition(id);
+  return definition && definition.capabilities && definition.capabilities.jackpot && definition.poolId
+    ? definition
+    : null;
+}
+
+function jackpotPoolKey(poolId){ return `${STORE_ID}:${String(poolId)}`; }
+
+function jackpotPoolFor(poolId){
+  state.jackpotPools = state.jackpotPools || {};
+  const key = jackpotPoolKey(poolId);
+  if(!state.jackpotPools[key]){
+    state.jackpotPools[key] = {
+      storeId:STORE_ID,
+      poolId:String(poolId),
+      currentPt:0,
+      contributionRate:JACKPOT_CONTRIBUTION_RATE,
+      contributionPt:JACKPOT_CONTRIBUTION_PT,
+      version:0,
+      updatedAt:Date.now()
+    };
+  }
+  return state.jackpotPools[key];
+}
+
+function publicJackpotPool(pool){
+  return {
+    storeId:STORE_ID,
+    poolId:String(pool.poolId || ""),
+    currentPt:Math.max(0, Number(pool.currentPt || 0)),
+    contributionRate:JACKPOT_CONTRIBUTION_RATE,
+    contributionPt:JACKPOT_CONTRIBUTION_PT,
+    version:Math.max(0, Number(pool.version || 0)),
+    updatedAt:pool.updatedAt || 0
+  };
+}
+
+function validIdempotencyKey(value){
+  const key = String(value || "").trim();
+  return key.length >= 8 && key.length <= 180 && /^[a-z0-9:_-]+$/i.test(key) ? key : "";
+}
+
+function contributeJackpot(machineId, idempotencyKey){
+  const definition = jackpotMachineDefinition(machineId);
+  if(!definition) return null;
+  state.jackpotEvents = state.jackpotEvents || {};
+  const existing = state.jackpotEvents[idempotencyKey];
+  if(existing) return {...publicJackpotPool(jackpotPoolFor(definition.poolId)), applied:false};
+  const pool = jackpotPoolFor(definition.poolId);
+  pool.currentPt = Math.max(0, Number(pool.currentPt || 0)) + JACKPOT_CONTRIBUTION_PT;
+  pool.version = Math.max(0, Number(pool.version || 0)) + 1;
+  pool.updatedAt = Date.now();
+  state.jackpotEvents[idempotencyKey] = {type:"contribution", machineId:String(machineId), amountPt:JACKPOT_CONTRIBUTION_PT, balanceAfterPt:pool.currentPt, createdAt:Date.now()};
+  return {...publicJackpotPool(pool), applied:true};
+}
+
+function claimJackpot(machineId, idempotencyKey){
+  const definition = jackpotMachineDefinition(machineId);
+  if(!definition) return null;
+  state.jackpotEvents = state.jackpotEvents || {};
+  const existing = state.jackpotEvents[idempotencyKey];
+  const pool = jackpotPoolFor(definition.poolId);
+  if(existing){
+    return {...publicJackpotPool(pool), paidPt:Math.max(0, Number(existing.amountPt || 0)), applied:false};
+  }
+  const paidPt = Math.max(0, Number(pool.currentPt || 0));
+  pool.currentPt = 0;
+  pool.version = Math.max(0, Number(pool.version || 0)) + 1;
+  pool.updatedAt = Date.now();
+  state.jackpotEvents[idempotencyKey] = {type:"payout", machineId:String(machineId), amountPt:paidPt, balanceAfterPt:0, createdAt:Date.now()};
+  return {...publicJackpotPool(pool), paidPt, applied:true};
 }
 
 function adminOk(req){
@@ -140,7 +219,7 @@ function sseSend(res, event, data){
   res.write(`data: ${JSON.stringify(data)}\n\n`);
 }
 
-function publicMachine(machine, machineTotal){
+function publicMachine(machine, machineTotal, jackpotPool=null){
   const snapshot = machine.lastSnapshot || null;
   const stats = snapshot && snapshot.stats ? snapshot.stats : null;
   const settings = snapshot && snapshot.settings ? snapshot.settings : {setting:machine.assignedSetting || 1, completeLimitPt:19000};
@@ -151,6 +230,7 @@ function publicMachine(machine, machineTotal){
     machineType:machine.machineType || "generic",
     gameUrl:machine.gameUrl || "",
     poolId:machine.poolId || "",
+    jackpotPool:jackpotPool || (snapshot && snapshot.jackpotPool) || null,
     capabilities:machine.capabilities || {completeLimit:false, jackpot:false},
     online:!!machine.online,
     locked:!!machine.locked,
@@ -182,7 +262,11 @@ function allMachines(){
 
 function publicMachines(){
   const records = readResultRecords(1000);
-  return allMachines().map(machine=>publicMachine(machine, machineTotalFor(machine, records)));
+  return allMachines().map(machine=>publicMachine(
+    machine,
+    machineTotalFor(machine, records),
+    machine.poolId ? publicJackpotPool(jackpotPoolFor(machine.poolId)) : null
+  ));
 }
 
 function broadcastMachines(){
@@ -423,6 +507,41 @@ const server = http.createServer(async (req, res)=>{
 
     if(url.pathname === "/api/config" && req.method === "GET"){
       return sendJson(res, 200, {ok:true, storeId:STORE_ID, storeName:STORE_NAME, stores:STORE_DIRECTORY, machineCount:MACHINE_DEFINITIONS.length});
+    }
+
+    if(url.pathname === "/api/jackpot/pool" && req.method === "GET"){
+      const machineId = String(url.searchParams.get("machineId") || "").trim();
+      const definition = jackpotMachineDefinition(machineId);
+      if(!definition) return sendJson(res, 400, {ok:false, error:"jackpot-enabled machine required"});
+      return sendJson(res, 200, {ok:true, pool:publicJackpotPool(jackpotPoolFor(definition.poolId))});
+    }
+
+    if(url.pathname === "/api/jackpot/contribute" && req.method === "POST"){
+      const body = await readBody(req);
+      const machineId = String(body.machineId || "").trim();
+      const idempotencyKey = validIdempotencyKey(body.idempotencyKey);
+      if(!jackpotMachineDefinition(machineId)) return sendJson(res, 400, {ok:false, error:"jackpot-enabled machine required"});
+      if(!idempotencyKey) return sendJson(res, 400, {ok:false, error:"valid idempotencyKey required"});
+      const pool = contributeJackpot(machineId, idempotencyKey);
+      saveState();
+      return sendJson(res, 200, {ok:true, pool});
+    }
+
+    if(url.pathname === "/api/jackpot/claim" && req.method === "POST"){
+      const body = await readBody(req);
+      const machineId = String(body.machineId || "").trim();
+      const idempotencyKey = validIdempotencyKey(body.idempotencyKey);
+      if(!jackpotMachineDefinition(machineId)) return sendJson(res, 400, {ok:false, error:"jackpot-enabled machine required"});
+      if(!idempotencyKey) return sendJson(res, 400, {ok:false, error:"valid idempotencyKey required"});
+      if(String(body.qualifyingResult || "").toUpperCase() !== "JP") return sendJson(res, 409, {ok:false, error:"JP outcome required"});
+      const machine = machineFor(machineId);
+      const playSessionId = String(body.playSessionId || "");
+      if(machine && machine.currentSessionId && playSessionId !== String(machine.currentSessionId)){
+        return sendJson(res, 409, {ok:false, error:"machine session mismatch"});
+      }
+      const pool = claimJackpot(machineId, idempotencyKey);
+      saveState();
+      return sendJson(res, 200, {ok:true, pool});
     }
 
     if(url.pathname === "/api/machines" && req.method === "GET"){

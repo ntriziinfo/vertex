@@ -9,6 +9,9 @@ const SUPABASE_URL = String(process.env.SUPABASE_URL || "").replace(/\/$/, "");
 const SUPABASE_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || "");
 const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || "");
 const SHEETS_WEBHOOK_URL = String(process.env.GOOGLE_SHEETS_WEBHOOK_URL || "").trim();
+const JACKPOT_CONTRIBUTION_RATE = 0.10;
+const JACKPOT_SPIN_COST_PT = 100;
+const JACKPOT_CONTRIBUTION_PT = Math.round(JACKPOT_SPIN_COST_PT * JACKPOT_CONTRIBUTION_RATE);
 
 function json(res, status, data){
   res.statusCode = status;
@@ -72,6 +75,16 @@ function generatePassword(){
 }
 function validMachineId(id){ return !!machineDefinition(id); }
 function machineLabel(id){ const definition = machineDefinition(id); return definition ? definition.displayName : String(id); }
+function jackpotMachineDefinition(id){
+  const definition = machineDefinition(id);
+  return definition && definition.capabilities && definition.capabilities.jackpot && definition.poolId
+    ? definition
+    : null;
+}
+function validIdempotencyKey(value){
+  const key = String(value || "").trim();
+  return key.length >= 8 && key.length <= 180 && /^[a-z0-9:_-]+$/i.test(key) ? key : "";
+}
 function emptyMachine(id){
   const definition = machineDefinition(id) || {};
   return {
@@ -116,11 +129,11 @@ function machineFromRow(row){
     assignedSetting:Number(row.assigned_setting || 1)
   };
 }
-function publicMachine(machine, machineTotal){
+function publicMachine(machine, machineTotal, jackpotPool=null){
   const snapshot = machine.lastSnapshot || null;
   const stats = snapshot && snapshot.stats ? snapshot.stats : null;
   const settings = snapshot && snapshot.settings ? snapshot.settings : {setting:machine.assignedSetting || 1, completeLimitPt:19000};
-  return {storeId:STORE_ID, machineId:machine.machineId, displayName:machine.displayName || machineLabel(machine.machineId), machineType:machine.machineType || "generic", gameUrl:machine.gameUrl || "", poolId:machine.poolId || "", capabilities:machine.capabilities || {completeLimit:false, jackpot:false}, online:!!machine.online, locked:!!machine.locked, currentSessionId:machine.currentSessionId || "", currentPlayerName:machine.currentPlayerName || "", updatedAt:machine.updatedAt || 0, resetSerial:machine.resetSerial || 0, assignedSetting:machine.assignedSetting || (stats && stats.setting) || settings.setting || 1, lastEndedSession:machine.lastEndedSession || null, playSessionId:snapshot && snapshot.playSessionId || "", playSessionStartStats:snapshot && snapshot.playSessionStartStats || null, settings, stats, slumpHistory:stats && Array.isArray(stats.slumpHistory) ? stats.slumpHistory : [{spin:0, profit:0}], machineTotalStats:machineTotal.stats, machineTotalSlumpHistory:machineTotal.history};
+  return {storeId:STORE_ID, machineId:machine.machineId, displayName:machine.displayName || machineLabel(machine.machineId), machineType:machine.machineType || "generic", gameUrl:machine.gameUrl || "", poolId:machine.poolId || "", jackpotPool:jackpotPool || (snapshot && snapshot.jackpotPool) || null, capabilities:machine.capabilities || {completeLimit:false, jackpot:false}, online:!!machine.online, locked:!!machine.locked, currentSessionId:machine.currentSessionId || "", currentPlayerName:machine.currentPlayerName || "", updatedAt:machine.updatedAt || 0, resetSerial:machine.resetSerial || 0, assignedSetting:machine.assignedSetting || (stats && stats.setting) || settings.setting || 1, lastEndedSession:machine.lastEndedSession || null, playSessionId:snapshot && snapshot.playSessionId || "", playSessionStartStats:snapshot && snapshot.playSessionStartStats || null, settings, stats, slumpHistory:stats && Array.isArray(stats.slumpHistory) ? stats.slumpHistory : [{spin:0, profit:0}], machineTotalStats:machineTotal.stats, machineTotalSlumpHistory:machineTotal.history};
 }
 async function getMachine(id){
   const rows = await sb("machine_states?machine_id=eq." + encodeURIComponent(String(id)) + "&select=*&limit=1");
@@ -155,6 +168,71 @@ async function upsertMachine(machine){
     };
     return sb("machine_states?on_conflict=machine_id", {...options, body:JSON.stringify(legacyRow)});
   }
+}
+async function getJackpotPool(poolId){
+  const rows = await sb(
+    "jackpot_pools?store_id=eq." + encodeURIComponent(STORE_ID)
+      + "&pool_id=eq." + encodeURIComponent(String(poolId))
+      + "&select=current_pt,contribution_rate,version,updated_at&limit=1"
+  );
+  const row = rows[0] || {};
+  return {
+    storeId:STORE_ID,
+    poolId:String(poolId),
+    currentPt:Math.max(0, Number(row.current_pt || 0)),
+    contributionRate:Number(row.contribution_rate || JACKPOT_CONTRIBUTION_RATE),
+    contributionPt:JACKPOT_CONTRIBUTION_PT,
+    version:Math.max(0, Number(row.version || 0)),
+    updatedAt:row.updated_at || null
+  };
+}
+async function contributeJackpot(machineId, idempotencyKey){
+  const definition = jackpotMachineDefinition(machineId);
+  if(!definition) throw new Error("jackpot-enabled machine required");
+  const rows = await sb("rpc/jackpot_pool_contribute", {
+    method:"POST",
+    headers:{Prefer:"return=representation"},
+    body:JSON.stringify({
+      p_store_id:STORE_ID,
+      p_pool_id:definition.poolId,
+      p_machine_id:String(machineId),
+      p_amount_pt:JACKPOT_CONTRIBUTION_PT,
+      p_idempotency_key:idempotencyKey
+    })
+  });
+  const row = Array.isArray(rows) ? (rows[0] || {}) : (rows || {});
+  return {
+    storeId:STORE_ID,
+    poolId:definition.poolId,
+    currentPt:Math.max(0, Number(row.current_pt || 0)),
+    contributionRate:JACKPOT_CONTRIBUTION_RATE,
+    contributionPt:JACKPOT_CONTRIBUTION_PT,
+    version:Math.max(0, Number(row.version || 0)),
+    applied:row.applied !== false
+  };
+}
+async function claimJackpot(machineId, idempotencyKey){
+  const definition = jackpotMachineDefinition(machineId);
+  if(!definition) throw new Error("jackpot-enabled machine required");
+  const rows = await sb("rpc/jackpot_pool_claim", {
+    method:"POST",
+    headers:{Prefer:"return=representation"},
+    body:JSON.stringify({
+      p_store_id:STORE_ID,
+      p_pool_id:definition.poolId,
+      p_machine_id:String(machineId),
+      p_idempotency_key:idempotencyKey
+    })
+  });
+  const row = Array.isArray(rows) ? (rows[0] || {}) : (rows || {});
+  return {
+    storeId:STORE_ID,
+    poolId:definition.poolId,
+    paidPt:Math.max(0, Number(row.paid_pt || 0)),
+    currentPt:Math.max(0, Number(row.current_pt || 0)),
+    version:Math.max(0, Number(row.version || 0)),
+    applied:row.applied !== false
+  };
 }
 function machineGameUrl(machine, adminOrigin, sessionId){
   if(!machine || !machine.gameUrl) return "";
@@ -290,11 +368,46 @@ export default async function handler(req, res){
     if(!requireSupabase(res)) return;
     const forwardedProtocol = String(req.headers["x-forwarded-proto"] || "https").split(",")[0].trim();
     const origin = forwardedProtocol + "://" + req.headers.host;
+    if(pathname === "/api/jackpot/pool" && req.method === "GET"){
+      const machineId = String(req.query.machineId || "").trim();
+      const definition = jackpotMachineDefinition(machineId);
+      if(!definition) return json(res, 400, {ok:false, error:"jackpot-enabled machine required"});
+      return json(res, 200, {ok:true, pool:await getJackpotPool(definition.poolId)});
+    }
+    if(pathname === "/api/jackpot/contribute" && req.method === "POST"){
+      const body = await readBody(req);
+      const machineId = String(body.machineId || "").trim();
+      const idempotencyKey = validIdempotencyKey(body.idempotencyKey);
+      if(!jackpotMachineDefinition(machineId)) return json(res, 400, {ok:false, error:"jackpot-enabled machine required"});
+      if(!idempotencyKey) return json(res, 400, {ok:false, error:"valid idempotencyKey required"});
+      return json(res, 200, {ok:true, pool:await contributeJackpot(machineId, idempotencyKey)});
+    }
+    if(pathname === "/api/jackpot/claim" && req.method === "POST"){
+      const body = await readBody(req);
+      const machineId = String(body.machineId || "").trim();
+      const idempotencyKey = validIdempotencyKey(body.idempotencyKey);
+      const qualifyingResult = String(body.qualifyingResult || "").toUpperCase();
+      if(!jackpotMachineDefinition(machineId)) return json(res, 400, {ok:false, error:"jackpot-enabled machine required"});
+      if(!idempotencyKey) return json(res, 400, {ok:false, error:"valid idempotencyKey required"});
+      if(qualifyingResult !== "JP") return json(res, 409, {ok:false, error:"JP outcome required"});
+      const machine = await getMachine(machineId);
+      const playSessionId = String(body.playSessionId || "");
+      if(machine.currentSessionId && playSessionId !== String(machine.currentSessionId)){
+        return json(res, 409, {ok:false, error:"machine session mismatch"});
+      }
+      return json(res, 200, {ok:true, pool:await claimJackpot(machineId, idempotencyKey)});
+    }
     if(pathname === "/api/machines" && req.method === "GET"){
       const machines = await getAllMachines();
+      const poolIds = [...new Set(machines.map(machine=>machine.poolId).filter(Boolean))];
+      const poolEntries = await Promise.all(poolIds.map(async poolId=>{
+        try{ return [poolId, await getJackpotPool(poolId)]; }
+        catch(e){ return [poolId, null]; }
+      }));
+      const pools = new Map(poolEntries);
       // Keep the frequently-polled machine list lightweight. Completed-session
       // history is loaded separately by the authenticated admin results route.
-      return json(res, 200, machines.map(machine=>publicMachine(machine, machineTotalFor(machine, []))));
+      return json(res, 200, machines.map(machine=>publicMachine(machine, machineTotalFor(machine, []), pools.get(machine.poolId) || null)));
     }
     if(pathname === "/api/admin/issue-password" && req.method === "POST"){
       if(!adminOk(req)) return json(res, 401, {ok:false, error:"admin password required"});

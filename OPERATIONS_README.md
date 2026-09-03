@@ -48,7 +48,13 @@ GOOGLE_SHEETS_WEBHOOK_URL=任意
 
 各店舗のSupabase SQL Editorで`supabase_schema.sql`を実行します。既存テーブルにも`alter table ... add column if not exists`が適用されるため、再実行できます。
 
-JACsPOT共有ジャックポット用の`jackpot_pools`と`jackpot_events`も店舗DB内に作成されます。現時点ではプールのDB土台までで、投入10%加算・当選時の原子的な全額払出APIは次段階でゲームへ接続します。
+JACsPOT共有ジャックポット用の`jackpot_pools`と`jackpot_events`も店舗DB内に作成されます。各100pt BETから10ptを原子的に共有プールへ加算し、3rdステージのJP成立時は同一店舗・同一`poolId`の残高を1回のトランザクションで全額払い出して0へ戻します。10,000ptは固定払い出しのみで共有JPとは同時払い出ししません。`idempotency_key`により通信再送時の二重積立・二重払い出しを防止します。
+
+共有プールAPIは次の3つです。
+
+- `GET /api/jackpot/pool?machineId=jackspot-01`: 現在残高
+- `POST /api/jackpot/contribute`: 1回転分10ptの積立
+- `POST /api/jackpot/claim`: 3rdステージJP成立時の全額払い出しとリセット（10,000ptとは別当選）
 
 ## 台をVERTEXへ接続する仕組み
 
