@@ -1,0 +1,17 @@
+[
+  {
+    "storeId": "store-jag-one",
+    "storeName": "Vertex管理画面",
+    "adminUrl": "https://vertex-inky-ten.vercel.app/admin.html"
+  },
+  {
+    "storeId": "store-nebula",
+    "storeName": "Nebula",
+    "adminUrl": "https://nebula-control.example.com/admin.html"
+  },
+  {
+    "storeId": "store-las-vegas",
+    "storeName": "ロスベガス",
+    "adminUrl": "https://lasvegas-control.example.com/admin.html"
+  }
+]

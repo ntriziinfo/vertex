@@ -4,6 +4,59 @@ const path = require("path");
 const STORE_ID = String(process.env.VERTEX_STORE_ID || "store-local").trim() || "store-local";
 const STORE_NAME = String(process.env.VERTEX_STORE_NAME || "VERTEX ローカル店舗").trim() || "VERTEX ローカル店舗";
 
+const DEFAULT_STORE_DIRECTORY = [
+  {storeId:"store-jag-one", storeName:"Vertex管理画面", adminUrl:""},
+  {storeId:"store-nebula", storeName:"Nebula", adminUrl:""},
+  {storeId:"store-las-vegas", storeName:"ロスベガス", adminUrl:""}
+];
+
+function normalizeStoreDefinition(value, index=0){
+  const raw = value && typeof value === "object" ? value : {};
+  const storeId = String(raw.storeId || raw.id || `store-${index + 1}`).trim();
+  const storeName = String(raw.storeName || raw.displayName || raw.name || storeId).trim() || storeId;
+  const adminUrl = String(raw.adminUrl || raw.url || "").trim();
+  return {storeId, storeName, adminUrl};
+}
+
+function parseStoreDirectory(raw){
+  const source = Array.isArray(raw) ? raw : raw && Array.isArray(raw.stores) ? raw.stores : [];
+  const seen = new Set();
+  return source
+    .map(normalizeStoreDefinition)
+    .filter(store=>{
+      if(!/^[a-z0-9][a-z0-9_-]{0,63}$/i.test(store.storeId) || seen.has(store.storeId)) return false;
+      if(store.adminUrl && !/^https?:\/\//i.test(store.adminUrl)) return false;
+      seen.add(store.storeId);
+      return true;
+    });
+}
+
+function loadStoreDirectory(){
+  const envJson = String(process.env.VERTEX_STORES_JSON || "").trim();
+  if(envJson){
+    try{
+      const parsed = parseStoreDirectory(JSON.parse(envJson));
+      if(parsed.length) return parsed;
+    }catch(error){
+      console.warn("VERTEX_STORES_JSONを読み込めません:", error.message);
+    }
+  }
+
+  const localPath = path.join(__dirname, "stores.local.json");
+  if(fs.existsSync(localPath)){
+    try{
+      const parsed = parseStoreDirectory(JSON.parse(fs.readFileSync(localPath, "utf8")));
+      if(parsed.length) return parsed;
+    }catch(error){
+      console.warn("stores.local.jsonを読み込めません:", error.message);
+    }
+  }
+
+  return DEFAULT_STORE_DIRECTORY.map(normalizeStoreDefinition);
+}
+
+const STORE_DIRECTORY = loadStoreDirectory();
+
 const DEFAULT_RISING_GAME_URL = String(
   process.env.VERTEX_RISING_GAME_URL || "http://127.0.0.1:18887/jag.html"
 ).trim();
@@ -97,8 +150,11 @@ function machineDefinition(id){
 module.exports = {
   STORE_ID,
   STORE_NAME,
+  STORE_DIRECTORY,
   MACHINE_DEFINITIONS,
   machineDefinition,
   normalizeMachineDefinition,
-  parseMachineDefinitions
+  parseMachineDefinitions,
+  normalizeStoreDefinition,
+  parseStoreDirectory
 };

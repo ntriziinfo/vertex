@@ -7,22 +7,24 @@ RISINGやJACsPOTなどのゲーム本体から独立した、店舗単位の管�
 
 同じ`vertex`リポジトリからVercelプロジェクトを3つ作り、店舗ごとに環境変数とSupabaseを分けます。
 
-| 項目 | 店舗A | 店舗B | 店舗C |
+| 項目 | 店舗1 | 店舗2 | 店舗3 |
 | --- | --- | --- | --- |
-| Vercelプロジェクト | vertex-store-a | vertex-store-b | vertex-store-c |
-| `VERTEX_STORE_ID` | store-a | store-b | store-c |
-| `VERTEX_STORE_NAME` | 店舗A | 店舗B | 店舗C |
-| `ADMIN_PASSWORD` | 店舗A専用 | 店舗B専用 | 店舗C専用 |
-| Supabase | 店舗A専用 | 店舗B専用 | 店舗C専用 |
+| 管理画面名 | Vertex管理画面 | Nebula | ロスベガス |
+| Vercelプロジェクト | vertex | nebula-control | lasvegas-control |
+| `VERTEX_STORE_ID` | store-jag-one | store-nebula | store-las-vegas |
+| `VERTEX_STORE_NAME` | Vertex管理画面 | Nebula | ロスベガス |
+| `ADMIN_PASSWORD` | 店舗1専用 | 店舗2専用 | 店舗3専用 |
+| Supabase | 店舗1専用 | 店舗2専用 | 店舗3専用 |
 
 店舗ごとにDBを分けるため、台データ、パスワード、終了履歴、JACsPOTの共有プールは他店舗と混ざりません。
 
 ## Vercel環境変数
 
 ```text
-VERTEX_STORE_ID=store-a
-VERTEX_STORE_NAME=店舗A
+VERTEX_STORE_ID=store-jag-one
+VERTEX_STORE_NAME=Vertex管理画面
 ADMIN_PASSWORD=店舗専用の管理パス
+VERTEX_STORES_JSON=stores.example.jsonと同じ書式の1行JSON
 VERTEX_RISING_GAME_URL=https://rising.example.com/jag.html
 VERTEX_JACKSPOT_GAME_URL=https://jackspot.example.com/jackspot.html
 SUPABASE_URL=https://xxxx.supabase.co
@@ -31,6 +33,10 @@ GOOGLE_SHEETS_WEBHOOK_URL=任意
 ```
 
 台構成を変更するときは、Vercelの`VERTEX_MACHINES_JSON`へJSON配列を設定します。書式は`machines.example.json`を参照してください。ローカルだけで変更する場合は、同じ内容を`machines.local.json`として保存します。このファイルはGitへ登録されません。
+
+店舗切替一覧は`VERTEX_STORES_JSON`で設定します。書式は`stores.example.json`を参照してください。3つのVercelプロジェクトへ同じ値を設定すると、管理画面の「店舗切替」から移動できます。未開設店舗の`adminUrl`を空にすると「準備中」と表示され、移動できません。管理パスはブラウザのオリジン単位で保持されるため、店舗を切り替えると移動先店舗の専用パスが必要です。
+
+`stores.example.json`はURLだけを扱う公開設定です。管理パス、Supabaseキー、Google Apps Script URLは書かず、Vercel環境変数だけに保存します。
 
 初期構成は次の6台です。
 

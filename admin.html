@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>VERTEX 管理画面</title>
+  <title>Vertex管理画面</title>
   <style>
-    *{box-sizing:border-box} body{margin:0;background:#111318;color:#f7f4ea;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Yu Gothic",sans-serif} header{position:sticky;top:0;z-index:5;background:#171a21;border-bottom:1px solid #303641;padding:14px 20px;display:flex;gap:12px;align-items:center;justify-content:space-between} h1{font-size:20px;margin:0} main{padding:20px;display:grid;gap:18px}.panel{background:#1b1f28;border:1px solid #313846;border-radius:8px;padding:16px}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.field{display:grid;gap:6px;min-width:150px}.field input,.field select,.settingMini{height:38px;border-radius:6px;border:1px solid #3d4656;background:#0f1218;color:#fff;padding:0 10px}button{height:38px;border:0;border-radius:6px;padding:0 13px;font-weight:800;cursor:pointer;background:#f0c85a;color:#1b1300}.ghost{background:#293140;color:#f3f7ff}.danger{background:#d54a4a;color:#fff}.muted{color:#9aa4b5;font-size:13px}.machines{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.machine{background:#151922;border:1px solid #2d3440;border-radius:8px;padding:12px;display:grid;gap:9px}.machine h3{margin:0;font-size:18px;display:flex;justify-content:space-between}.pill{font-size:12px;border-radius:999px;padding:3px 8px;background:#303848}.pill.on{background:#1f7a48}.pill.lock{background:#8a5422}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.adminSlumpGraph{width:100%;height:150px;background:#0b0e14;border:1px solid #2b3342;border-radius:6px}.graphStats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.debugBox{border-top:1px solid #2d3440;padding-top:9px;display:grid;gap:8px}.debugBtns{display:flex;gap:6px;flex-wrap:wrap}.debugBtns button{height:34px;padding:0 10px}.debugSelect{height:34px;border-radius:6px;border:1px solid #3d4656;background:#0f1218;color:#fff;padding:0 8px}.stat{background:#0f1218;border-radius:6px;padding:8px}.stat span{display:block;color:#97a3b8;font-size:12px}.stat b{font-size:16px}.passwordList,.results{display:grid;gap:7px;max-height:260px;overflow:auto}.item{display:grid;grid-template-columns:110px 1fr 90px 140px;gap:8px;align-items:center;background:#10141c;border:1px solid #2b3340;border-radius:6px;padding:8px}.code{font-size:20px;letter-spacing:.08em;color:#ffe07c;font-weight:1000}.ok{color:#6aff9e}.bad{color:#ff8b8b}body.locked header,body.locked main{display:none}.authGate{min-height:100vh;display:grid;place-items:center;padding:20px;background:#111318}.authPanel{width:min(420px,100%);background:#1b1f28;border:1px solid #313846;border-radius:8px;padding:22px;display:grid;gap:14px}.authPanel h1{font-size:22px}.authPanel input{width:100%;height:44px;border-radius:6px;border:1px solid #3d4656;background:#0f1218;color:#fff;padding:0 12px}.authPanel button{width:100%;height:44px}body:not(.locked) .authGate{display:none}.topActions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}button:disabled{opacity:.45;cursor:not-allowed}@media(max-width:980px){.machines{grid-template-columns:1fr}.item{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
+    *{box-sizing:border-box} body{margin:0;background:#111318;color:#f7f4ea;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Yu Gothic",sans-serif} header{position:sticky;top:0;z-index:5;background:#171a21;border-bottom:1px solid #303641;padding:14px 20px;display:flex;gap:12px;align-items:center;justify-content:space-between} h1{font-size:20px;margin:0} main{padding:20px;display:grid;gap:18px}.panel{background:#1b1f28;border:1px solid #313846;border-radius:8px;padding:16px}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.field{display:grid;gap:6px;min-width:150px}.field input,.field select,.settingMini{height:38px;border-radius:6px;border:1px solid #3d4656;background:#0f1218;color:#fff;padding:0 10px}button{height:38px;border:0;border-radius:6px;padding:0 13px;font-weight:800;cursor:pointer;background:#f0c85a;color:#1b1300}.ghost{background:#293140;color:#f3f7ff}.danger{background:#d54a4a;color:#fff}.muted{color:#9aa4b5;font-size:13px}.machines{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.machine{background:#151922;border:1px solid #2d3440;border-radius:8px;padding:12px;display:grid;gap:9px}.machine h3{margin:0;font-size:18px;display:flex;justify-content:space-between}.pill{font-size:12px;border-radius:999px;padding:3px 8px;background:#303848}.pill.on{background:#1f7a48}.pill.lock{background:#8a5422}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.adminSlumpGraph{width:100%;height:150px;background:#0b0e14;border:1px solid #2b3342;border-radius:6px}.graphStats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.debugBox{border-top:1px solid #2d3440;padding-top:9px;display:grid;gap:8px}.debugBtns{display:flex;gap:6px;flex-wrap:wrap}.debugBtns button{height:34px;padding:0 10px}.debugSelect{height:34px;border-radius:6px;border:1px solid #3d4656;background:#0f1218;color:#fff;padding:0 8px}.stat{background:#0f1218;border-radius:6px;padding:8px}.stat span{display:block;color:#97a3b8;font-size:12px}.stat b{font-size:16px}.passwordList,.results{display:grid;gap:7px;max-height:260px;overflow:auto}.item{display:grid;grid-template-columns:110px 1fr 90px 140px;gap:8px;align-items:center;background:#10141c;border:1px solid #2b3340;border-radius:6px;padding:8px}.code{font-size:20px;letter-spacing:.08em;color:#ffe07c;font-weight:1000}.ok{color:#6aff9e}.bad{color:#ff8b8b}body.locked header,body.locked main{display:none}.authGate{min-height:100vh;display:grid;place-items:center;padding:20px;background:#111318}.authPanel{width:min(420px,100%);background:#1b1f28;border:1px solid #313846;border-radius:8px;padding:22px;display:grid;gap:14px}.authPanel h1{font-size:22px}.authPanel input{width:100%;height:44px;border-radius:6px;border:1px solid #3d4656;background:#0f1218;color:#fff;padding:0 12px}.authPanel button{width:100%;height:44px}body:not(.locked) .authGate{display:none}.topActions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.storeSwitchWrap{display:grid;gap:4px;color:#9aa4b5;font-size:11px;font-weight:700}.storeSwitch{min-width:180px;height:36px;border-radius:6px;border:1px solid #4a5568;background:#0f1218;color:#fff;padding:0 10px}.authPanel .storeSwitch{width:100%;height:44px}.storeSwitch option:disabled{color:#687181}button:disabled{opacity:.45;cursor:not-allowed}@media(max-width:980px){.machines{grid-template-columns:1fr}.item{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
     .sectionHead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.sectionHead h2{margin:0}.floorControlRow{margin:12px 0 14px;display:grid;grid-template-columns:minmax(390px,1.15fr) minmax(520px,2fr);gap:10px;align-items:stretch}.floorProfit{padding:12px 16px;background:#0f1218;border:1px solid #3d4656;border-radius:6px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.floorMetric{display:flex;align-items:baseline;justify-content:space-between;gap:10px}.floorMetric+.floorMetric{border-left:1px solid #303847;padding-left:14px}.floorMetric span{color:#cbd3df;font-weight:800}.floorMetric b{font-size:28px;color:#f7f4ea;white-space:nowrap}.floorMetric b.positive{color:#62ff9a}.floorMetric b.negative{color:#ff6b7d}.floorMetric b.rtp{color:#ffe07c}.bulkControls{padding:10px;background:#151922;border:1px solid #3d4656;border-radius:6px;display:flex;align-items:end;justify-content:flex-end;gap:8px;flex-wrap:wrap}.bulkControls .field{min-width:115px}.bulkControls .completeField{min-width:170px}.bulkStatus{min-height:18px;margin:-7px 0 12px;text-align:right}.viewSwitch{display:grid;grid-template-columns:1fr 1fr;border:1px solid #414a5a;border-radius:6px;overflow:hidden}.viewSwitch button{min-width:92px;border-radius:0;background:#242b37;color:#cbd3df}.viewSwitch button+button{border-left:1px solid #414a5a}.viewSwitch button.active{background:#f0c85a;color:#1b1300}.machineViewLabel{color:#ffe07c;font-size:12px;font-weight:800}@media(max-width:1180px){.floorControlRow{grid-template-columns:1fr}.bulkControls{justify-content:flex-start}.bulkStatus{text-align:left}}@media(max-width:620px){.floorProfit{grid-template-columns:1fr}.floorMetric+.floorMetric{border-left:0;border-top:1px solid #303847;padding:10px 0 0}}
   </style>
 </head>
 <body class="locked">
-<div id="authGate" class="authGate"><form id="authForm" class="authPanel"><h1><span class="storeName">VERTEX</span> 管理画面</h1><p class="muted">管理パスを入力してください。</p><input id="gatePassword" type="password" autocomplete="current-password" placeholder="管理パス"><button type="submit">入室</button><div id="authError" class="bad"></div></form></div>
-<header><h1><span class="storeName">VERTEX</span> 管理画面</h1><div class="topActions"><a class="muted" href="/machines.html" target="_blank">台選びページ</a><a class="muted" href="/play.html" target="_blank">プレイ入口</a><button id="logoutBtn" class="ghost">退出</button></div></header>
+<div id="authGate" class="authGate"><form id="authForm" class="authPanel"><h1 class="adminTitle">Vertex管理画面</h1><label class="storeSwitchWrap">店舗切替<select class="storeSwitch" aria-label="店舗切替"><option>店舗を読み込み中</option></select></label><p class="muted">この店舗専用の管理パスを入力してください。</p><input id="gatePassword" type="password" autocomplete="current-password" placeholder="管理パス"><button type="submit">入室</button><div id="authError" class="bad"></div></form></div>
+<header><h1 class="adminTitle">Vertex管理画面</h1><div class="topActions"><label class="storeSwitchWrap">店舗切替<select class="storeSwitch" aria-label="店舗切替"><option>店舗を読み込み中</option></select></label><a class="muted" href="/machines.html" target="_blank">台選びページ</a><a class="muted" href="/play.html" target="_blank">プレイ入口</a><button id="logoutBtn" class="ghost">退出</button></div></header>
 <main>
   <section class="panel">
     <h2>パスワード発行</h2>
@@ -549,10 +549,49 @@ async function loadVertexConfig(){
     const res = await fetch('/api/config', {cache:'no-store'});
     const config = await res.json();
     if(!res.ok || !config.storeName) return;
-    document.querySelectorAll('.storeName').forEach(element=>{ element.textContent = config.storeName; });
-    document.title = `${config.storeName} 管理画面`;
+    const adminTitle = /管理画面$/.test(config.storeName) ? config.storeName : `${config.storeName} 管理画面`;
+    document.querySelectorAll('.adminTitle').forEach(element=>{ element.textContent = adminTitle; });
+    document.title = adminTitle;
+    renderStoreSwitchers(config);
     if($('machineCountLabel')) $('machineCountLabel').textContent = `${Number(config.machineCount) || 0}台`;
   }catch(error){}
+}
+function safeAdminUrl(value){
+  if(!String(value || '').trim()) return '';
+  try{
+    const url = new URL(String(value || ''), location.href);
+    const localHttp = url.protocol === 'http:' && ['localhost','127.0.0.1'].includes(url.hostname);
+    return url.protocol === 'https:' || localHttp ? url.href : '';
+  }catch(error){
+    return '';
+  }
+}
+function renderStoreSwitchers(config){
+  const stores = Array.isArray(config.stores) ? config.stores : [];
+  document.querySelectorAll('.storeSwitch').forEach(select=>{
+    select.replaceChildren();
+    stores.forEach(store=>{
+      const option = document.createElement('option');
+      const isCurrent = String(store.storeId) === String(config.storeId);
+      const url = safeAdminUrl(store.adminUrl);
+      option.value = url;
+      option.textContent = store.storeName + (!isCurrent && !url ? '（準備中）' : '');
+      option.selected = isCurrent;
+      option.disabled = !isCurrent && !url;
+      select.appendChild(option);
+    });
+    if(!select.options.length){
+      const option = document.createElement('option');
+      option.textContent = config.storeName;
+      option.selected = true;
+      select.appendChild(option);
+    }
+    select.addEventListener('change', ()=>{
+      const target = safeAdminUrl(select.value);
+      if(target) location.assign(target);
+      else renderStoreSwitchers(config);
+    }, {once:true});
+  });
 }
 async function enterAdmin(password){
   const value = String(password || '').trim();

@@ -1,4 +1,5 @@
 data/
+stores.local.json
 machines.local.json
 .env
 .env.*

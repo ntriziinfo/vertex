@@ -8,6 +8,7 @@ const {machineTotalFor} = require("./machine-totals.cjs");
 const {
   STORE_ID,
   STORE_NAME,
+  STORE_DIRECTORY,
   MACHINE_DEFINITIONS,
   machineDefinition
 } = require("./machine-config.cjs");
@@ -421,7 +422,7 @@ const server = http.createServer(async (req, res)=>{
     }
 
     if(url.pathname === "/api/config" && req.method === "GET"){
-      return sendJson(res, 200, {ok:true, storeId:STORE_ID, storeName:STORE_NAME, machineCount:MACHINE_DEFINITIONS.length});
+      return sendJson(res, 200, {ok:true, storeId:STORE_ID, storeName:STORE_NAME, stores:STORE_DIRECTORY, machineCount:MACHINE_DEFINITIONS.length});
     }
 
     if(url.pathname === "/api/machines" && req.method === "GET"){

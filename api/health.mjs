@@ -7,6 +7,7 @@ export default function health(req, res){
     ok: true,
     storeId: machineConfig.STORE_ID,
     storeName: machineConfig.STORE_NAME,
+    storeDirectoryCount: machineConfig.STORE_DIRECTORY.length,
     machineCount: machineConfig.MACHINE_DEFINITIONS.length,
     supabaseUrlSet: !!process.env.SUPABASE_URL,
     supabaseKeySet: !!(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY),

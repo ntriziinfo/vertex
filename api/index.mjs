@@ -4,7 +4,7 @@ import machineTotals from "../machine-totals.cjs";
 import machineConfig from "../machine-config.cjs";
 
 const {machineTotalFor} = machineTotals;
-const {STORE_ID, STORE_NAME, MACHINE_DEFINITIONS, machineDefinition} = machineConfig;
+const {STORE_ID, STORE_NAME, STORE_DIRECTORY, MACHINE_DEFINITIONS, machineDefinition} = machineConfig;
 const SUPABASE_URL = String(process.env.SUPABASE_URL || "").replace(/\/$/, "");
 const SUPABASE_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || "");
 const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || "");
@@ -281,7 +281,7 @@ export default async function handler(req, res){
     const rawPath = Array.isArray(req.query.path) ? req.query.path.join("/") : String(req.query.path || "");
     const pathname = "/api/" + rawPath;
     if(pathname === "/api/health") return json(res, 200, {ok:true, storeId:STORE_ID, storeName:STORE_NAME, supabaseUrlSet:!!SUPABASE_URL, supabaseKeySet:!!SUPABASE_KEY});
-    if(pathname === "/api/config" && req.method === "GET") return json(res, 200, {ok:true, storeId:STORE_ID, storeName:STORE_NAME, machineCount:MACHINE_DEFINITIONS.length});
+    if(pathname === "/api/config" && req.method === "GET") return json(res, 200, {ok:true, storeId:STORE_ID, storeName:STORE_NAME, stores:STORE_DIRECTORY, machineCount:MACHINE_DEFINITIONS.length});
     if(pathname === "/api/admin/verify" && req.method === "GET"){
       return adminOk(req)
         ? json(res, 200, {ok:true})
