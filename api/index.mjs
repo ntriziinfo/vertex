@@ -136,7 +136,27 @@ async function getAllMachines(){
 }
 async function upsertMachine(machine){
   const row = {machine_id:String(machine.machineId), store_id:STORE_ID, display_name:machine.displayName || machineLabel(machine.machineId), machine_type:machine.machineType || "generic", game_url:machine.gameUrl || "", pool_id:machine.poolId || "", capabilities:machine.capabilities || {}, locked:!!machine.locked, reset_serial:Number(machine.resetSerial || 0), current_session_id:machine.currentSessionId || "", current_player_name:machine.currentPlayerName || "", last_snapshot:machine.lastSnapshot || null, last_ended_session:machine.lastEndedSession || null, updated_at_ms:Number(machine.updatedAt || 0), assigned_setting:Number(machine.assignedSetting || 1)};
-  return sb("machine_states?on_conflict=machine_id", {method:"POST", headers:{Prefer:"resolution=merge-duplicates,return=representation"}, body:JSON.stringify(row)});
+  const options = {method:"POST", headers:{Prefer:"resolution=merge-duplicates,return=representation"}};
+  try{
+    return await sb("machine_states?on_conflict=machine_id", {...options, body:JSON.stringify(row)});
+  }catch(error){
+    // 旧RISING管理DBから切り替える間だけ、追加列未適用の既存テーブルへも保存できるようにする。
+    // 台側の接続先は常にVERTEXのままで、旧管理APIへフォールバックはしない。
+    if(!/store_id|machine_type|game_url|pool_id|capabilities/i.test(String(error && error.message || error))) throw error;
+    const legacyRow = {
+      machine_id:row.machine_id,
+      display_name:row.display_name,
+      locked:row.locked,
+      reset_serial:row.reset_serial,
+      current_session_id:row.current_session_id,
+      current_player_name:row.current_player_name,
+      last_snapshot:row.last_snapshot,
+      last_ended_session:row.last_ended_session,
+      updated_at_ms:row.updated_at_ms,
+      assigned_setting:row.assigned_setting
+    };
+    return sb("machine_states?on_conflict=machine_id", {...options, body:JSON.stringify(legacyRow)});
+  }
 }
 function machineGameUrl(machine, adminOrigin, sessionId){
   if(!machine || !machine.gameUrl) return "";
