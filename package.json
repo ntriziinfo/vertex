@@ -1,10 +1,14 @@
 {
   "name": "vertex-store-control",
-  "version": "0.1.0",
+  "version": "0.2.2",
   "private": true,
   "scripts": {
+    "build": "node scripts/apply-source-patches.mjs --check && npm run check && npm test && npm run validate:config && npm run build:static",
     "dev": "node server.js",
-    "check": "node --check server.js && node --check machine-config.cjs && node --check api/index.mjs && node --check api/health.mjs"
+    "check": "node --check server.js && node --check machine-config.cjs && node --check api/index.mjs && node --check api/gateway.mjs && node --check api/health.mjs && node --check scripts/apply-source-patches.mjs && node --check scripts/validate-config.mjs && node --check scripts/build-static.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "validate:config": "node scripts/validate-config.mjs",
+    "build:static": "node scripts/build-static.mjs"
   },
   "engines": {
     "node": "24.x"

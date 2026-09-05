@@ -202,7 +202,7 @@ function setJackpotPoolAmount(poolId, currentPt){
 }
 
 function adminOk(req){
-  if(!ADMIN_PASSWORD) return true;
+  if(!ADMIN_PASSWORD || ADMIN_PASSWORD.toLowerCase() === "change-me") return false;
   const provided = req.headers["x-admin-password"] || "";
   return String(provided) === ADMIN_PASSWORD;
 }
@@ -463,9 +463,7 @@ function resultPayload(session, machine, body){
     machineName:machine.displayName || machineLabel(machine.machineId),
     machineType:machine.machineType || "generic",
     playerName:session.playerName || body.playerName || "",
-    sessionId:session.sessionId,
-    password:session.password,
-    resetSerial:Number(session.resetSerialAtStart ?? machine.resetSerial) || 0,
+    sessionId:session.sessionId, resetSerial:Number(session.resetSerialAtStart ?? machine.resetSerial) || 0,
     setting:settings.setting || "",
     totalSpins:stats.totalSpins || 0,
     bigCount:stats.bigCount || 0,

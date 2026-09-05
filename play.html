@@ -29,6 +29,7 @@
 <script>
 const $ = id => document.getElementById(id);
 let active = null;
+let slotOrigin = "";
 let machineNames = new Map();
 const params = new URLSearchParams(location.search);
 const entryMachineId = params.get('machine') || '';
@@ -69,6 +70,7 @@ async function start(){
   active = data.session;
   $('machineLabel').textContent = machineName(active.machineId);
   $('playerLabel').textContent = active.playerName ? ` / ${active.playerName}` : '';
+  slotOrigin = new URL(data.iframeUrl, location.href).origin;
   $('slot').src = data.iframeUrl;
   $('login').hidden = true;
   $('play').hidden = false;
@@ -106,16 +108,26 @@ async function endSession(options={}){
     snapshot = latestSlotSnapshot();
   }
   $('endBtn').textContent = '送信中...';
-  const res = await fetch('/api/sessions/end', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...active, snapshot, forced:!!options.forced})});
-  const data = await res.json();
-  clearSlotLocalState();
-  active = null;
-  $('play').hidden = true;
-  $('slot').src = 'about:blank';
-  $('ended').hidden = false;
-  $('sendStatus').textContent = data.sheets && data.sheets.ok ? 'スプレッドシートへ送信済みです。' : 'ローカルに記録しました。スプレッドシート連携URLが未設定の場合はこの表示になります。';
+  try{
+    const res = await fetch('/api/sessions/end', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...active, snapshot, forced:!!options.forced})});
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok || !data.ok) throw new Error(data.error || '終了処理に失敗しました');
+    clearSlotLocalState();
+    active = null;
+    slotOrigin = '';
+    $('play').hidden = true;
+    $('slot').src = 'about:blank';
+    $('ended').hidden = false;
+    $('sendStatus').textContent = data.sheets && data.sheets.ok ? 'スプレッドシートへ送信済みです。' : '終了データを保存しました。Sheets未連携または送信失敗時は管理画面で確認してください。';
+  }catch(error){
+    $('endBtn').disabled = false;
+    $('endBtn').textContent = '終了してデータ送信';
+    alert(error.message || '終了処理に失敗しました。画面を閉じずに再実行してください。');
+  }
 }
 window.addEventListener('message', event=>{
+  if(event.source !== $('slot').contentWindow) return;
+  if(slotOrigin && event.origin !== slotOrigin) return;
   const msg = event.data || {};
   if(!msg || !['jag-force-end', 'jackspot-force-end', 'vertex-force-end'].includes(msg.type)) return;
   if(active && (!msg.machineId || String(msg.machineId) === String(active.machineId))){

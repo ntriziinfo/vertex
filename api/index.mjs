@@ -6,7 +6,7 @@ import machineConfig from "../machine-config.cjs";
 const {machineTotalFor} = machineTotals;
 const {STORE_ID, STORE_NAME, STORE_DIRECTORY, MACHINE_DEFINITIONS, machineDefinition} = machineConfig;
 const SUPABASE_URL = String(process.env.SUPABASE_URL || "").replace(/\/$/, "");
-const SUPABASE_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || "");
+const SUPABASE_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || "");
 const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || "");
 const SHEETS_WEBHOOK_URL = String(process.env.GOOGLE_SHEETS_WEBHOOK_URL || "").trim();
 const JACKPOT_CONTRIBUTION_RATE = 0.10;
@@ -22,7 +22,7 @@ function json(res, status, data){
   res.setHeader("Access-Control-Allow-Headers", "Content-Type,X-Admin-Password");
   res.end(JSON.stringify(data));
 }
-function adminOk(req){ return !ADMIN_PASSWORD || String(req.headers["x-admin-password"] || "") === ADMIN_PASSWORD; }
+function adminOk(req){ return !!ADMIN_PASSWORD && ADMIN_PASSWORD.toLowerCase() !== "change-me" && String(req.headers["x-admin-password"] || "") === ADMIN_PASSWORD; }
 function requireSupabase(res){
   if(SUPABASE_URL && SUPABASE_KEY) return true;
   json(res, 500, {ok:false, error:"SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required"});
@@ -380,7 +380,11 @@ function sessionDelta(session, snapshot){
 
 async function sendToSheets(record){
   if(!SHEETS_WEBHOOK_URL) return {ok:false, skipped:true, reason:"GOOGLE_SHEETS_WEBHOOK_URL is not set"};
-  try{ return {ok:true, result:await postJson(SHEETS_WEBHOOK_URL, record)}; }catch(e){ return {ok:false, error:e.message}; }
+  try{
+    const result = await postJson(SHEETS_WEBHOOK_URL, record);
+    const ok = Number(result && result.status) >= 200 && Number(result && result.status) < 300;
+    return ok ? {ok:true, result} : {ok:false, error:`Sheets webhook returned ${result && result.status || "unknown"}`};
+  }catch(e){ return {ok:false, error:e.message}; }
 }
 function resultPayload(session, machine, body){
   const snapshot = body.snapshot || machine.lastSnapshot || {};
@@ -388,11 +392,12 @@ function resultPayload(session, machine, body){
   const settings = snapshot.settings || {};
   const delta = sessionDelta(session, snapshot);
   const endedAtMs = ms();
-  return {type:"slot-session-ended", storeId:STORE_ID, storeName:STORE_NAME, endedAt:new Date(endedAtMs).toISOString(), endedAtMs, machineId:machine.machineId, machineName:machine.displayName || machineLabel(machine.machineId), machineType:machine.machineType || "generic", playerName:session.playerName || body.playerName || "", sessionId:session.sessionId, password:session.password, resetSerial:Number(session.resetSerialAtStart ?? machine.resetSerial) || 0, setting:settings.setting || machine.assignedSetting || "", totalSpins:stats.totalSpins || 0, bigCount:stats.bigCount || 0, regCount:stats.midCount || 0, grapeCount:stats.grapeCount || 0, totalFee:stats.totalFee || 0, totalPaid:stats.totalPaid || 0, profit:Number(stats.profit ?? ((stats.totalPaid || 0) - (stats.totalFee || 0))) || 0, playerSpins:delta.playerSpins, playerBigCount:delta.playerBigCount, playerRegCount:delta.playerRegCount, playerGrapeCount:delta.playerGrapeCount, playerTotalFee:delta.playerTotalFee, playerTotalPaid:delta.playerTotalPaid, playerProfit:delta.playerProfit, billingBasis:"playerProfit", playerBaselineSource:delta.baselineSource, startStats:delta.startStats, currentResultText:snapshot.state ? snapshot.state.resultText || "" : "", stats, settings, normalState:snapshot.normalState || {}, session:snapshot.session || {}};
+  return {type:"slot-session-ended", storeId:STORE_ID, storeName:STORE_NAME, endedAt:new Date(endedAtMs).toISOString(), endedAtMs, machineId:machine.machineId, machineName:machine.displayName || machineLabel(machine.machineId), machineType:machine.machineType || "generic", playerName:session.playerName || body.playerName || "", sessionId:session.sessionId, resetSerial:Number(session.resetSerialAtStart ?? machine.resetSerial) || 0, setting:settings.setting || machine.assignedSetting || "", totalSpins:stats.totalSpins || 0, bigCount:stats.bigCount || 0, regCount:stats.midCount || 0, grapeCount:stats.grapeCount || 0, totalFee:stats.totalFee || 0, totalPaid:stats.totalPaid || 0, profit:Number(stats.profit ?? ((stats.totalPaid || 0) - (stats.totalFee || 0))) || 0, playerSpins:delta.playerSpins, playerBigCount:delta.playerBigCount, playerRegCount:delta.playerRegCount, playerGrapeCount:delta.playerGrapeCount, playerTotalFee:delta.playerTotalFee, playerTotalPaid:delta.playerTotalPaid, playerProfit:delta.playerProfit, billingBasis:"playerProfit", playerBaselineSource:delta.baselineSource, startStats:delta.startStats, currentResultText:snapshot.state ? snapshot.state.resultText || "" : "", stats, settings, normalState:snapshot.normalState || {}, session:snapshot.session || {}};
 }
 
 export default async function handler(req, res){
   try{
+    if(!req.__vertexGatewayAuthorized) return json(res, 404, {ok:false, error:"not found"});
     if(req.method === "OPTIONS") return json(res, 204, {});
     const rawPath = Array.isArray(req.query.path) ? req.query.path.join("/") : String(req.query.path || "");
     const pathname = "/api/" + rawPath;

@@ -430,7 +430,14 @@ async function issue(){
   const res = await fetch('/api/admin/issue-password', {method:'POST', headers:{'Content-Type':'application/json', ...adminHeaders()}, body:JSON.stringify(body)});
   const data = await res.json();
   if(!data.ok){ alert(data.error || '発行に失敗しました'); return; }
-  $('issueResult').textContent = data.issued.password;
+  const issuedPassword = String(data.issued && data.issued.password || '').trim();
+  if(!issuedPassword){
+    $('issueResult').textContent = '発行済み（番号を取得できませんでした）';
+    alert('番号の表示に失敗しました。重複発行せず、管理者に確認してください。');
+    await loadPasswords();
+    return;
+  }
+  $('issueResult').textContent = issuedPassword;
   $('playerName').value = '';
   await loadPasswords();
 }
@@ -655,6 +662,7 @@ async function enterAdmin(password){
   await Promise.allSettled([loadMachines(), loadPasswords(), loadResults()]);
 }
 function logoutAdmin(){
+  fetch('/api/admin/logout', {method:'POST'}).catch(()=>{});
   adminSecret = '';
   sessionStorage.removeItem(ADMIN_STORAGE_KEY);
   document.body.classList.add('locked');

@@ -1,0 +1,136 @@
+{
+  "machines": [
+    {
+      "machineId": "nova-01",
+      "displayName": "Nova 1番台",
+      "machineType": "nova",
+      "gameUrl": "https://jag-one.vercel.app/jag.html",
+      "poolId": "",
+      "capabilities": {
+        "completeLimit": true,
+        "jackpot": false
+      }
+    },
+    {
+      "machineId": "nova-02",
+      "displayName": "Nova 2番台",
+      "machineType": "nova",
+      "gameUrl": "https://jag-one.vercel.app/jag.html",
+      "poolId": "",
+      "capabilities": {
+        "completeLimit": true,
+        "jackpot": false
+      }
+    },
+    {
+      "machineId": "nova-03",
+      "displayName": "Nova 3番台",
+      "machineType": "nova",
+      "gameUrl": "https://jag-one.vercel.app/jag.html",
+      "poolId": "",
+      "capabilities": {
+        "completeLimit": true,
+        "jackpot": false
+      }
+    },
+    {
+      "machineId": "nova-04",
+      "displayName": "Nova 4番台",
+      "machineType": "nova",
+      "gameUrl": "https://jag-one.vercel.app/jag.html",
+      "poolId": "",
+      "capabilities": {
+        "completeLimit": true,
+        "jackpot": false
+      }
+    },
+    {
+      "machineId": "nova-05",
+      "displayName": "Nova 5番台",
+      "machineType": "nova",
+      "gameUrl": "https://jag-one.vercel.app/jag.html",
+      "poolId": "",
+      "capabilities": {
+        "completeLimit": true,
+        "jackpot": false
+      }
+    },
+    {
+      "machineId": "nova-06",
+      "displayName": "Nova 6番台",
+      "machineType": "nova",
+      "gameUrl": "https://jag-one.vercel.app/jag.html",
+      "poolId": "",
+      "capabilities": {
+        "completeLimit": true,
+        "jackpot": false
+      }
+    },
+    {
+      "machineId": "nova-07",
+      "displayName": "Nova 7番台",
+      "machineType": "nova",
+      "gameUrl": "https://jag-one.vercel.app/jag.html",
+      "poolId": "",
+      "capabilities": {
+        "completeLimit": true,
+        "jackpot": false
+      }
+    },
+    {
+      "machineId": "nova-08",
+      "displayName": "Nova 8番台",
+      "machineType": "nova",
+      "gameUrl": "https://jag-one.vercel.app/jag.html",
+      "poolId": "",
+      "capabilities": {
+        "completeLimit": true,
+        "jackpot": false
+      }
+    },
+    {
+      "machineId": "nova-09",
+      "displayName": "Nova 9番台",
+      "machineType": "nova",
+      "gameUrl": "https://jag-one.vercel.app/jag.html",
+      "poolId": "",
+      "capabilities": {
+        "completeLimit": true,
+        "jackpot": false
+      }
+    },
+    {
+      "machineId": "nova-10",
+      "displayName": "Nova 10番台",
+      "machineType": "nova",
+      "gameUrl": "https://jag-one.vercel.app/jag.html",
+      "poolId": "",
+      "capabilities": {
+        "completeLimit": true,
+        "jackpot": false
+      }
+    },
+    {
+      "machineId": "nova-11",
+      "displayName": "Nova 11番台",
+      "machineType": "nova",
+      "gameUrl": "https://jag-one.vercel.app/jag.html",
+      "poolId": "",
+      "capabilities": {
+        "completeLimit": true,
+        "jackpot": false
+      }
+    },
+    {
+      "machineId": "nova-12",
+      "displayName": "Nova 12番台",
+      "machineType": "nova",
+      "gameUrl": "https://jag-one.vercel.app/jag.html",
+      "poolId": "",
+      "capabilities": {
+        "completeLimit": true,
+        "jackpot": false
+      }
+    }
+  ]
+}
