@@ -308,6 +308,15 @@ export function sanitizeIssuedPasswordResponse(value){
   return {...sanitized, issued:{...sanitized.issued, password:issuedPassword}};
 }
 
+export function sanitizePasswordListResponse(value){
+  if(!Array.isArray(value)) return stripSecretsDeep(value);
+  return value.map(row=>{
+    const sanitized = stripSecretsDeep(row);
+    if(!row || typeof row.password !== "string") return sanitized;
+    return {...sanitized, password:row.password};
+  });
+}
+
 export function sanitizePublicMachine(machine){
   const source = stripSecretsDeep(machine || {});
   return {
@@ -576,6 +585,12 @@ export default async function gateway(req, res){
     if(pathname === "/api/admin/issue-password" && req.method === "POST"){
       const upstream = await delegate(req);
       return sendCaptured(res, req, upstream, sanitizeIssuedPasswordResponse);
+    }
+
+    // Admin authentication above is required before returning issued codes.
+    if(pathname === "/api/admin/passwords" && req.method === "GET"){
+      const upstream = await delegate(req);
+      return sendCaptured(res, req, upstream, sanitizePasswordListResponse);
     }
 
     if(pathname === "/api/machines" && req.method === "GET"){

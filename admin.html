@@ -410,7 +410,7 @@ async function loadMachines(){
   return true;
 }
 async function loadPasswords(){
-  const res = await fetch('/api/admin/passwords', {headers:adminHeaders()});
+  const res = await fetch('/api/admin/passwords', {headers:adminHeaders(), cache:'no-store'});
   if(!res.ok){ $('passwordList').innerHTML = '<div class="bad">管理パスが必要です</div>'; return; }
   const data = await res.json().catch(() => []);
   const rows = Array.isArray(data) ? data : [];

@@ -5,6 +5,7 @@ import {
   configuredRuntimeProblems,
   isAdminRoute,
   sanitizeIssuedPasswordResponse,
+  sanitizePasswordListResponse,
   sanitizePublicMachine
 } from "../api/gateway.mjs";
 
@@ -15,6 +16,7 @@ test("constant-time comparison is exact", ()=>{
 });
 
 test("admin routes are classified", ()=>{
+  assert.equal(isAdminRoute("/api/admin/passwords"), true);
   assert.equal(isAdminRoute("/api/admin/verify"), true);
   assert.equal(isAdminRoute("/api/results"), true);
   assert.equal(isAdminRoute("/api/machines/nova-01/command"), true);
@@ -55,6 +57,31 @@ test("newly issued password is returned once without exposing other secrets", ()
   assert.equal(response.issued.machineId, "nova-01");
   assert.equal("password" in response.internal, false);
   assert.equal("token" in response.internal, true);
+});
+
+test("issued list restores only row passwords and strips nested secrets", ()=>{
+  const rows = ["issued", "used"].map(status=>({password:"123456", status, token:"private", nested:{password:"private", serviceRoleKey:"private"}}));
+  const result = sanitizePasswordListResponse(rows);
+  assert.deepEqual(result, rows.map(row=>({password:row.password, status:row.status, nested:{}})));
+  assert.deepEqual(sanitizePasswordListResponse({error:"failed", password:"private"}), {error:"failed"});
+});
+
+test("password list rejects unauthenticated requests before accessing storage", async ()=>{
+  const original = process.env.ADMIN_PASSWORD;
+  process.env.ADMIN_PASSWORD = "test-admin-only";
+  try{
+    const {default:gateway} = await import("../api/gateway.mjs?password-list-auth-test");
+    for(const headers of [{}, {"x-admin-password":"wrong"}]){
+      const res = {headers:{}, setHeader(key,value){this.headers[key]=value;}, end(body){this.body=body;}};
+      await gateway({query:{path:"admin/passwords"}, method:"GET", headers}, res);
+      assert.equal(res.statusCode, 401);
+      assert.equal(res.headers["Cache-Control"], "no-store");
+      assert.equal(JSON.parse(res.body).ok, false);
+    }
+  }finally{
+    if(original === undefined) delete process.env.ADMIN_PASSWORD;
+    else process.env.ADMIN_PASSWORD = original;
+  }
 });
 
 test("runtime validation rejects missing secrets and invalid debug layout", ()=>{
