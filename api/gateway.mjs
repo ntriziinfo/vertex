@@ -1,5 +1,6 @@
 import * as crypto from "node:crypto";
 import machineConfig from "../machine-config.cjs";
+import {scopeHeaders} from "../supabase-scope.mjs";
 
 const {
   STORE_ID,
@@ -366,12 +367,12 @@ async function supabase(path, options={}){
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...options,
     signal:AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    headers:{
+    headers:scopeHeaders({
       apikey:SUPABASE_SERVICE_ROLE_KEY,
       Authorization:`Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
       "Content-Type":"application/json",
       ...(options.headers || {})
-    }
+    })
   });
   const text = await response.text();
   let data = null;

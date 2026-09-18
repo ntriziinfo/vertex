@@ -7,7 +7,7 @@ const checkOnly = process.argv.includes("--check");
 function load(relative){
   const file = path.join(root, relative);
   if(!fs.existsSync(file)) throw new Error(`Missing source file: ${relative}`);
-  return {file, relative, text:fs.readFileSync(file, "utf8")};
+  return {file, relative, text:fs.readFileSync(file, "utf8").replace(/\r\n/g, "\n")};
 }
 
 function replacement(target, before, after, label){

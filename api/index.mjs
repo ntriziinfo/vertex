@@ -2,6 +2,7 @@ import * as https from "node:https";
 import * as crypto from "node:crypto";
 import machineTotals from "../machine-totals.cjs";
 import machineConfig from "../machine-config.cjs";
+import {scopeHeaders} from "../supabase-scope.mjs";
 
 const {machineTotalFor} = machineTotals;
 const {STORE_ID, STORE_NAME, STORE_DIRECTORY, MACHINE_DEFINITIONS, machineDefinition} = machineConfig;
@@ -61,7 +62,7 @@ function requestJson(urlString, options={}){
 async function sb(path, options={}){
   const result = await requestJson(SUPABASE_URL + "/rest/v1/" + path, {
     ...options,
-    headers:{apikey:SUPABASE_KEY, Authorization:"Bearer " + SUPABASE_KEY, "Content-Type":"application/json", ...(options.headers || {})}
+    headers:scopeHeaders({apikey:SUPABASE_KEY, Authorization:"Bearer " + SUPABASE_KEY, "Content-Type":"application/json", ...(options.headers || {})})
   });
   if(!result.ok) throw new Error(typeof result.data === "string" ? result.data : JSON.stringify(result.data));
   return result.data;

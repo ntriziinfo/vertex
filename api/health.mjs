@@ -1,4 +1,5 @@
 import machineConfig from "../machine-config.cjs";
+import {scopeHeaders} from "../supabase-scope.mjs";
 
 const TIMEOUT_MS = 5000;
 
@@ -22,7 +23,7 @@ async function checkDatabase(){
   if(!url || !key) return false;
   try{
     const response = await fetch(`${url}/rest/v1/machine_states?select=machine_id&limit=1`, {
-      headers:{apikey:key, Authorization:`Bearer ${key}`},
+      headers:scopeHeaders({apikey:key, Authorization:`Bearer ${key}`}),
       signal:AbortSignal.timeout(TIMEOUT_MS)
     });
     return response.ok;
