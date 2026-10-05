@@ -345,6 +345,7 @@ function renderMachines(){
         <label class="field"><span>設定</span><select class="settingMini" id="setting-${m.machineId}">${[1,2,3,4,5,6].map(n => '<option value="' + n + '" ' + (String((settingStats.setting || m.assignedSetting || 1)) === String(n) ? 'selected' : '') + '>設定' + n + '</option>').join('')}</select></label>
         ${m.capabilities && m.capabilities.completeLimit ? `<label class="field"><span>コンプリート発動枚数</span><input class="settingMini" id="complete-limit-${m.machineId}" type="number" min="1" max="999999" step="1" value="${Math.max(1, Number(m.settings && m.settings.completeLimitPt) || 19000)}"></label>` : ''}
         <button onclick="applySetting('${m.machineId}')">設定反映</button>
+        ${m.machineType==='nova' ? `<button class="ghost" aria-pressed="${m.capabilities?.superSpeedAllowed===true}" onclick="setSuperSpeed('${m.machineId}',${m.capabilities?.superSpeedAllowed!==true},this)">超ハイスピード ${m.capabilities?.superSpeedAllowed===true?'ON':'OFF'}</button>` : ''}
         <button class="danger" ${m.currentSessionId || m.lastEndedSession || m.stats ? '' : 'disabled'} onclick="forceEndMachine('${m.machineId}')">強制終了</button>
         <button class="danger" onclick="resetMachine('${m.machineId}')">管理リセット</button>
         <button class="ghost" onclick="location.href='/play.html?machine=${m.machineId}'">入口</button>
@@ -440,6 +441,15 @@ async function issue(){
   $('issueResult').textContent = issuedPassword;
   $('playerName').value = '';
   await loadPasswords();
+}
+async function setSuperSpeed(id,enabled,button){
+  button.disabled=true;
+  try{
+    const res=await fetch('/api/admin/machines/'+encodeURIComponent(id)+'/super-speed',{method:'POST',headers:{'Content-Type':'application/json',...adminHeaders()},body:JSON.stringify({enabled})});
+    const data=await res.json();
+    if(!res.ok || !data.ok)throw new Error(data.error || '使用許可の更新に失敗しました');
+    await loadMachines();
+  }catch(error){alert(error.message);button.disabled=false;}
 }
 async function applySetting(id){
   const machine = machineRows().find(row=>String(row.machineId) === String(id));

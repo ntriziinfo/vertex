@@ -107,3 +107,8 @@ node server.js
 - `storeId`, `storeName`, `machineId`, `machineName`, `machineType`
 
 ブラウザが突然閉じた場合の強制清算は最後に受信した保存状態を使います。通常終了は終了直前に最新状態を同期します。
+# NOVA 超ハイスピード使用許可
+
+NOVA台のカードに「超ハイスピード OFF/ON」を追加。押すとその台の使用許可を即保存する（初期OFF）。ゲーム側は約5秒ごとに許可を確認し、金色の「超」ボタンからAT確定まで通常AUTOの6倍のテンポで進められる。使用許可ONだけでは遊技は開始しない。
+
+許可は `machine_states.capabilities.superSpeedAllowed` に保存する。通常の状態送信・設定番号変更・管理リセットはこの列を書き換えない。専用の管理者認証付き `POST /api/admin/machines/:id/super-speed` に boolean の `enabled` を渡す。既存DBのJSON列を使うため移行SQLは不要。

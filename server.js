@@ -78,7 +78,9 @@ function loadState(){
   }catch(e){}
   for(const definition of MACHINE_DEFINITIONS){
     const id = definition.machineId;
-    state.machines[id] = {...emptyMachine(id), ...(state.machines[id] || {}), ...definition};
+    const superSpeedAllowed=state.machines[id]?.capabilities?.superSpeedAllowed===true;
+    state.machines[id] = {...emptyMachine(id), ...(state.machines[id] || {}), ...definition,
+      capabilities:{...definition.capabilities,superSpeedAllowed}};
     machines.set(id, state.machines[id]);
   }
   for(const [id, savedMachine] of Object.entries(state.machines)){
@@ -808,7 +810,7 @@ const server = http.createServer(async (req, res)=>{
       machine.machineType = definition && definition.machineType || machine.machineType || "generic";
       machine.gameUrl = definition && definition.gameUrl || machine.gameUrl || "";
       machine.poolId = definition && definition.poolId || machine.poolId || "";
-      machine.capabilities = definition && definition.capabilities || machine.capabilities || {completeLimit:false, jackpot:false};
+      machine.capabilities = {...(definition?.capabilities || machine.capabilities || {}),superSpeedAllowed:machine.capabilities?.superSpeedAllowed===true};
       machine.online = true;
       machine.updatedAt = Date.now();
       machines.set(machineId, machine);
@@ -823,7 +825,21 @@ const server = http.createServer(async (req, res)=>{
       const machineId = decodeURIComponent(commandPollMatch[1]);
       const since = Number(url.searchParams.get("since") || 0) || 0;
       const commands = (Array.isArray(state.commands) ? state.commands : []).filter(row=>String(row.machineId) === String(machineId) && Number(row.id) > since).slice(-25);
-      return sendJson(res, 200, {ok:true, commands});
+      const machine=machineFor(machineId);
+      return sendJson(res, 200, {ok:true, controls:{superSpeedAllowed:machine?.machineType==='nova' && machine.capabilities?.superSpeedAllowed===true}, commands});
+    }
+
+    const superSpeedMatch=url.pathname.match(/^\/api\/admin\/machines\/([^/]+)\/super-speed$/);
+    if(superSpeedMatch && req.method==='POST'){
+      if(!adminOk(req))return sendJson(res,401,{ok:false,error:'admin password required'});
+      const id=decodeURIComponent(superSpeedMatch[1]),definition=machineDefinition(id);
+      if(definition?.machineType!=='nova')return sendJson(res,404,{ok:false,error:'NOVA machine not found'});
+      const body=await readBody(req);
+      if(typeof body.enabled!=='boolean')return sendJson(res,400,{ok:false,error:'enabled must be boolean'});
+      const machine=machineFor(id);
+      machine.capabilities={...definition.capabilities,superSpeedAllowed:body.enabled};
+      state.machines[id]=machine;saveState();broadcastMachines();
+      return sendJson(res,200,{ok:true,superSpeedAllowed:body.enabled});
     }
 
     const commandStreamMatch = url.pathname.match(/^\/api\/machines\/([^/]+)\/commands$/);

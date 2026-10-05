@@ -131,7 +131,7 @@ function machineFromRow(row){
     machineType:definition.machineType || row.machine_type || "generic",
     gameUrl:definition.gameUrl || row.game_url || "",
     poolId:definition.poolId || row.pool_id || "",
-    capabilities:definition.capabilities || row.capabilities || {completeLimit:false, jackpot:false},
+    capabilities:{...(definition.capabilities || row.capabilities || {}),superSpeedAllowed:row.capabilities?.superSpeedAllowed === true},
     online:Date.now() - Number(row.updated_at_ms || 0) < 90000,
     locked:!!row.locked,
     resetSerial:Number(row.reset_serial || 0),
@@ -162,6 +162,9 @@ async function getAllMachines(){
 async function upsertMachine(machine){
   const row = {machine_id:String(machine.machineId), store_id:STORE_ID, display_name:machine.displayName || machineLabel(machine.machineId), machine_type:machine.machineType || "generic", game_url:machine.gameUrl || "", pool_id:machine.poolId || "", capabilities:machine.capabilities || {}, locked:!!machine.locked, reset_serial:Number(machine.resetSerial || 0), current_session_id:machine.currentSessionId || "", current_player_name:machine.currentPlayerName || "", last_snapshot:machine.lastSnapshot || null, last_ended_session:machine.lastEndedSession || null, updated_at_ms:Number(machine.updatedAt || 0), assigned_setting:Number(machine.assignedSetting || 1)};
   const options = {method:"POST", headers:{Prefer:"resolution=merge-duplicates,return=representation"}};
+  // Runtime permissions are admin-owned. Snapshot/session/reset writes must not
+  // overwrite an admin change made concurrently in the separate capabilities column.
+  delete row.capabilities;
   try{
     return await sb("machine_states?on_conflict=machine_id", {...options, body:JSON.stringify(row)});
   }catch(error){
@@ -549,9 +552,22 @@ export default async function handler(req, res){
     m = pathname.match(/^\/api\/machines\/([^/]+)\/commands\/poll$/);
     if(m && req.method === "GET"){
       const machineId = decodeURIComponent(m[1]);
+      if(!validMachineId(machineId)) return json(res, 404, {ok:false, error:"machine not found"});
       const since = Number(req.query.since || 0) || 0;
+      const machine = await getMachine(machineId);
       const rows = await sb("machine_commands?machine_id=eq." + encodeURIComponent(machineId) + "&id=gt." + encodeURIComponent(String(since)) + "&select=*&order=id.asc&limit=25");
-      return json(res, 200, {ok:true, commands:rows.map(row=>({id:Number(row.id), machineId:String(row.machine_id), command:row.command || {}, createdAtMs:Number(row.created_at_ms || 0)}))});
+      return json(res, 200, {ok:true, controls:{superSpeedAllowed:machine.machineType==='nova' && machine.capabilities.superSpeedAllowed===true}, commands:rows.map(row=>({id:Number(row.id), machineId:String(row.machine_id), command:row.command || {}, createdAtMs:Number(row.created_at_ms || 0)}))});
+    }
+    m = pathname.match(/^\/api\/admin\/machines\/([^/]+)\/super-speed$/);
+    if(m && req.method === "POST"){
+      if(!adminOk(req)) return json(res,401,{ok:false,error:"admin password required"});
+      const id=decodeURIComponent(m[1]),definition=machineDefinition(id);
+      if(definition?.machineType!=='nova')return json(res,404,{ok:false,error:"NOVA machine not found"});
+      const body=await readBody(req);
+      if(typeof body.enabled!=='boolean')return json(res,400,{ok:false,error:"enabled must be boolean"});
+      const capabilities={...definition.capabilities,superSpeedAllowed:body.enabled};
+      await sb('machine_states?on_conflict=machine_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates'},body:JSON.stringify({machine_id:id,store_id:STORE_ID,capabilities})});
+      return json(res,200,{ok:true,superSpeedAllowed:body.enabled});
     }
     m = pathname.match(/^\/api\/admin\/machines\/([^/]+)\/setting$/);
     if(m && req.method === "POST"){
