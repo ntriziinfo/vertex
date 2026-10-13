@@ -694,6 +694,7 @@ async function forceEndMachine(id){
   const res = await fetch("/api/admin/machines/" + encodeURIComponent(id) + "/force-end", {method:"POST", headers:adminHeaders()});
   const data = await res.json();
   if(!res.ok||!data.ok)throw Error(data.error || '強制終了に失敗しました');
+  try{ commandWakeChannel?.postMessage({type:'vertex-commands-available', machineId:String(id)}); }catch(error){}
   if(!data.queued)clearPasswordIssue(id);
   alert(data.queued
     ? label + "へ強制終了指示を送信しました。お客様画面が再読み込みされ、最新データで終了します。"

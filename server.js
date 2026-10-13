@@ -706,6 +706,16 @@ const server = http.createServer(async (req, res)=>{
       return sendJson(res, 200, {ok:true, session:{sessionId, token, machineId:machine.machineId, playerName:session.playerName}, iframeUrl:iframeUrlFor(sessionId)});
     }
 
+    if(url.pathname === "/api/sessions/status" && req.method === "POST"){
+      const body = await readBody(req);
+      const session = state.sessions[String(body.sessionId || "")];
+      if(!session || !session.token || session.token !== String(body.token || "")) return sendJson(res,403,{ok:false,error:'invalid session'});
+      const machine = machineFor(session.machineId);
+      const active = session.status === 'active' && !!machine && String(machine.currentSessionId || '') === String(session.sessionId)
+        && Number(machine.resetSerial || 0) === Number(session.resetSerialAtStart || 0);
+      return sendJson(res,200,{ok:true,active});
+    }
+
     if(url.pathname === "/api/sessions/end" && req.method === "POST"){
       const body = await readBody(req);
       const session = state.sessions[String(body.sessionId || "")];
@@ -753,13 +763,15 @@ const server = http.createServer(async (req, res)=>{
       const machine = machineFor(decodeURIComponent(forceEndMatch[1]));
       if(!machine) return sendJson(res, 404, {ok:false, error:"machine not found"});
       const session = machine.currentSessionId ? state.sessions[machine.currentSessionId] : null;
+      if(session && session.status !== "active") return sendJson(res, 200, {ok:true, alreadyEnded:true, record:session.resultRecord || null, sheets:session.sheets || null});
       if(session && session.status === "active"){
         const record = {...resultPayload(session, machine, {snapshot:snapshotForSession(session, machine)}), forced:true, forcedBy:"admin"};
         appendResult(record);
-        const sheets = await sendToSheets(record);
         session.status = "ended";
         session.endedAt = Date.now();
         session.resultRecord = record;
+        saveState();
+        const sheets = await sendToSheets(record);
         session.sheets = sheets;
         retireLocalPasswords(machine.machineId,'ended');
         machine.locked = false;
@@ -833,8 +845,11 @@ const server = http.createServer(async (req, res)=>{
       if(!machine) return sendJson(res, 404, {ok:false, error:"machine not found"});
       const body = await readBody(req);
       const incomingSessionId = String(body.playSessionId || "");
-      if(incomingSessionId && incomingSessionId !== String(machine.currentSessionId || "")){
-        return sendJson(res, 200, {ok:true, ignored:true, reason:"stale play session"});
+      const incomingSession = state.sessions[incomingSessionId];
+      if(incomingSessionId && (incomingSessionId !== String(machine.currentSessionId || "")
+        || incomingSession?.status !== 'active'
+        || Number(incomingSession.resetSerialAtStart || 0) !== Number(machine.resetSerial || 0))){
+        return sendJson(res, 409, {ok:false, error:"stale play session"});
       }
       const snapshot = {...body, machineId, online:true, updatedAt:Date.now()};
       snapshot.settings={...snapshot.settings,...completionSettings(machine.lastSnapshot?.settings,machine.machineType)};

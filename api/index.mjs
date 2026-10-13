@@ -674,11 +674,15 @@ export default async function handler(req, res){
       if(!adminOk(req)) return json(res, 401, {ok:false, error:"admin password required"});
       const machine = await getMachine(decodeURIComponent(m[1]));
       const session = machine.currentSessionId ? await getSession(machine.currentSessionId) : null;
+      if(session && session.status !== "active") return json(res, 200, {ok:true, alreadyEnded:true, record:session.resultRecord || null, sheets:session.sheets || null});
       if(session && session.status === "active"){
         const record = {...resultPayload(session, machine, {snapshot:snapshotForSession(session, machine)}), forced:true, forcedBy:"admin"};
         await appendResult(record);
+        // Revoke play before waiting for the external settlement service.
+        session.status = "ended"; session.endedAt = ms(); session.resultRecord = record;
+        await saveSession(session);
         const sheets = await sendToSheets(record);
-        session.status = "ended"; session.endedAt = ms(); session.resultRecord = record; session.sheets = sheets;
+        session.sheets = sheets;
         await retirePasswords(machine.machineId,'ended');
         machine.locked = false; machine.currentSessionId = ""; machine.currentPlayerName = ""; machine.lastEndedSession = {sessionId:session.sessionId, playerName:session.playerName, endedAt:session.endedAt, record, sheets, forced:true};
         await saveSession(session); await upsertMachine(machine);

@@ -22,7 +22,12 @@ function matches(row,query){
 function answer(url,options={},body){
  requests++;const u=new URL(url),table=u.pathname.split('/').at(-1),q=u.searchParams,method=options.method||'GET';
  if(u.hostname==='sheets.invalid'){
-  assert.equal(method,'POST');sheetRecords.push(JSON.parse(body));return {status:200,data:{ok:true}};
+  assert.equal(method,'POST');const record=JSON.parse(body);
+  if(record.forced){
+   assert.equal(sessions.get(record.sessionId)?.status,'ended','force-end must revoke play before Sheets export');
+   assert.equal(sessions.get(record.sessionId)?.result_record?.sessionId,record.sessionId);
+  }
+  sheetRecords.push(record);return {status:200,data:{ok:true}};
  }
  const map={machine_states:machines,issued_passwords:passwords,sessions}[table];
  if(map){
@@ -57,6 +62,13 @@ async function request(path,body={},method='POST',admin=true){
 const issue=(machineId,playerName)=>request('admin/issue-password',{machineId,playerName});
 const current=async()=>{const res=await request('admin/passwords/current',{},'GET');assert.equal(res.statusCode,200);return res.body;};
 const begin=async(password)=>{const res=await request('sessions/start',{password});assert.equal(res.statusCode,200,JSON.stringify(res.body));return res.body.session;};
+const status=async(session)=>request('sessions/status',{sessionId:session.sessionId,token:session.token},'POST',false);
+async function rejectsStaleState(session){
+ const before=structuredClone(machines.get(session.machineId));
+ const response=await request(`machines/${session.machineId}/state`,{playSessionId:session.sessionId,playSessionToken:session.token,stats:{totalSpins:99999,totalPaid:999999}},'POST',false);
+ assert.equal(response.statusCode,409,JSON.stringify(response.body));
+ assert.deepEqual(machines.get(session.machineId),before);
+}
 if(process.env.QA_SHEETS_ASSERT==='1'){
  const eligible=['store-debug','store-nebula'].includes(process.env.VERTEX_STORE_ID);
  const machineId=process.env.VERTEX_STORE_ID==='store-debug'?'nova-01':'one';
@@ -96,9 +108,25 @@ assert.notEqual(a.body.issued.password,b.body.issued.password);assert.notEqual(a
 assert.equal(passwords.get(collision).player_name,'Existing');
 assert.equal((await current()).find(row=>row.machineId==='one').password,a.body.issued.password);
 const first=await begin(a.body.issued.password);
+assert.equal((await status(first)).body.active,true);
+assert.equal((await status({...first,token:'wrong'})).statusCode,403);
+assert.equal((await status({sessionId:'missing',token:'wrong'})).statusCode,403);
+assert.equal((await begin(a.body.issued.password)).sessionId,first.sessionId);
+assert.equal((await begin(a.body.issued.password)).token,first.token);
+const firstMachine=machines.get('one');
+firstMachine.reset_serial++;
+assert.equal((await status(first)).body.active,false);
+await rejectsStaleState(first);
+firstMachine.reset_serial--;
+firstMachine.current_session_id='replacement';
+assert.equal((await status(first)).body.active,false);
+await rejectsStaleState(first);
+firstMachine.current_session_id=first.sessionId;
 assert.equal((await current()).find(row=>row.machineId==='one').status,'used');
 assert.equal((await issue('one','Cannot overwrite')).body.issued.playerName,a.body.issued.playerName);
 const ended=await request('sessions/end',first);assert.equal(ended.statusCode,200,JSON.stringify(ended.body));
+assert.equal((await status(first)).body.active,false);
+await rejectsStaleState(first);
 assert.equal((await current()).find(row=>row.machineId==='one').status,'available');
 const again=await issue('one','Next');assert.notEqual(again.body.issued.password,a.body.issued.password);
 assert.equal((await request('sessions/start',{password:a.body.issued.password})).statusCode,403);
@@ -109,9 +137,21 @@ const unused=await issue('one','Unused');
 assert.equal((await request('admin/machines/one/force-end')).body.released,true);
 assert.equal((await current()).find(row=>row.machineId==='one').status,'available');
 assert.equal((await request('sessions/start',{password:unused.body.issued.password})).statusCode,403);
-const last=await issue('one','Force');await begin(last.body.issued.password);
+const last=await issue('one','Force'), forced=await begin(last.body.issued.password);
+assert.equal((await status(forced)).body.active,true);
 assert.equal((await request('admin/machines/one/force-end')).statusCode,200);
+assert.equal((await status(forced)).body.active,false);
+await rejectsStaleState(forced);
+const resultCount=results.length;
+assert.equal((await request('sessions/end',forced)).body.alreadyEnded,true);
+assert.equal((await request('admin/machines/one/force-end')).body.alreadyEnded,true);
+assert.equal(results.length,resultCount);
+assert.equal((await request('sessions/start',{password:last.body.issued.password})).statusCode,403);
 assert.equal((await current()).find(row=>row.machineId==='one').status,'available');
+const resetPassword=await issue('one','Reset'),resetSession=await begin(resetPassword.body.issued.password);
+assert.equal((await request('admin/machines/one/reset')).statusCode,200);
+assert.equal((await status(resetSession)).body.active,false);
+await rejectsStaleState(resetSession);
 for(let i=0;i<100;i++)passwords.set('old'+i,{password:'old'+i,machine_id:'one',status:'ended',issued_at_ms:Date.now()+i});
 assert.equal((await current()).find(row=>row.machineId==='two').password,b.body.issued.password);
 console.log('Concurrent issuance, current list, start/end, unused cancellation, reset, force-end and historical passwords verified.');

@@ -544,6 +544,20 @@ export default async function gateway(req, res){
 
     const body = await readLimitedBody(req);
 
+    if(pathname === "/api/sessions/status" && req.method === "POST"){
+      const session = await dbSession(String(body.sessionId || ""));
+      if(!session || !session.token || !constantTimeEqual(session.token, String(body.token || ""))){
+        return sendJson(res, req, 403, {ok:false, error:"invalid session"});
+      }
+      if(session.status !== "active") return sendJson(res, req, 200, {ok:true, active:false});
+      // Only read session ownership, never the large play snapshot, for the heartbeat.
+      const rows = await supabase(`machine_states?machine_id=eq.${encodeURIComponent(session.machine_id)}&select=current_session_id,reset_serial&limit=1`);
+      const machine = rows[0];
+      const active = !!machine && String(machine.current_session_id || "") === String(session.session_id)
+        && Number(machine.reset_serial || 0) === Number(session.reset_serial_at_start || 0);
+      return sendJson(res, req, 200, {ok:true, active});
+    }
+
     if(pathname === "/api/sessions/end" && req.method === "POST"){
       await verifySessionEnd(body);
     }

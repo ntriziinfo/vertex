@@ -24,13 +24,15 @@
   <iframe id="slot" class="slotFrame" allow="autoplay; fullscreen"></iframe>
 </div>
 <div id="ended" class="ended" hidden>
-  <div><h2>終了しました</h2><p>清算データを送信し、台を空席に戻しました。</p><p id="sendStatus" class="muted"></p></div>
+  <div><h2>終了しました</h2><p id="endSummary">清算データを送信し、台を空席に戻しました。</p><p id="sendStatus" class="muted"></p></div>
 </div>
 <script>
 const $ = id => document.getElementById(id);
 let active = null;
 let slotOrigin = "";
 let machineNames = new Map();
+let sessionWatchTimer = null, sessionWatchInFlight = false, sessionWatchRequested = false;
+let endingSession = false;
 const params = new URLSearchParams(location.search);
 const entryMachineId = params.get('machine') || '';
 function machineName(machineId){ return machineNames.get(String(machineId)) || String(machineId || ''); }
@@ -41,6 +43,7 @@ try{
   commandWakeChannel.onmessage = event=>{
     if(!active || !slotOrigin || event.data?.type !== 'vertex-commands-available') return;
     if(String(event.data.machineId) !== String(active.machineId)) return;
+    wakeSessionWatch();
     $('slot').contentWindow?.postMessage({type:'vertex-commands-available', machineId:String(active.machineId)}, slotOrigin);
   };
 }catch(error){}
@@ -69,12 +72,14 @@ function friendlyError(error){
   return map[error] || error || "開始できません";
 }
 async function start(){
+  if($('startBtn').disabled || active) return;
   $('error').textContent = '';
   $('startBtn').disabled = true;
   $('startBtn').textContent = '確認中...';
   const password = $('password').value.trim().toUpperCase();
   if(!password){ $('error').textContent = 'パスワードを入力してください'; $('startBtn').disabled = false; $('startBtn').textContent = 'この台で開始'; return; }
-  const res = await fetch('/api/sessions/start', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password, requestedMachineId:entryMachineId})});
+  try{
+  const res = await fetch('/api/sessions/start', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password, requestedMachineId:entryMachineId}),signal:AbortSignal.timeout(12000)});
   const data = await res.json();
   if(!data.ok){ $('error').textContent = friendlyError(data.error); $('startBtn').disabled = false; $('startBtn').textContent = 'この台で開始'; return; }
   active = data.session;
@@ -84,9 +89,50 @@ async function start(){
   $('slot').src = data.iframeUrl;
   $('login').hidden = true;
   $('play').hidden = false;
+  $('ended').hidden = true;
+  wakeSessionWatch();
+  }catch(error){
+    $('error').textContent = '通信できませんでした。同じパスワードでもう一度お試しください。';
+  }
   $('startBtn').disabled = false;
   $('startBtn').textContent = 'この台で開始';
 }
+function closeEndedSession(){
+  if(!active) return;
+  clearTimeout(sessionWatchTimer);sessionWatchTimer=null;
+  clearSlotLocalState();
+  active=null;slotOrigin='';
+  // Unload the iframe, including AUTO timers, audio and outstanding game callbacks.
+  $('slot').src='about:blank';
+  $('play').hidden=true;$('login').hidden=true;$('ended').hidden=false;
+  $('endSummary').textContent='管理側で終了・リセットされたため、この台での遊技を終了しました。';
+  $('sendStatus').textContent='再開する場合は、管理者に新しいパスワードの発行を依頼してください。';
+}
+async function checkSessionStatus(){
+  if(!active || endingSession) return;
+  if(sessionWatchInFlight){sessionWatchRequested=true;return;}
+  clearTimeout(sessionWatchTimer);sessionWatchTimer=null;
+  sessionWatchInFlight=true;sessionWatchRequested=false;
+  const checkedSession=active;
+  try{
+    const res=await fetch('/api/sessions/status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:checkedSession.sessionId,token:checkedSession.token}),cache:'no-store',signal:AbortSignal.timeout(8000)});
+    const data=await res.json();
+    if(active!==checkedSession || endingSession)return;
+    if(res.status===403 || (res.ok && data.ok && data.active===false))closeEndedSession();
+  }catch(error){ /* Transient network errors must not be mistaken for forced termination. */ }
+  finally{
+    sessionWatchInFlight=false;
+    if(active && !endingSession)sessionWatchTimer=setTimeout(checkSessionStatus,sessionWatchRequested?0:3000);
+  }
+}
+function wakeSessionWatch(){
+  if(!active || endingSession)return;
+  if(sessionWatchInFlight){sessionWatchRequested=true;return;}
+  clearTimeout(sessionWatchTimer);sessionWatchTimer=setTimeout(checkSessionStatus,0);
+}
+window.addEventListener('focus',wakeSessionWatch);
+window.addEventListener('pageshow',wakeSessionWatch);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)wakeSessionWatch();});
 function clearSlotLocalState(){
   try{
     const win = $("slot").contentWindow;
@@ -105,8 +151,10 @@ function latestSlotSnapshot(){
   return null;
 }
 async function endSession(options={}){
-  if(!active) return;
+  if(!active || endingSession) return;
   if(!options.skipConfirm && !confirm('終了してデータを送信します。終了後はこのパスワードでは続きから遊べません。')) return;
+  endingSession=true;
+  clearTimeout(sessionWatchTimer);sessionWatchTimer=null;
   $('endBtn').disabled = true;
   let snapshot = options.snapshot || latestSlotSnapshot();
   if(!snapshot){
@@ -133,6 +181,9 @@ async function endSession(options={}){
     $('endBtn').disabled = false;
     $('endBtn').textContent = '終了してデータ送信';
     alert(error.message || '終了処理に失敗しました。画面を閉じずに再実行してください。');
+  }finally{
+    endingSession=false;
+    if(active)wakeSessionWatch();
   }
 }
 window.addEventListener('message', event=>{
