@@ -75,7 +75,7 @@ const MACHINE_VIEW_STORAGE_KEY = 'vertexAdminMachineView';
 let adminSecret = sessionStorage.getItem(ADMIN_STORAGE_KEY) || '';
 let machineDataView = sessionStorage.getItem(MACHINE_VIEW_STORAGE_KEY) === 'player' ? 'player' : 'total';
 const BULK_SETTING_RTP = Object.freeze([90, 93, 96, 101, 104, 108]);
-const ADDITIVE_STAT_KEYS = ['totalSessions','totalFee','totalPaid','totalSpins','normalSpins','highSpins','bigCount','midCount','premiumBigCount','grapeCount','smallCount','bellCount','diagonalBellCount','replayCount','suikaCount','cherryCount'];
+const ADDITIVE_STAT_KEYS = ['atFirstCount','totalSessions','totalFee','totalPaid','totalSpins','normalSpins','highSpins','bigCount','midCount','premiumBigCount','grapeCount','smallCount','bellCount','diagonalBellCount','replayCount','suikaCount','cherryCount'];
 function adminHeaders(){ return adminSecret ? {'X-Admin-Password':adminSecret} : {}; }
 function fmt(n){ return Number(n || 0).toLocaleString('ja-JP'); }
 function signed(n){ n = Number(n || 0); return (n >= 0 ? '+' : '') + fmt(n); }

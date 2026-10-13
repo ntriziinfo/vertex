@@ -1,4 +1,4 @@
-const STAT_KEYS = ["totalSpins", "bigCount", "midCount", "totalFee", "totalPaid"];
+const STAT_KEYS = ["totalSpins", "bigCount", "midCount", "atFirstCount", "totalFee", "totalPaid"];
 
 function num(value){
   return Number(value) || 0;
@@ -66,6 +66,7 @@ function playerView(endStats={}, startStats={}, explicit={}){
       stats[key] = Math.max(0, num(explicit[explicitKey]));
     }
   }
+  stats.atFirstCountPartial = endStats.atFirstCount == null || !!endStats.atFirstCountPartial;
   stats.profit = explicit.playerProfit !== undefined && explicit.playerProfit !== null
     ? num(explicit.playerProfit)
     : statsProfit(endStats) - statsProfit(baselineStats);
@@ -79,6 +80,8 @@ function playerViewForResult(record){
   const endStats = record.stats || {
     totalSpins:record.totalSpins,
     bigCount:record.bigCount,
+    atFirstCount:record.atFirstCount,
+    atFirstCountPartial:record.atFirstCountPartial,
     midCount:record.regCount,
     totalFee:record.totalFee,
     totalPaid:record.totalPaid,
@@ -89,7 +92,7 @@ function playerViewForResult(record){
 }
 
 function emptyTotal(){
-  const stats = {totalSpins:0, bigCount:0, midCount:0, totalFee:0, totalPaid:0, profit:0};
+  const stats = {atFirstCount:0, atFirstCountPartial:false, totalSpins:0, bigCount:0, midCount:0, totalFee:0, totalPaid:0, profit:0};
   const history = [{spin:0, profit:0}];
   stats.slumpHistory = history;
   return {stats, history};
@@ -99,6 +102,7 @@ function appendPlayerView(aggregate, view){
   const baseSpin = stat(aggregate.stats, "totalSpins");
   const baseProfit = statsProfit(aggregate.stats);
   for(const key of STAT_KEYS) aggregate.stats[key] = stat(aggregate.stats, key) + stat(view.stats, key);
+  aggregate.stats.atFirstCountPartial ||= !!view.stats.atFirstCountPartial;
   aggregate.stats.profit = baseProfit + statsProfit(view.stats);
   appendPoint(aggregate.history, {spin:baseSpin, profit:baseProfit});
   for(const point of normalizeHistory(view.history)){

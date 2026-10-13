@@ -47,7 +47,7 @@ function render(machines){
     return `<article class="machine">
       <div class="head"><h2>${esc(m.displayName || m.machineId)}</h2><span class="pill ${free ? 'free' : 'lock'}">${free ? '空き' : '使用不可'}</span></div>
       <canvas class="graph" data-machine="${esc(m.machineId)}"></canvas>
-      <div class="stats"><div class="stat"><span>G数</span><b>${fmt(s.totalSpins)}</b></div><div class="stat"><span>投入</span><b>${fmt(s.totalFee)}pt</b></div><div class="stat"><span>払出</span><b>${fmt(s.totalPaid)}pt</b></div><div class="stat"><span>差pt</span><b>${signed(profit)}</b></div></div>
+      <div class="stats"><div class="stat"><span>G数</span><b>${fmt(s.totalSpins)}</b></div><div class="stat"><span>BB確率</span><b>${s.bigCount>0 && s.totalSpins>0 ? '1/'+(s.totalSpins/s.bigCount).toFixed(1) : '—'}</b></div><div class="stat"><span>${m.machineType==='nova'?'AT初当たり回数':'BB回数'}</span><b>${fmt(m.machineType==='nova'?s.atFirstCount:s.bigCount)}回${m.machineType==='nova'&&s.atFirstCountPartial?'（更新後）':''}</b></div><div class="stat"><span>差pt</span><b>${signed(profit)}</b></div></div>
       <div class="actions"><a class="${free ? '' : 'disabled'}" href="/play.html?machine=${encodeURIComponent(m.machineId)}">この台で遊ぶ</a></div>
     </article>`;
   }).join('');

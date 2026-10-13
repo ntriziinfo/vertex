@@ -458,7 +458,7 @@ function constrainSnapshot(body, machine){
     next.settings.setting = Math.max(1, Math.min(6, Number(machine.assigned_setting || 1)));
   }
   if(next.stats && typeof next.stats === "object"){
-    const numericKeys = ["totalSessions","totalFee","totalPaid","totalSpins","normalSpins","highSpins","bigCount","midCount","premiumBigCount","grapeCount","smallCount","bellCount","diagonalBellCount","replayCount","suikaCount","cherryCount","profit"];
+    const numericKeys = ["atFirstCount","totalSessions","totalFee","totalPaid","totalSpins","normalSpins","highSpins","bigCount","midCount","premiumBigCount","grapeCount","smallCount","bellCount","diagonalBellCount","replayCount","suikaCount","cherryCount","profit"];
     for(const key of numericKeys){
       if(next.stats[key] === undefined) continue;
       const value = Number(next.stats[key]);
