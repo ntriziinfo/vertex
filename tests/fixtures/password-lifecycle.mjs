@@ -43,7 +43,14 @@ function answer(url,options={},body){
   if(q.has('limit'))rows=rows.slice(0,Number(q.get('limit')));
   return {status:200,data:structuredClone(rows.map(row=>table==='machine_states'?{...row,ended_at_ms:row.last_ended_session?.endedAt}:row))};
  }
- if(table==='session_results'){if(method==='POST')results.push(JSON.parse(body));return {status:200,data:results};}
+ if(table==='session_results'){
+  if(method==='POST')results.push(JSON.parse(body));
+  let rows=results.filter(row=>matches(row,q));
+  if(q.get('order')==='id.desc')rows=rows.toReversed();
+  if(q.has('offset'))rows=rows.slice(Number(q.get('offset')));
+  if(q.has('limit'))rows=rows.slice(0,Number(q.get('limit')));
+  return {status:200,data:structuredClone(rows)};
+ }
  if(table==='machine_commands')return {status:200,data:method==='POST'?[{id:requests,...JSON.parse(body)}]:[]};
  throw Error('Unexpected table '+table);
 }
@@ -68,6 +75,39 @@ async function rejectsStaleState(session){
  const response=await request(`machines/${session.machineId}/state`,{playSessionId:session.sessionId,playSessionToken:session.token,stats:{totalSpins:99999,totalPaid:999999}},'POST',false);
  assert.equal(response.statusCode,409,JSON.stringify(response.body));
  assert.deepEqual(machines.get(session.machineId),before);
+}
+if(process.env.QA_TOTALS_ASSERT==='1'){
+ // More than one API page of legacy players must survive migration.
+ for(let i=0;i<501;i++){
+  const record={machineId:'one',sessionId:'legacy'+i,resetSerial:0,endedAtMs:i+1,stats:{totalSpins:10,bigCount:1,atFirstCount:1,totalFee:30,totalPaid:20}};
+  results.push({machine_id:'one',record});
+ }
+ machines.get('one').last_ended_session={sessionId:'legacy500',record:results.at(-1).record};
+ results.push({machine_id:'one',record:{machineId:'one',sessionId:'old-reset',resetSerial:99,stats:{totalSpins:999999}}});
+ for(let i=0;i<3;i++){
+  const issued=await issue('one','Player'+i);assert.equal(issued.statusCode,200,JSON.stringify(issued.body));
+  const started=await request('sessions/start',{password:issued.body.issued.password});
+  assert.equal(started.statusCode,200,JSON.stringify(started.body));
+  const session=started.body.session;
+  const base=JSON.parse(new URL(started.body.iframeUrl).searchParams.get('machineDisplay'));
+  assert.equal(base.totalSpins,5010+i*100);
+  const snapshot={playSessionId:session.sessionId,playSessionToken:session.token,playSessionStartStats:{totalSpins:0,bigCount:0,atFirstCount:0,totalFee:0,totalPaid:0},
+   stats:{totalSpins:100,bigCount:2,atFirstCount:1,totalFee:300,totalPaid:350},normalState:{sinceBonus:5},machineDisplayStats:{sinceBonus:5}};
+  const state=await request('machines/one/state',snapshot,'POST',false);assert.equal(state.statusCode,200,JSON.stringify(state.body));
+  const resumed=await request('sessions/start',{password:issued.body.issued.password});
+  assert.equal(resumed.body.iframeUrl,started.body.iframeUrl,'resuming must not add active counters to baseline');
+  const list=await request('machines',{},'GET');assert.equal(list.statusCode,200,JSON.stringify(list.body));
+  assert.equal(list.body.find(m=>m.machineId==='one').machineTotalStats.totalSpins,5110+i*100);
+  const end=i===1 ? await request('admin/machines/one/force-end') : await request('sessions/end',{...session,snapshot});
+  assert.equal(end.statusCode,200,JSON.stringify(end.body));assert.equal(end.body.record.playerSpins,100);assert.equal(end.body.record.playerProfit,50);
+  assert.equal(machines.get('one').last_ended_session.machineTotal.stats.totalSpins,5110+i*100);
+ }
+ await request('admin/machines/one/reset');
+ const issued=await issue('one','After reset');
+ const started=await request('sessions/start',{password:issued.body.issued.password});
+ assert.equal(JSON.parse(new URL(started.body.iframeUrl).searchParams.get('machineDisplay')).totalSpins,0);
+ console.log('Legacy pagination, three successive players, resumed display, raw settlement, forced end and reset totals verified.');
+ process.exit(0);
 }
 if(process.env.QA_SHEETS_ASSERT==='1'){
  const eligible=['store-debug','store-nebula'].includes(process.env.VERTEX_STORE_ID);

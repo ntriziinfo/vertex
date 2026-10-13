@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import fs from 'node:fs';
 import vm from 'node:vm';
-const {machineTotalFor}=createRequire(import.meta.url)('../machine-totals.cjs');
+const {machineTotalFor,completedMachineTotal,machineDisplayBaseline}=createRequire(import.meta.url)('../machine-totals.cjs');
 const {completionSettings,settingsPatch}=createRequire(import.meta.url)('../admin-settings.cjs');
 
 test('customer AT totals aggregate player deltas, preserve BB count and ignore prior reset cycles',()=>{
@@ -39,4 +39,24 @@ test('historical snapshots without AT counters are marked partial instead of tre
   assert.equal(total.atFirstCount,0);assert.equal(total.atFirstCountPartial,true);
   const empty=machineTotalFor({machineId:'nova-03'}).stats;
   assert.equal(empty.atFirstCount,0);assert.equal(empty.atFirstCountPartial,false);
+});
+
+test('compact checkpoint preserves every player, current play and reset isolation without querying history',()=>{
+  const machine={machineId:'nova-03',resetSerial:2};
+  for(let i=1;i<=4;i++){
+    const record={sessionId:'p'+i,machineId:machine.machineId,resetSerial:2,stats:{totalSpins:100,bigCount:2,atFirstCount:1,totalFee:300,totalPaid:400}};
+    const total=completedMachineTotal(machine,record);
+    machine.lastEndedSession={sessionId:record.sessionId,record,machineTotal:total};
+    assert.equal(machineTotalFor(machine).stats.totalSpins,i*100);
+    assert.equal(machineTotalFor(machine,[record]).stats.profit,i*100,'records never duplicate the checkpoint');
+    assert.equal(machineDisplayBaseline(machine).bigCount,i*2);
+  }
+  machine.currentSessionId='p5';
+  machine.lastSnapshot={playSessionId:'p4',stats:{totalSpins:100}};
+  assert.equal(machineTotalFor(machine).stats.totalSpins,400,'starting next player does not count the previous snapshot twice');
+  machine.lastSnapshot={playSessionId:'p5',stats:{totalSpins:25,bigCount:1,atFirstCount:0,totalFee:75,totalPaid:0}};
+  assert.equal(machineTotalFor(machine).stats.totalSpins,425);assert.equal(machineTotalFor(machine).stats.profit,325);
+  assert.equal(machineDisplayBaseline(machine).totalSpins,400,'resume baseline excludes the active player');
+  machine.resetSerial++;machine.currentSessionId='';machine.lastSnapshot=null;
+  assert.equal(machineTotalFor(machine).stats.totalSpins,0);
 });

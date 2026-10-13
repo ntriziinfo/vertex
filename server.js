@@ -6,7 +6,7 @@ const crypto = require("crypto");
 const passwordIssuance = require('./password-issuance.cjs');
 const {sheetsSettlement} = require('./sheets-settlement.cjs');
 const { URL } = require("url");
-const {machineTotalFor} = require("./machine-totals.cjs");
+const {machineTotalFor,completedMachineTotal,machineDisplayBaseline} = require("./machine-totals.cjs");
 const {settingsPatch,completionSettings} = require("./admin-settings.cjs");
 const {
   STORE_ID,
@@ -355,7 +355,7 @@ function machineFor(id){
   return machines.get(machineId);
 }
 
-function machineGameUrl(machine, adminOrigin, sessionId=""){
+function machineGameUrl(machine, adminOrigin, sessionId="", displayBaseline){
   if(!machine || !machine.gameUrl) return "";
   try{
     const target = new URL(machine.gameUrl, adminOrigin);
@@ -365,6 +365,7 @@ function machineGameUrl(machine, adminOrigin, sessionId=""){
     target.searchParams.set("server", adminOrigin);
     target.searchParams.set("creditBaseline", "0");
     if(sessionId) target.searchParams.set("playSessionId", String(sessionId));
+    if(displayBaseline && machine.machineType==='nova')target.searchParams.set('machineDisplay',JSON.stringify(displayBaseline));
     return target.toString();
   }catch(error){
     return "";
@@ -665,7 +666,8 @@ const server = http.createServer(async (req, res)=>{
       const machine = machineFor(issued.machineId);
       if(!machine) return sendJson(res, 400, {ok:false, error:"machine not found"});
       const existingSession = issued.sessionId ? state.sessions[issued.sessionId] : null;
-      const iframeUrlFor = sessionId=>machineGameUrl(machine, url.origin, sessionId);
+      const displayBaseline=existingSession?.startSnapshot?.machineDisplayBaseline || machineDisplayBaseline({...machine,lastSnapshot:existingSession ? existingSession.startSnapshot : machine.lastSnapshot},readResultRecords(Number.MAX_SAFE_INTEGER));
+      const iframeUrlFor = sessionId=>machineGameUrl(machine, url.origin, sessionId,displayBaseline);
       if(!iframeUrlFor(existingSession && existingSession.sessionId || "")){
         return sendJson(res, 400, {ok:false, error:"machine game URL is not configured"});
       }
@@ -692,7 +694,7 @@ const server = http.createServer(async (req, res)=>{
         startedAt:Date.now(),
         endedAt:0,
         resetSerialAtStart:machine.resetSerial || 0,
-        startSnapshot:machine.lastSnapshot || null
+        startSnapshot:{...machine.lastSnapshot,machineDisplayBaseline:displayBaseline}
       };
       issued.status = "used";
       issued.usedAt = Date.now();
@@ -730,6 +732,7 @@ const server = http.createServer(async (req, res)=>{
         machine.lastSnapshot = snapshot;
       }
       const record = resultPayload(session, machine, {...body, snapshot});
+      const machineTotal=completedMachineTotal(machine,record,readResultRecords(Number.MAX_SAFE_INTEGER));
       appendResult(record);
       const sheets = await sendToSheets(record);
       session.status = "ended";
@@ -740,7 +743,7 @@ const server = http.createServer(async (req, res)=>{
       machine.locked = false;
       machine.currentSessionId = "";
       machine.currentPlayerName = "";
-      machine.lastEndedSession = {sessionId:session.sessionId, playerName:session.playerName, endedAt:session.endedAt, record, sheets};
+      machine.lastEndedSession = {sessionId:session.sessionId, playerName:session.playerName, endedAt:session.endedAt, record, sheets, machineTotal};
       saveState();
       broadcastMachines();
       return sendJson(res, 200, {ok:true, record, sheets});
@@ -766,6 +769,7 @@ const server = http.createServer(async (req, res)=>{
       if(session && session.status !== "active") return sendJson(res, 200, {ok:true, alreadyEnded:true, record:session.resultRecord || null, sheets:session.sheets || null});
       if(session && session.status === "active"){
         const record = {...resultPayload(session, machine, {snapshot:snapshotForSession(session, machine)}), forced:true, forcedBy:"admin"};
+        const machineTotal=completedMachineTotal(machine,record,readResultRecords(Number.MAX_SAFE_INTEGER));
         appendResult(record);
         session.status = "ended";
         session.endedAt = Date.now();
@@ -777,7 +781,7 @@ const server = http.createServer(async (req, res)=>{
         machine.locked = false;
         machine.currentSessionId = "";
         machine.currentPlayerName = "";
-        machine.lastEndedSession = {sessionId:session.sessionId, playerName:session.playerName, endedAt:session.endedAt, record, sheets, forced:true};
+        machine.lastEndedSession = {sessionId:session.sessionId, playerName:session.playerName, endedAt:session.endedAt, record, sheets, machineTotal, forced:true};
         saveState();
         broadcastMachines();
         return sendJson(res, 200, {ok:true, forced:true, record, sheets});

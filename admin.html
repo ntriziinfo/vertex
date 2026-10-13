@@ -219,6 +219,7 @@ function resultsForMachine(machine){
   return [...unique.values()].sort((a,b)=>num(a.endedAtMs || Date.parse(a.endedAt))-num(b.endedAtMs || Date.parse(b.endedAt)));
 }
 function totalViewForMachine(machine){
+  if(machine.machineTotalStats)return {stats:machine.machineTotalStats,history:machine.machineTotalSlumpHistory || machine.machineTotalStats.slumpHistory || [],label:'台累計 / 全利用者'};
   const aggregate = emptyAggregate();
   const records = resultsForMachine(machine);
   for(const record of records) appendPlayerView(aggregate, playerViewForResult(record));
@@ -413,7 +414,7 @@ async function setJackpotAmount(poolId, value){
 function escapeHtml(v){ return String(v ?? '').replace(/[&<>'"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 async function loadMachines(){
   const revision = machineListRevision, request = ++machineListRequest;
-  const res = await fetch('/api/machines', {cache:'no-store'});
+  const res = await fetch('/api/machines', {cache:'no-store',signal:AbortSignal.timeout(10000)});
   const data = await res.json().catch(() => null);
   if(revision !== machineListRevision || request !== machineListRequest || [...machineOperations.values()].some(value=>value.busy)) return false;
   if(!res.ok || !Array.isArray(data)){
@@ -801,14 +802,17 @@ $('logoutBtn').addEventListener('click', logoutAdmin);
 $('machineTotalViewBtn').addEventListener('click', ()=>setMachineDataView('total'));
 $('machinePlayerViewBtn').addEventListener('click', ()=>setMachineDataView('player'));
 window.addEventListener('resize', renderAdminSlumpGraphs);
+let machineRefreshInFlight=false;
 async function refreshAll(){
-  if(!adminSecret) return;
-  await loadMachines().catch(()=>false);
+  if(!adminSecret || document.hidden || machineRefreshInFlight) return;
+  machineRefreshInFlight=true;
+  try{await loadMachines().catch(()=>false);}
+  finally{machineRefreshInFlight=false;}
 }
-setInterval(refreshAll, 60000);
+setInterval(refreshAll, 5000);
 setInterval(()=>{if(!document.hidden)void loadCurrentPasswords();},5000);
-window.addEventListener('focus',()=>void loadCurrentPasswords());
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)void loadCurrentPasswords();});
+window.addEventListener('focus',()=>{void loadCurrentPasswords();void refreshAll();});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){void loadCurrentPasswords();void refreshAll();}});
 loadVertexConfig();
 if(adminSecret){ enterAdmin(adminSecret); } else { $('gatePassword').focus(); }
 </script>

@@ -179,11 +179,15 @@ function compactHistory(points, maxPoints=720){
 
 function machineTotalFor(machine, records=[]){
   const aggregate = emptyTotal();
-  const completed = recordsForMachine(machine, records);
+  const saved = machine.lastEndedSession?.machineTotal;
+  const hasSaved = saved && saved.sessionId === machine.lastEndedSession.sessionId
+    && num(saved.resetSerial) === num(machine.resetSerial) && saved.stats && Array.isArray(saved.history);
+  if(hasSaved)appendPlayerView(aggregate, saved);
+  const completed = hasSaved ? [] : recordsForMachine(machine, records);
   for(const record of completed) appendPlayerView(aggregate, playerViewForResult(record));
   const current = currentPlayerView(machine);
   if(current) appendPlayerView(aggregate, current);
-  if(!completed.length && !current && machine.lastSnapshot && machine.lastSnapshot.stats){
+  if(!hasSaved && !completed.length && !current && machine.lastSnapshot && machine.lastSnapshot.stats){
     appendPlayerView(aggregate, playerView(machine.lastSnapshot.stats));
   }
   aggregate.history = compactHistory(aggregate.history);
@@ -191,4 +195,17 @@ function machineTotalFor(machine, records=[]){
   return aggregate;
 }
 
-module.exports = {machineTotalFor};
+function completedMachineTotal(machine, record, records=[]){
+  const total=machineTotalFor({...machine,currentSessionId:record.sessionId,lastSnapshot:{
+    playSessionId:record.sessionId,stats:record.stats||{},playSessionStartStats:record.startStats||{}
+  }},records.filter(item=>item.sessionId!==record.sessionId));
+  return {...total,resetSerial:num(machine.resetSerial),sessionId:record.sessionId};
+}
+
+function machineDisplayBaseline(machine, records=[]){
+  const {stats}=machineTotalFor({...machine,currentSessionId:'',lastSnapshot:null},records);
+  return {totalSpins:stats.totalSpins,bigCount:stats.bigCount,atFirstCount:stats.atFirstCount,
+    atFirstCountPartial:stats.atFirstCountPartial,sinceBonus:num(machine.lastSnapshot?.machineDisplayStats?.sinceBonus ?? machine.lastSnapshot?.normalState?.sinceBonus)};
+}
+
+module.exports = {machineTotalFor,completedMachineTotal,machineDisplayBaseline};

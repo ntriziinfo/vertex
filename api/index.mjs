@@ -7,7 +7,7 @@ import passwordIssuance from "../password-issuance.cjs";
 import sheetsSettlementPolicy from "../sheets-settlement.cjs";
 import {scopeHeaders} from "../supabase-scope.mjs";
 
-const {machineTotalFor} = machineTotals;
+const {machineTotalFor,completedMachineTotal,machineDisplayBaseline} = machineTotals;
 const {STORE_ID, STORE_NAME, STORE_DIRECTORY, MACHINE_DEFINITIONS, machineDefinition} = machineConfig;
 const SUPABASE_URL = String(process.env.SUPABASE_URL || "").replace(/\/$/, "");
 const SUPABASE_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || "");
@@ -274,7 +274,7 @@ async function setJackpotPoolAmount(poolId, currentPt){
     updatedAt:new Date().toISOString()
   };
 }
-function machineGameUrl(machine, adminOrigin, sessionId){
+function machineGameUrl(machine, adminOrigin, sessionId, displayBaseline){
   if(!machine || !machine.gameUrl) return "";
   const url = new URL(machine.gameUrl, adminOrigin);
   url.searchParams.set("controller", "vertex");
@@ -283,6 +283,7 @@ function machineGameUrl(machine, adminOrigin, sessionId){
   url.searchParams.set("server", adminOrigin);
   url.searchParams.set("creditBaseline", "0");
   url.searchParams.set("playSessionId", String(sessionId || ""));
+  if(displayBaseline && machine.machineType==='nova')url.searchParams.set('machineDisplay',JSON.stringify(displayBaseline));
   return url.toString();
 }
 async function getIssued(password){
@@ -384,6 +385,22 @@ async function recentResultRecords(limit=200){
   const rows = await sb("session_results?select=record&order=id.desc&limit=" + Math.max(1, Number(limit) || 200));
   const configuredRecords = rows.map(row=>row.record).filter(record=>record && validMachineId(record.machineId));
   return restoreResultResetSerials(configuredRecords);
+}
+async function hydrateMachineTotal(machine){
+  const ended=machine.lastEndedSession,saved=ended?.machineTotal;
+  if(!ended || saved?.sessionId===ended.sessionId && Number(saved.resetSerial)===Number(machine.resetSerial) && saved.stats && Array.isArray(saved.history))return machine;
+  // Legacy machines are rebuilt from every completed player, not just the last one.
+  // Persist the compact checkpoint on the next session write; normal polling then
+  // needs no result-history query. Reads must never overwrite a concurrent reset.
+  const records=[];
+  for(let offset=0;;offset+=500){
+    const rows=await sb('session_results?machine_id=eq.'+encodeURIComponent(machine.machineId)+'&select=record&order=id.asc&limit=500&offset='+offset);
+    records.push(...rows.map(row=>row.record).filter(Boolean));
+    if(rows.length<500)break;
+  }
+  const total=machineTotalFor({...machine,currentSessionId:'',lastSnapshot:null},await restoreResultResetSerials(records));
+  machine.lastEndedSession={...ended,machineTotal:{...total,resetSerial:machine.resetSerial,sessionId:ended.sessionId}};
+  return machine;
 }
 function postJson(urlString, payload){
   return new Promise((resolve, reject)=>{
@@ -514,8 +531,9 @@ export default async function handler(req, res){
         catch(e){ return [poolId, null]; }
       }));
       const pools = new Map(poolEntries);
-      // Keep the frequently-polled machine list lightweight. Completed-session
-      // history is loaded separately by the authenticated admin results route.
+      // Checkpoints keep normal polling independent of completed-session history.
+      // Only legacy machines without a checkpoint need a one-time reconstruction.
+      await Promise.all(machines.map(hydrateMachineTotal));
       return json(res, 200, machines.map(machine=>publicMachine(machine, machineTotalFor(machine, []), pools.get(machine.poolId) || null)));
     }
     if(pathname === "/api/admin/issue-password" && req.method === "POST"){
@@ -546,16 +564,17 @@ export default async function handler(req, res){
       if(!issued) return json(res, 403, {ok:false, error:"password not found"});
       if(!validMachineId(issued.machineId)) return json(res, 403, {ok:false, error:"このパスワードは旧構成用です"});
       if(requestedMachineId && requestedMachineId !== String(issued.machineId)) return json(res, 403, {ok:false, error:"このパスワードは別の台用です"});
-      const machine = await getMachine(issued.machineId);
+      const machine = await hydrateMachineTotal(await getMachine(issued.machineId));
       const existingSession = issued.sessionId ? await getSession(issued.sessionId) : null;
-      const iframeUrlFor = sessionId=>machineGameUrl(machine, origin, sessionId);
+      const displayBaseline=existingSession?.startSnapshot?.machineDisplayBaseline || machineDisplayBaseline({...machine,lastSnapshot:existingSession ? existingSession.startSnapshot : machine.lastSnapshot});
+      const iframeUrlFor = sessionId=>machineGameUrl(machine, origin, sessionId,displayBaseline);
       if(!machine.gameUrl) return json(res, 500, {ok:false, error:"この台のゲームURLが設定されていません"});
       if(issued.status === "used" && existingSession && existingSession.status === "active") return json(res, 200, {ok:true, resumed:true, session:{sessionId:existingSession.sessionId, token:existingSession.token, machineId:machine.machineId, playerName:existingSession.playerName}, iframeUrl:iframeUrlFor(existingSession.sessionId)});
       if(issued.status !== "issued") return json(res, 403, {ok:false, error:"このパスワードは終了済みです"});
       const latest=await latestIssued(machine.machineId);
       if(passwordIssuance.current(machine,latest?[latest]:[])?.password!==password)return json(res,403,{ok:false,error:'このパスワードは現在の発行番号ではありません'});
       if(machine.currentSessionId && machine.currentSessionId !== (existingSession && existingSession.sessionId)) return json(res, 409, {ok:false, error:"machine is busy"});
-      const session = {sessionId:makeId("sess"), token:crypto.randomBytes(16).toString("hex"), password, machineId:machine.machineId, playerName:issued.playerName, status:"active", startedAt:ms(), endedAt:0, resetSerialAtStart:machine.resetSerial || 0, startSnapshot:machine.lastSnapshot || null};
+      const session = {sessionId:makeId("sess"), token:crypto.randomBytes(16).toString("hex"), password, machineId:machine.machineId, playerName:issued.playerName, status:"active", startedAt:ms(), endedAt:0, resetSerialAtStart:machine.resetSerial || 0, startSnapshot:{...machine.lastSnapshot,machineDisplayBaseline:displayBaseline}};
       issued.status = "used"; issued.usedAt = ms(); issued.sessionId = session.sessionId;
       machine.locked = true; machine.currentSessionId = session.sessionId; machine.currentPlayerName = session.playerName;
       await saveIssued(issued); await saveSession(session); await upsertMachine(machine);
@@ -572,12 +591,14 @@ export default async function handler(req, res){
         snapshot.settings={...snapshot.settings,...adminSettings.completionSettings(machine.lastSnapshot?.settings,machine.machineType)};
         machine.lastSnapshot = snapshot;
       }
+      await hydrateMachineTotal(machine);
       const record = {...resultPayload(session, machine, {...body, snapshot}), forced:!!body.forced};
+      const machineTotal=completedMachineTotal(machine,record);
       await appendResult(record);
       const sheets = await sendToSheets(record);
       session.status = "ended"; session.endedAt = ms(); session.resultRecord = record; session.sheets = sheets;
       await retirePasswords(machine.machineId,'ended');
-      machine.locked = false; machine.currentSessionId = ""; machine.currentPlayerName = ""; machine.lastEndedSession = {sessionId:session.sessionId, playerName:session.playerName, endedAt:session.endedAt, record, sheets};
+      machine.locked = false; machine.currentSessionId = ""; machine.currentPlayerName = ""; machine.lastEndedSession = {sessionId:session.sessionId, playerName:session.playerName, endedAt:session.endedAt, record, sheets, machineTotal};
       await saveSession(session); await upsertMachine(machine);
       return json(res, 200, {ok:true, record, sheets});
     }
@@ -676,7 +697,9 @@ export default async function handler(req, res){
       const session = machine.currentSessionId ? await getSession(machine.currentSessionId) : null;
       if(session && session.status !== "active") return json(res, 200, {ok:true, alreadyEnded:true, record:session.resultRecord || null, sheets:session.sheets || null});
       if(session && session.status === "active"){
+        await hydrateMachineTotal(machine);
         const record = {...resultPayload(session, machine, {snapshot:snapshotForSession(session, machine)}), forced:true, forcedBy:"admin"};
+        const machineTotal=completedMachineTotal(machine,record);
         await appendResult(record);
         // Revoke play before waiting for the external settlement service.
         session.status = "ended"; session.endedAt = ms(); session.resultRecord = record;
@@ -684,7 +707,7 @@ export default async function handler(req, res){
         const sheets = await sendToSheets(record);
         session.sheets = sheets;
         await retirePasswords(machine.machineId,'ended');
-        machine.locked = false; machine.currentSessionId = ""; machine.currentPlayerName = ""; machine.lastEndedSession = {sessionId:session.sessionId, playerName:session.playerName, endedAt:session.endedAt, record, sheets, forced:true};
+        machine.locked = false; machine.currentSessionId = ""; machine.currentPlayerName = ""; machine.lastEndedSession = {sessionId:session.sessionId, playerName:session.playerName, endedAt:session.endedAt, record, sheets, machineTotal, forced:true};
         await saveSession(session); await upsertMachine(machine);
         return json(res, 200, {ok:true, forced:true, record, sheets});
       }
