@@ -389,8 +389,9 @@ async function dbSession(sessionId){
   return Array.isArray(rows) ? rows[0] || null : null;
 }
 
-async function dbMachine(machineId){
-  const rows = await supabase(`machine_states?machine_id=eq.${encodeURIComponent(String(machineId))}&select=machine_id,current_session_id,reset_serial,locked,assigned_setting,last_snapshot&limit=1`);
+async function dbMachine(machineId, full=false){
+  const fields = full ? '*' : 'machine_id,current_session_id,reset_serial,locked,assigned_setting,last_snapshot';
+  const rows = await supabase(`machine_states?machine_id=eq.${encodeURIComponent(String(machineId))}&select=${fields}&limit=1`);
   return Array.isArray(rows) ? rows[0] || null : null;
 }
 
@@ -556,9 +557,13 @@ export default async function gateway(req, res){
 
     const resetMatch = pathname.match(/^\/api\/admin\/machines\/([^/]+)\/reset$/);
     if(resetMatch && req.method === "POST"){
-      const machine = await dbMachine(decodeURIComponent(resetMatch[1]));
+      const machine = await dbMachine(decodeURIComponent(resetMatch[1]), true);
       const activeSession = machine && machine.current_session_id ? await dbSession(machine.current_session_id) : null;
-      const upstream = await delegate(req);
+      // Share this request's authenticated read, never a cross-request cache.
+      req.__vertexResetMachine = machine;
+      let upstream;
+      try{ upstream = await delegate(req); }
+      finally{ delete req.__vertexResetMachine; }
       const data = safeJson(upstream.body, {});
       if(upstream.status >= 200 && upstream.status < 300 && data && data.ok && activeSession){
         await cancelSession(activeSession, "admin-reset");

@@ -554,8 +554,10 @@ export default async function handler(req, res){
       const machineId = decodeURIComponent(m[1]);
       if(!validMachineId(machineId)) return json(res, 404, {ok:false, error:"machine not found"});
       const since = Number(req.query.since || 0) || 0;
-      const machine = await getMachine(machineId);
-      const rows = await sb("machine_commands?machine_id=eq." + encodeURIComponent(machineId) + "&id=gt." + encodeURIComponent(String(since)) + "&select=*&order=id.asc&limit=25");
+      const [machine, rows] = await Promise.all([
+        getMachine(machineId),
+        sb("machine_commands?machine_id=eq." + encodeURIComponent(machineId) + "&id=gt." + encodeURIComponent(String(since)) + "&select=*&order=id.asc&limit=25")
+      ]);
       return json(res, 200, {ok:true, controls:{superSpeedAllowed:machine.machineType==='nova' && machine.capabilities.superSpeedAllowed===true}, commands:rows.map(row=>({id:Number(row.id), machineId:String(row.machine_id), command:row.command || {}, createdAtMs:Number(row.created_at_ms || 0)}))});
     }
     m = pathname.match(/^\/api\/admin\/machines\/([^/]+)\/super-speed$/);
@@ -584,19 +586,21 @@ export default async function handler(req, res){
       machine.lastSnapshot.updatedAt = ms();
       await upsertMachine(machine);
       const row = await insertCommand(machine.machineId, {type:"applySettings", settings:machine.lastSnapshot.settings});
-      return json(res, 200, {ok:true, setting, completeLimitPt, delivered:true, commandId:row.id});
+      return json(res, 200, {ok:true, setting, completeLimitPt, delivered:true, commandId:row.id, machine:publicMachine(machine, machineTotalFor(machine, []))});
     }
     m = pathname.match(/^\/api\/admin\/machines\/([^/]+)\/reset$/);
     if(m && req.method === "POST"){
       if(!adminOk(req)) return json(res, 401, {ok:false, error:"admin password required"});
-      const machine = await getMachine(decodeURIComponent(m[1]));
+      const id = decodeURIComponent(m[1]);
+      const cached = req.__vertexResetMachine;
+      const machine = cached && String(cached.machine_id) === id ? machineFromRow(cached) : await getMachine(id);
       const preservedSettings = machine.lastSnapshot && machine.lastSnapshot.settings
         ? machine.lastSnapshot.settings
         : {setting:machine.assignedSetting || 1, completeLimitPt:19000};
       machine.locked = false; machine.currentSessionId = ""; machine.currentPlayerName = ""; machine.lastEndedSession = null; machine.lastSnapshot = {machineId:machine.machineId, stats:null, settings:preservedSettings, updatedAt:ms()}; machine.resetSerial = Number(machine.resetSerial || 0) + 1;
       await upsertMachine(machine);
       const row = await insertCommand(machine.machineId, {type:"reset", reason:"admin-reset"});
-      return json(res, 200, {ok:true, delivered:true, commandId:row.id});
+      return json(res, 200, {ok:true, delivered:true, commandId:row.id, machine:publicMachine(machine, machineTotalFor(machine, []))});
     }
     m = pathname.match(/^\/api\/admin\/machines\/([^/]+)\/force-end$/);
     if(m && req.method === "POST"){

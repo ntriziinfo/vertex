@@ -34,6 +34,16 @@ let machineNames = new Map();
 const params = new URLSearchParams(location.search);
 const entryMachineId = params.get('machine') || '';
 function machineName(machineId){ return machineNames.get(String(machineId)) || String(machineId || ''); }
+// Same-origin admin tabs can wake the game without waiting for its next poll.
+// Only the notification crosses origins; the game still fetches its server queue.
+try{
+  const commandWakeChannel = new BroadcastChannel('vertex-command-wake');
+  commandWakeChannel.onmessage = event=>{
+    if(!active || !slotOrigin || event.data?.type !== 'vertex-commands-available') return;
+    if(String(event.data.machineId) !== String(active.machineId)) return;
+    $('slot').contentWindow?.postMessage({type:'vertex-commands-available', machineId:String(active.machineId)}, slotOrigin);
+  };
+}catch(error){}
 async function loadBranding(){
   try{
     const [configResponse, machinesResponse] = await Promise.all([fetch('/api/config'), fetch('/api/machines')]);

@@ -790,7 +790,7 @@ const server = http.createServer(async (req, res)=>{
       const delivered = sendCommand(machine.machineId, {type:"reset", reason:"admin-reset", id:makeId("cmd")});
       saveState();
       broadcastMachines();
-      return sendJson(res, 200, {ok:true, delivered});
+      return sendJson(res, 200, {ok:true, delivered, machine:publicMachine(machine, machineTotalFor(machine, []))});
     }
 
     const stateMatch = url.pathname.match(/^\/api\/machines\/([^/]+)\/state$/);
@@ -877,7 +877,7 @@ const server = http.createServer(async (req, res)=>{
       const delivered = sendCommand(machine.machineId, {type:"applySettings", settings, id:makeId("cmd")});
       saveState();
       broadcastMachines();
-      return sendJson(res, 200, {ok:true, setting, completeLimitPt, delivered});
+      return sendJson(res, 200, {ok:true, setting, completeLimitPt, delivered, machine:publicMachine(machine, machineTotalFor(machine, []))});
     }
 
     const commandMatch = url.pathname.match(/^\/api\/machines\/([^/]+)\/command$/);

@@ -65,6 +65,13 @@
 const $ = id => document.getElementById(id);
 let machines = [];
 let sessionResults = [];
+const machineOperations = new Map();
+const machineDrafts = new Map();
+let machineListRevision = 0;
+let machineListRequest = 0;
+let bulkOperationBusy = false;
+let commandWakeChannel = null;
+try{ commandWakeChannel = new BroadcastChannel('vertex-command-wake'); }catch(error){}
 const ADMIN_STORAGE_KEY = 'vertexAdminPassword';
 const MACHINE_VIEW_STORAGE_KEY = 'vertexAdminMachineView';
 let adminSecret = sessionStorage.getItem(ADMIN_STORAGE_KEY) || '';
@@ -300,6 +307,8 @@ function setMachineDataView(view){
   renderMachines();
 }
 function renderMachines(){
+  const focusedField = document.activeElement?.matches('.settingMini') ? document.activeElement.id : '';
+  const selectedMachine = $('machineSelect').value;
   updateMachineViewControls();
   const floorMachines = liveMachines();
   const floorProfit = floorMachines.reduce((sum, machine) => sum + statsProfit(totalViewForMachine(machine).stats), 0);
@@ -316,13 +325,15 @@ function renderMachines(){
   if(floorAverageRtpEl) floorAverageRtpEl.textContent = `${floorAverageRtp.toFixed(1)}%`;
   $('machineCountLabel').textContent = `${floorMachines.length}台`;
   $('machineSelect').innerHTML = liveMachines().map(m => `<option value="${escapeHtml(m.machineId)}">${escapeHtml(machineLabel(m))}</option>`).join('');
+  if([...$('machineSelect').options].some(option=>option.value === selectedMachine)) $('machineSelect').value = selectedMachine;
   renderJackpotPools();
   $('machines').innerHTML = liveMachines().map(m => {
     const view = displayViewForMachine(m);
     const s = view.stats || {};
     m._displayHistory = view.history;
     const st = status(m);
-    const settingStats = m.stats || {};
+    const draft = machineDrafts.get(String(m.machineId));
+    const operation = machineOperations.get(String(m.machineId));
     return `<article class="machine">
       <h3>${escapeHtml(machineLabel(m))} <span class="pill ${st[1]}">${st[0]}</span></h3>
       <div class="muted">${escapeHtml(machineTypeLabel(m))}${m.poolId ? ' / プール: ' + escapeHtml(m.poolId) : ''}</div>
@@ -341,18 +352,20 @@ function renderMachines(){
         <div class="stat"><span>最高</span><b>${signed(graphBounds(m).max)}</b></div>
         <div class="stat"><span>最低</span><b>${signed(graphBounds(m).min)}</b></div>
       </div>
-      <div class="row">
-        <label class="field"><span>設定</span><select class="settingMini" id="setting-${m.machineId}">${[1,2,3,4,5,6].map(n => '<option value="' + n + '" ' + (String((settingStats.setting || m.assignedSetting || 1)) === String(n) ? 'selected' : '') + '>設定' + n + '</option>').join('')}</select></label>
-        ${m.capabilities && m.capabilities.completeLimit ? `<label class="field"><span>コンプリート発動枚数</span><input class="settingMini" id="complete-limit-${m.machineId}" type="number" min="1" max="999999" step="1" value="${Math.max(1, Number(m.settings && m.settings.completeLimitPt) || 19000)}"></label>` : ''}
+      <fieldset class="row" style="border:0;padding:0;margin:0;min-width:0" id="controls-${m.machineId}" ${operation?.busy ? 'disabled' : ''}>
+        <label class="field"><span>設定</span><select class="settingMini" id="setting-${m.machineId}" onchange="rememberMachineDraft('${m.machineId}')">${[1,2,3,4,5,6].map(n => '<option value="' + n + '" ' + (String(draft?.setting ?? machineSettingValue(m)) === String(n) ? 'selected' : '') + '>設定' + n + '</option>').join('')}</select></label>
+        ${m.capabilities && m.capabilities.completeLimit ? `<label class="field"><span>コンプリート発動枚数</span><input class="settingMini" id="complete-limit-${m.machineId}" type="number" min="1" max="999999" step="1" value="${escapeHtml(draft?.completeLimitPt ?? machineCompleteLimitValue(m))}" oninput="rememberMachineDraft('${m.machineId}')"></label>` : ''}
         <button onclick="applySetting('${m.machineId}')">設定反映</button>
         ${m.machineType==='nova' ? `<button class="ghost" aria-pressed="${m.capabilities?.superSpeedAllowed===true}" onclick="setSuperSpeed('${m.machineId}',${m.capabilities?.superSpeedAllowed!==true},this)">超ハイスピード ${m.capabilities?.superSpeedAllowed===true?'ON':'OFF'}</button>` : ''}
         <button class="danger" ${m.currentSessionId || m.lastEndedSession || m.stats ? '' : 'disabled'} onclick="forceEndMachine('${m.machineId}')">強制終了</button>
         <button class="danger" onclick="resetMachine('${m.machineId}')">管理リセット</button>
         <button class="ghost" onclick="location.href='/play.html?machine=${m.machineId}'">入口</button>
-      </div>
+      </fieldset>
+      <div class="muted" id="operation-${m.machineId}" role="status" aria-live="polite">${escapeHtml(operation?.message || '')}</div>
     </article>`;
   }).join('');
   renderAdminSlumpGraphs();
+  if(focusedField) $(focusedField)?.focus({preventScroll:true});
 }
 function renderJackpotPools(){
   const panel = $('jackpotAdminPanel');
@@ -399,8 +412,10 @@ async function setJackpotAmount(poolId, value){
 }
 function escapeHtml(v){ return String(v ?? '').replace(/[&<>'"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
 async function loadMachines(){
+  const revision = machineListRevision, request = ++machineListRequest;
   const res = await fetch('/api/machines', {cache:'no-store'});
   const data = await res.json().catch(() => null);
+  if(revision !== machineListRevision || request !== machineListRequest || [...machineOperations.values()].some(value=>value.busy)) return false;
   if(!res.ok || !Array.isArray(data)){
     const statusEl = $('bulkStatus');
     if(statusEl) statusEl.textContent = '台一覧の更新に失敗しました。前回の表示を維持しています。';
@@ -452,17 +467,45 @@ async function setSuperSpeed(id,enabled,button){
   }catch(error){alert(error.message);button.disabled=false;}
 }
 async function applySetting(id){
-  const machine = machineRows().find(row=>String(row.machineId) === String(id));
-  const el = document.getElementById('setting-' + id);
-  const value = el ? el.value : '1';
-  const completeLimitEl = document.getElementById('complete-limit-' + id);
-  const completeLimitPt = Math.max(1, Math.min(999999, Math.round(Number(completeLimitEl && completeLimitEl.value) || 19000)));
-  const res = await fetch('/api/admin/machines/' + encodeURIComponent(id) + '/setting', {method:'POST', headers:{'Content-Type':'application/json', ...adminHeaders()}, body:JSON.stringify({setting:value, completeLimitPt})});
-  const data = await res.json();
-  if(!data.ok){ alert(data.error || '設定反映に失敗しました'); return; }
-  const completeText = machine && machine.capabilities && machine.capabilities.completeLimit ? '・コンプリート' + data.completeLimitPt + '枚' : '';
-  alert(machineLabelById(id) + 'へ設定' + data.setting + completeText + 'を反映しました');
-  await loadMachines();
+  if(machineOperations.get(String(id))?.busy) return;
+  rememberMachineDraft(id);
+  const draft = machineDrafts.get(String(id));
+  setMachineOperation(id, true, '設定を送信中…');
+  try{
+    const data = await submitMachineUpdate(id, 'setting', draft);
+    setMachineOperation(id, false, `設定${data.setting}を保存・台へ送信しました`);
+  }catch(error){ setMachineOperation(id, false, error.message); }
+}
+function rememberMachineDraft(id){
+  machineDrafts.set(String(id), {setting:$('setting-' + id)?.value || '1', completeLimitPt:$('complete-limit-' + id)?.value || 19000});
+}
+function setMachineOperation(id, busy, message){
+  machineListRevision++;
+  machineOperations.set(String(id), {busy, message});
+  const controls = $('controls-' + id), status = $('operation-' + id);
+  if(controls) controls.disabled = busy;
+  if(status) status.textContent = message;
+  document.querySelectorAll('.bulkAction').forEach(button=>{ button.disabled = bulkOperationBusy || [...machineOperations.values()].some(value=>value.busy); });
+}
+async function submitMachineUpdate(id, action, body){
+  const res = await fetch('/api/admin/machines/' + encodeURIComponent(id) + '/' + action, {
+    method:'POST', headers:{'Content-Type':'application/json', ...adminHeaders()},
+    body:body ? JSON.stringify(body) : undefined, signal:AbortSignal.timeout(35000)
+  });
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok || !data.ok) throw new Error(data.error || '更新に失敗しました。台の状態を確認してください。');
+  machineListRevision++;
+  machineDrafts.delete(String(id));
+  if(data.machine){
+    machines = machineRows().map(machine=>String(machine.machineId) === String(id)
+      ? {...machine, ...data.machine, jackpotPool:data.machine.jackpotPool || machine.jackpotPool} : machine);
+    renderMachines();
+  }else{
+    // Compatibility while the server is being deployed.
+    void loadMachines().catch(()=>{});
+  }
+  try{ commandWakeChannel?.postMessage({type:'vertex-commands-available', machineId:String(id)}); }catch(error){}
+  return data;
 }
 function machineSettingValue(machine){
   return Math.max(1, Math.min(6, Math.round(Number(machine && machine.settings && machine.settings.setting) || Number(machine && machine.assignedSetting) || 1)));
@@ -480,28 +523,29 @@ function machineCompleteLimitValue(machine){
   return Math.max(1, Math.min(999999, Math.round(Number(machine && machine.settings && machine.settings.completeLimitPt) || 19000)));
 }
 function setBulkBusy(busy, message=''){
-  document.querySelectorAll('.bulkAction').forEach(button => { button.disabled = !!busy; });
+  bulkOperationBusy = !!busy;
+  document.querySelectorAll('.bulkAction').forEach(button => { button.disabled = !!busy || [...machineOperations.values()].some(value=>value.busy); });
   const statusEl = $('bulkStatus');
   if(statusEl) statusEl.textContent = message;
 }
 async function updateMachineSettings(machine, setting, completeLimitPt){
-  const res = await fetch('/api/admin/machines/' + encodeURIComponent(machine.machineId) + '/setting', {
-    method:'POST',
-    headers:{'Content-Type':'application/json', ...adminHeaders()},
-    body:JSON.stringify({setting, completeLimitPt})
-  });
-  const data = await res.json().catch(() => ({}));
-  if(!res.ok || !data.ok) throw new Error(data.error || '設定反映に失敗しました');
-  return data;
+  return submitMachineUpdate(machine.machineId, 'setting', {setting, completeLimitPt});
 }
 async function runBulkOperation(label, operation){
+  if(bulkOperationBusy || [...machineOperations.values()].some(value=>value.busy)) return false;
   const targets = liveMachines();
   if(!targets.length){ alert('対象台がありません'); return false; }
   setBulkBusy(true, `${label}中... 0/${targets.length}台`);
   let completed = 0;
   const results = await Promise.allSettled(targets.map(async machine => {
+    setMachineOperation(machine.machineId, true, `${label}中…`);
     try{
-      return await operation(machine);
+      const data = await operation(machine);
+      setMachineOperation(machine.machineId, false, `${label}を保存・台へ送信しました`);
+      return data;
+    }catch(error){
+      setMachineOperation(machine.machineId, false, error.message);
+      throw error;
     }finally{
       completed += 1;
       setBulkBusy(true, `${label}中... ${completed}/${targets.length}台`);
@@ -509,7 +553,6 @@ async function runBulkOperation(label, operation){
   }));
   const failedIds = results.map((result, index) => result.status === 'rejected' ? targets[index].machineId : '').filter(Boolean);
   setBulkBusy(false, failedIds.length ? `${label}失敗: ${failedIds.join('・')}番台` : `${label}完了: ${targets.length}台`);
-  await Promise.all([loadMachines(), loadResults()]);
   if(failedIds.length){
     alert(`${label}に失敗した台: ${failedIds.join('・')}番台`);
     return false;
@@ -557,7 +600,6 @@ async function applyBulkRandomSettings(){
   if(ok){
     const statusEl = $('bulkStatus');
     if(statusEl) statusEl.textContent = `平均${targetRtp}%を反映: ${summary}`;
-    alert(`全${targets.length}台へ平均機械割${targetRtp}%のランダム設定を反映しました\n${summary}`);
   }
 }
 async function applyBulkCompleteLimit(){
@@ -565,21 +607,14 @@ async function applyBulkCompleteLimit(){
   const targetCount = liveMachines().length;
   $('bulkCompleteLimit').value = String(completeLimitPt);
   if(!confirm(`全${targetCount}台のコンプリート発動枚数を${fmt(completeLimitPt)}ptへ変更します。\n各台の設定番号は変更しません。`)) return;
-  const ok = await runBulkOperation('コンプリート枚数一括変更', machine => updateMachineSettings(machine, machineSettingValue(machine), completeLimitPt));
-  if(ok) alert(`全${targetCount}台のコンプリート発動枚数を${fmt(completeLimitPt)}ptへ変更しました`);
+  await runBulkOperation('コンプリート枚数一括変更', machine => updateMachineSettings(machine, machineSettingValue(machine), completeLimitPt));
 }
 async function resetAllMachines(){
   const targets = liveMachines();
   const activeCount = targets.filter(machine => machine.currentSessionId || machine.locked).length;
   const warning = activeCount ? `\n\n現在使用中または終了待ちの台が${activeCount}台あります。` : '';
   if(!confirm(`全${targets.length}台を管理リセットします。\nスランプグラフと終了保持データも消えます。${warning}`)) return;
-  const ok = await runBulkOperation('全台リセット', async machine => {
-    const res = await fetch(`/api/admin/machines/${encodeURIComponent(machine.machineId)}/reset`, {method:'POST', headers:adminHeaders()});
-    const data = await res.json().catch(() => ({}));
-    if(!res.ok || !data.ok) throw new Error(data.error || 'リセット失敗');
-    return data;
-  });
-  if(ok) alert(`全${targets.length}台をリセットしました`);
+  await runBulkOperation('全台リセット', machine => submitMachineUpdate(machine.machineId, 'reset'));
 }
 async function forceEndMachine(id){
   const label = machineLabelById(id);
@@ -598,11 +633,13 @@ async function forceEndMachine(id){
   await Promise.all([loadMachines(), loadResults()]);
 }
 async function resetMachine(id){
+  if(machineOperations.get(String(id))?.busy) return;
   if(!confirm(`${machineLabelById(id)}をリセットします。スランプグラフと終了保持データも消えます。`)) return;
-  const res = await fetch(`/api/admin/machines/${encodeURIComponent(id)}/reset`, {method:'POST', headers:adminHeaders()});
-  const data = await res.json();
-  if(!data.ok) alert(data.error || 'リセット失敗');
-  await Promise.all([loadMachines(), loadResults()]);
+  setMachineOperation(id, true, 'リセットを送信中…');
+  try{
+    await submitMachineUpdate(id, 'reset');
+    setMachineOperation(id, false, 'リセットを保存・台へ送信しました');
+  }catch(error){ setMachineOperation(id, false, error.message); }
 }
 async function verifyAdminPassword(password){
   try{
