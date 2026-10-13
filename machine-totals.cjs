@@ -1,5 +1,6 @@
 const ROLE_STAT_KEYS = ["normalRoleGames", "normalRoleSuikaCount", "normalRoleWeakNovaCount", "normalRoleStrongNovaCount", "normalRoleReplayCount", "normalRoleBellCount", "normalRoleNaviBellCount"];
-const STAT_KEYS = ["totalSpins", "bigCount", "midCount", "atFirstCount", "totalFee", "totalPaid", ...ROLE_STAT_KEYS];
+const DATA_STAT_KEYS = ["dataNormalGames", "dataAtGames", "dataHitSeq"];
+const STAT_KEYS = ["totalSpins", "bigCount", "midCount", "atFirstCount", "totalFee", "totalPaid", ...ROLE_STAT_KEYS, ...DATA_STAT_KEYS];
 
 function num(value){
   return Number(value) || 0;
@@ -55,6 +56,9 @@ function playerView(endStats={}, startStats={}, explicit={}){
   const baselineStats = countersReset ? {} : startStats;
   const stats = {};
   for(const key of STAT_KEYS) stats[key] = Math.max(0, stat(endStats, key) - stat(baselineStats, key));
+  stats.dataHits=(Array.isArray(endStats.dataHits)?endStats.dataHits:[])
+    .filter(hit=>num(hit.seq)>stat(baselineStats,'dataHitSeq')&&['BIG','AT','ZONE'].includes(hit.kind))
+    .slice(-20).map(hit=>({seq:num(hit.seq)-stat(baselineStats,'dataHitSeq'),spin:Math.max(0,num(hit.spin)-stat(baselineStats,'totalSpins')),kind:hit.kind,zone:String(hit.zone||''),games:Math.max(0,num(hit.games))}));
   const explicitMap = {
     totalSpins:"playerSpins",
     bigCount:"playerBigCount",
@@ -93,7 +97,7 @@ function playerViewForResult(record){
 }
 
 function emptyTotal(){
-  const stats = {...Object.fromEntries(STAT_KEYS.map(key=>[key,0])), atFirstCountPartial:false, profit:0};
+  const stats = {...Object.fromEntries(STAT_KEYS.map(key=>[key,0])), dataHits:[], atFirstCountPartial:false, profit:0};
   const history = [{spin:0, profit:0}];
   stats.slumpHistory = history;
   return {stats, history};
@@ -102,6 +106,12 @@ function emptyTotal(){
 function appendPlayerView(aggregate, view){
   const baseSpin = stat(aggregate.stats, "totalSpins");
   const baseProfit = statsProfit(aggregate.stats);
+  const baseHitSeq=stat(aggregate.stats,'dataHitSeq');
+  for(const hit of view.stats.dataHits||[]){
+    const spin=baseSpin+num(hit.spin),previous=aggregate.stats.dataHits.at(-1);
+    aggregate.stats.dataHits.push({...hit,seq:baseHitSeq+num(hit.seq),spin,games:previous?Math.max(0,spin-previous.spin):num(hit.games)});
+  }
+  aggregate.stats.dataHits=aggregate.stats.dataHits.slice(-20);
   for(const key of STAT_KEYS) aggregate.stats[key] = stat(aggregate.stats, key) + stat(view.stats, key);
   aggregate.stats.atFirstCountPartial ||= !!view.stats.atFirstCountPartial;
   aggregate.stats.profit = baseProfit + statsProfit(view.stats);
@@ -204,8 +214,8 @@ function completedMachineTotal(machine, record, records=[]){
 }
 
 function machineDisplayBaseline(machine, records=[]){
-  const {stats}=machineTotalFor({...machine,currentSessionId:'',lastSnapshot:null},records);
-  return {...Object.fromEntries(ROLE_STAT_KEYS.map(key=>[key,stat(stats,key)])),totalSpins:stats.totalSpins,bigCount:stats.bigCount,atFirstCount:stats.atFirstCount,
+  const {stats,history}=machineTotalFor({...machine,currentSessionId:'',lastSnapshot:null},records);
+  return {...Object.fromEntries([...ROLE_STAT_KEYS,...DATA_STAT_KEYS].map(key=>[key,stat(stats,key)])),dataHits:stats.dataHits,slumpHistory:compactHistory(history,40),profit:stats.profit,totalSpins:stats.totalSpins,bigCount:stats.bigCount,atFirstCount:stats.atFirstCount,
     atFirstCountPartial:stats.atFirstCountPartial,sinceBonus:num(machine.lastSnapshot?.machineDisplayStats?.sinceBonus ?? machine.lastSnapshot?.normalState?.sinceBonus)};
 }
 

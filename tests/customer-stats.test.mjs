@@ -78,3 +78,19 @@ test('normal small-role counters persist across player deltas, checkpoints and r
   assert.equal(machineTotalFor(machine).stats.normalRoleGames,0);
   assert.equal(machineDisplayBaseline(machine).normalRoleSuikaCount,0);
 });
+
+test('bounded BIG AT and special-zone history spans player changes with cumulative game offsets',()=>{
+ const machine={machineId:'nova-01',resetSerial:1};
+ const first={machineId:machine.machineId,sessionId:'first',resetSerial:1,stats:{totalSpins:500,atFirstCount:1,dataNormalGames:400,dataAtGames:100,dataHitSeq:2,dataHits:[{seq:1,spin:350,kind:'BIG',zone:'',games:350},{seq:2,spin:400,kind:'AT',zone:'',games:50}]}};
+ machine.lastEndedSession={sessionId:first.sessionId,record:first,machineTotal:completedMachineTotal(machine,first)};
+ const baseline=machineDisplayBaseline(machine);assert.equal(baseline.dataNormalGames,400);assert.equal(baseline.dataHits.length,2);
+ const start={totalSpins:50,dataNormalGames:50,dataHitSeq:1};
+ const next={machineId:machine.machineId,sessionId:'next',resetSerial:1,startStats:start,stats:{totalSpins:250,dataNormalGames:100,dataAtGames:150,dataHitSeq:3,dataHits:[{seq:1,spin:30,kind:'BIG',games:30},{seq:2,spin:150,kind:'ZONE',zone:'sora',games:120},{seq:3,spin:200,kind:'ZONE',zone:'sora',games:50}]}};
+ const saved=completedMachineTotal(machine,next);machine.lastEndedSession={sessionId:next.sessionId,record:next,machineTotal:saved};
+ const end=machineDisplayBaseline(machine);
+ assert.equal(end.totalSpins,700);assert.equal(end.dataNormalGames,450);assert.equal(end.dataAtGames,250);
+ assert.deepEqual(end.dataHits.map(h=>[h.kind,h.spin,h.games]),[['BIG',350,350],['AT',400,50],['ZONE',600,200],['ZONE',650,50]]);
+ assert.equal(end.dataHitSeq,4);
+ assert(end.slumpHistory.length<=40);assert(encodeURIComponent(JSON.stringify(end)).length<12000);
+ machine.resetSerial++;assert.equal(machineDisplayBaseline(machine).dataHits.length,0);
+});
