@@ -1,57 +1,10 @@
 <!doctype html>
-<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0c0b16">
-<title>NEBULA | モニター</title>
-<style>
-:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% 0,#29203d,transparent 65%),#0c0b16;color:#f6f3ff;font:14px -apple-system,BlinkMacSystemFont,"Segoe UI","Yu Gothic",sans-serif}a{color:#cabbef;text-decoration:none}a:focus-visible{outline:3px solid #c3b2ff;outline-offset:5px}.wrap{max-width:1040px;margin:auto;padding:20px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid #343044;padding-bottom:18px}.brand{font-weight:800;letter-spacing:.15em;font-size:21px}.heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:22px 0 16px}.heading h1{margin:0;font-size:22px}.badge{flex-shrink:0;color:#9af1d0;background:#17372f;border:1px solid #386b5b;border-radius:30px;padding:9px 14px;font-size:13px;font-weight:700}.badge:before{content:'';display:inline-block;background:#9af1d0;width:7px;height:7px;border-radius:50%;margin-right:8px}.screen{position:relative;overflow:hidden;border-radius:12px;border:1px solid #443852;background:#080610;min-height:240px;aspect-ratio:960/830}.screen iframe{position:absolute;left:0;top:0;border:0;width:960px;height:1610px;transform-origin:0 0;pointer-events:none}.cover{position:absolute;inset:0;display:grid;place-content:center;gap:12px;text-align:center;background:#100d1bed;padding:28px;z-index:2}.cover strong{font-size:18px}.cover p{max-width:440px;margin:0;color:#b8afc8;line-height:1.8}.cover[hidden]{display:none}.meta{display:flex;justify-content:space-between;gap:16px;color:#aba1be;font-size:12px;margin:14px 0;line-height:1.8}.note{color:#93899f;font-size:12px;line-height:1.8}@media(max-width:600px){.wrap{padding:16px 12px}.brand{font-size:19px}.heading h1{font-size:19px}.meta{display:block}.badge{padding:8px 11px}.screen{border-radius:8px}}
-</style></head><body><main class="wrap">
-<header class="top"><span class="brand">NEBULA</span><a href="/machines.html">← 台選びに戻る</a></header>
-<div class="heading"><h1 id="name">NOVA</h1><span class="badge">モニター中</span></div>
-<div class="screen" id="screen"><iframe id="mirror" title="遊技画面（観戦専用）" sandbox="allow-scripts allow-same-origin" allow="autoplay" tabindex="-1" inert></iframe><div class="cover" id="cover" role="status"><strong id="status">接続しています</strong><p id="detail">遊技画面の同期を待っています。</p></div></div>
-<div class="meta"><span id="updated">画面を取得中</span><span>観戦専用・操作できません</span></div>
-<p class="note">画面は約1〜2秒ごとに同期します。演出には通信による遅れがあります。音声は再生されません。</p>
-</main><script>
-'use strict';
-const $=id=>document.getElementById(id), id=new URLSearchParams(location.search).get('machine')||'';
-const frame=$('mirror');let gameOrigin='',ready=false,last=0,received=0,lease=0,timer,busy=false,active=true,pending;
-function size(){const scale=$('screen').clientWidth/960;frame.style.transform=`scale(${scale}) translateY(-430px)`;}
-new ResizeObserver(size).observe($('screen'));size();
-function send(data){if(ready&&gameOrigin)frame.contentWindow.postMessage(data,gameOrigin);}
-function clear(title,detail){pending=null;last=0;$('status').textContent=title;$('detail').textContent=detail;$('cover').hidden=false;send({type:'nova-monitor-clear'});}
-window.addEventListener('message',e=>{if(e.source!==frame.contentWindow||e.origin!==gameOrigin||e.data?.type!=='nova-monitor-renderer-ready')return;ready=true;if(pending)send({type:'nova-monitor-frame',screen:pending});});
-async function request(path,method='GET'){
-  const response=await fetch('/api/machines/'+encodeURIComponent(id)+'/monitor'+path,{method,cache:'no-store',signal:AbortSignal.timeout(8000)});
-  if(!response.ok)throw Error('connection');return response.json();
-}
-async function tick(){
-  clearTimeout(timer);if(!active||document.hidden||busy)return;busy=true;
-  try{
-    if(Date.now()-lease>20000){await request('/watch','POST');lease=Date.now();}
-    const data=await request('?since='+last);
-    if(!active||document.hidden)return;
-    if(data.status==='live'){
-      if(data.screen){pending=data.screen;send({type:'nova-monitor-frame',screen:pending});}
-      last=data.updatedAt;received=Date.now();$('cover').hidden=false;
-      if(ready&&pending)$('cover').hidden=true;
-      $('updated').textContent='同期中 · '+new Date(data.updatedAt).toLocaleTimeString('ja-JP');
-    }else if(data.status==='idle'){
-      clear('現在この台は遊技されていません','遊技が始まると、ここに画面が表示されます。');$('updated').textContent='空き台';
-    }else{
-      clear('遊技画面の同期を待っています','遊技者の接続状況により時間がかかる場合があります。機能追加前から開いている遊技画面は、更新後に対応します。');$('updated').textContent='接続待ち';
-    }
-  }catch{if(Date.now()-received>5000)clear('通信を再接続しています','画面を取得できませんでした。自動で再接続します。');$('updated').textContent='再接続中';}
-  finally{busy=false;if(active&&!document.hidden)timer=setTimeout(tick,1000);}
-}
-async function init(){
-  try{
-    const response=await fetch('/api/config',{cache:'no-store',signal:AbortSignal.timeout(8000)});if(!response.ok)throw Error();
-    const config=await response.json();if(!['store-nebula','store-debug'].includes(config.storeId))throw Error();
-    const machine=await request('/watch','POST');lease=Date.now();
-    gameOrigin=new URL(machine.gameOrigin).origin;$('name').textContent=machine.displayName;document.title=machine.displayName+' | モニター中';
-    frame.src=gameOrigin+'/nova-monitor.html?parent='+encodeURIComponent(location.origin);await tick();
-  }catch{active=false;clear('台を確認できませんでした','台選びに戻り、モニターボタンから開き直してください。');$('updated').textContent='接続できませんでした';}
-}
-document.addEventListener('visibilitychange',()=>{clearTimeout(timer);if(document.hidden){clear('モニターを一時停止しています','画面に戻ると再接続します。');}else if(active){lease=0;tick();}});
-window.addEventListener('pagehide',()=>{active=false;clearTimeout(timer);send({type:'nova-monitor-clear'});});
-window.addEventListener('pageshow',e=>{if(e.persisted){active=true;lease=0;tick();}});
-init();
-</script></body></html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="refresh" content="0;url=/machines.html">
+  <title>台選びへ移動</title>
+</head>
+<body><p>モニター機能は終了しました。<a href="/machines.html">台選びへ戻る</a></p></body>
+</html>

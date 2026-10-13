@@ -9,6 +9,27 @@ import {
   sanitizePublicMachine
 } from "../api/gateway.mjs";
 
+test("retired monitor routes reject reads and uploads without accessing storage or body", async ()=>{
+  const {default:gateway} = await import("../api/gateway.mjs");
+  const originalFetch = globalThis.fetch;
+  let fetches = 0;
+  globalThis.fetch = async ()=>{fetches++; throw Error("unexpected storage access");};
+  try{
+    for(const [method, suffix] of [["GET", ""], ["POST", "/watch"], ["POST", "/frame"]]){
+      const req = {query:{path:"machines/nova-01/monitor"+suffix}, method, headers:{},
+        get body(){throw Error("unexpected body read");}};
+      const res = {headers:{}, setHeader(key,value){this.headers[key]=value;}, end(body){this.body=body;}};
+      await gateway(req, res);
+      assert.equal(res.statusCode, 410);
+      assert.equal(res.headers["Cache-Control"], "no-store");
+      assert.equal(JSON.parse(res.body).ok, false);
+    }
+    assert.equal(fetches, 0);
+  }finally{
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("constant-time comparison is exact", ()=>{
   assert.equal(constantTimeEqual("correct", "correct"), true);
   assert.equal(constantTimeEqual("correct", "wrong"), false);

@@ -1,7 +1,6 @@
 import * as crypto from "node:crypto";
 import machineConfig from "../machine-config.cjs";
 import {scopeHeaders} from "../supabase-scope.mjs";
-import {monitorRequest} from "../monitor-api.mjs";
 
 const {
   STORE_ID,
@@ -538,20 +537,12 @@ export default async function gateway(req, res){
       if(!adminRequestOk(req)) return sendJson(res, req, 401, {ok:false, error:"admin password required"});
     }
 
-    const body = await readLimitedBody(req);
-
-    const monitorMatch=pathname.match(/^\/api\/machines\/([^/]+)\/monitor(?:\/(watch|frame))?$/);
-    if(monitorMatch){
-      if(!['store-nebula','store-debug'].includes(STORE_ID))return sendJson(res,req,404,{ok:false,error:'not found'});
-      const id=decodeURIComponent(monitorMatch[1]);
-      const result=await monitorRequest({req,body,id,action:monitorMatch[2]||'',definition:MACHINE_DEFINITIONS.find(m=>m.machineId===id),db:supabase,
-        authenticate:async(req,id,body)=>{
-          const active=await assertActiveSession(req,id,body);
-          if(!active.machine.locked||!active.session.token||!requestSessionToken(req,body)||!constantTimeEqual(requestSessionToken(req,body),active.session.token))throw Object.assign(new Error('session token required'),{statusCode:401});
-          return active;
-        }});
-      return sendJson(res,req,result.status,result.data);
+    // Retire old clients without reading credentials, snapshots or the database.
+    if(/^\/api\/machines\/[^/]+\/monitor(?:\/.*)?$/.test(pathname)){
+      return sendJson(res,req,410,{ok:false,error:'monitor discontinued'});
     }
+
+    const body = await readLimitedBody(req);
 
     if(pathname === "/api/sessions/end" && req.method === "POST"){
       await verifySessionEnd(body);
