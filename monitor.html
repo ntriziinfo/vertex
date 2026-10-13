@@ -44,7 +44,7 @@ async function tick(){
 async function init(){
   try{
     const response=await fetch('/api/config',{cache:'no-store',signal:AbortSignal.timeout(8000)});if(!response.ok)throw Error();
-    const config=await response.json();if(config.storeId!=='store-nebula')throw Error();
+    const config=await response.json();if(!['store-nebula','store-debug'].includes(config.storeId))throw Error();
     const machine=await request('/watch','POST');lease=Date.now();
     gameOrigin=new URL(machine.gameOrigin).origin;$('name').textContent=machine.displayName;document.title=machine.displayName+' | モニター中';
     frame.src=gameOrigin+'/nova-monitor.html?parent='+encodeURIComponent(location.origin);await tick();

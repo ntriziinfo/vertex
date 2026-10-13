@@ -542,7 +542,7 @@ export default async function gateway(req, res){
 
     const monitorMatch=pathname.match(/^\/api\/machines\/([^/]+)\/monitor(?:\/(watch|frame))?$/);
     if(monitorMatch){
-      if(STORE_ID!=='store-nebula')return sendJson(res,req,404,{ok:false,error:'not found'});
+      if(!['store-nebula','store-debug'].includes(STORE_ID))return sendJson(res,req,404,{ok:false,error:'not found'});
       const id=decodeURIComponent(monitorMatch[1]);
       const result=await monitorRequest({req,body,id,action:monitorMatch[2]||'',definition:MACHINE_DEFINITIONS.find(m=>m.machineId===id),db:supabase,
         authenticate:async(req,id,body)=>{

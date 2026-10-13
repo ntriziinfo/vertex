@@ -559,7 +559,7 @@ export default async function handler(req, res){
         getMachine(machineId),
         sb("machine_commands?machine_id=eq." + encodeURIComponent(machineId) + "&id=gt." + encodeURIComponent(String(since)) + "&select=*&order=id.asc&limit=25")
       ]);
-      return json(res, 200, {ok:true, controls:{superSpeedAllowed:machine.machineType==='nova' && machine.capabilities.superSpeedAllowed===true,...(STORE_ID==='store-nebula'?{monitorRequestedUntil:machine.monitorRequestedUntil||0}:{})}, commands:rows.map(row=>({id:Number(row.id), machineId:String(row.machine_id), command:row.command || {}, createdAtMs:Number(row.created_at_ms || 0)}))});
+      return json(res, 200, {ok:true, controls:{superSpeedAllowed:machine.machineType==='nova' && machine.capabilities.superSpeedAllowed===true,...(['store-nebula','store-debug'].includes(STORE_ID)?{monitorRequestedUntil:machine.monitorRequestedUntil||0}:{})}, commands:rows.map(row=>({id:Number(row.id), machineId:String(row.machine_id), command:row.command || {}, createdAtMs:Number(row.created_at_ms || 0)}))});
     }
     m = pathname.match(/^\/api\/admin\/machines\/([^/]+)\/super-speed$/);
     if(m && req.method === "POST"){

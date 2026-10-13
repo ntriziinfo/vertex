@@ -30,15 +30,16 @@ test('store-specific builds use Nebula customer entry without changing existing 
     fs.mkdirSync(path.join(temp,'scripts'));
     const files=['index.html','admin.html','machines.html','play.html','monitor.html','nebula-machines.html','scripts/build-static.mjs'];
     for(const file of files)fs.copyFileSync(new URL('../'+file,import.meta.url),path.join(temp,file));
-    for(const store of ['store-nebula','store-jag-one']){
-      const built=spawnSync(process.execPath,['scripts/build-static.mjs'],{cwd:temp,encoding:'utf8',env:{...process.env,VERTEX_STORE_ID:store}});
+    for(const [store,theme] of [['store-nebula',''],['store-jag-one',''],['store-debug','nebula']]){
+      const built=spawnSync(process.execPath,['scripts/build-static.mjs'],{cwd:temp,encoding:'utf8',env:{...process.env,VERTEX_STORE_ID:store,VERTEX_CUSTOMER_THEME:theme}});
       assert.equal(built.status,0,built.stderr);
       const read=file=>fs.readFileSync(path.join(temp,'dist',file),'utf8');
-      if(store==='store-nebula'){
+      if(store==='store-nebula'||theme==='nebula'){
         assert.equal(read('machines.html'),fs.readFileSync(path.join(temp,'nebula-machines.html'),'utf8'));
         assert.match(read('index.html'),/url=\/machines.html/);
         assert.match(read('play.html'),/<title>NEBULA/);
         assert.match(read('play.html'),/台選びに戻る/);
+        if(store==='store-debug')assert.match(read('admin.html'),/url=https:\/\/vertex-debug.vercel.app\/admin.html/);
       }else{
         for(const file of files.slice(0,4))assert.equal(read(file),fs.readFileSync(path.join(temp,file),'utf8'));
       }

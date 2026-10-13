@@ -75,7 +75,8 @@ async function load(){
     const responses=await Promise.all(['/api/config','/api/machines'].map(url=>fetch(url,{cache:'no-store',signal:AbortSignal.timeout(12000)})));
     if(responses.some(r=>!r.ok))throw Error('fetch');
     const [config,rows]=await Promise.all(responses.map(r=>r.json()));
-    if(config.storeId!=='store-nebula'||!Array.isArray(rows)||rows.length!==12||new Set(rows.map(m=>m.machineId)).size!==12||rows.some(m=>!/^nebula-nova-(0[1-9]|1[0-2])$/.test(m.machineId)||m.machineType!=='nova'))throw Error('store');
+    const idPattern=config.storeId==='store-debug'?/^nova-(0[1-9]|1[0-2])$/:config.storeId==='store-nebula'?/^nebula-nova-(0[1-9]|1[0-2])$/:null;
+    if(!idPattern||!Array.isArray(rows)||rows.length!==12||new Set(rows.map(m=>m.machineId)).size!==12||rows.some(m=>m.storeId!==config.storeId||!idPattern.test(m.machineId)||m.machineType!=='nova'))throw Error('store');
     machines=rows.sort((a,b)=>a.machineId.localeCompare(b.machineId));fresh=true;lastUpdate=Date.now();
     $('notice').hidden=true;$('updated').textContent=new Date(lastUpdate).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})+' 更新';render();
   }catch(error){
