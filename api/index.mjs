@@ -140,7 +140,8 @@ function machineFromRow(row){
     lastSnapshot:row.last_snapshot || projectedSnapshot,
     lastEndedSession:row.last_ended_session || null,
     updatedAt:Number(row.updated_at_ms || 0),
-    assignedSetting:Number(row.assigned_setting || 1)
+    assignedSetting:Number(row.assigned_setting || 1),
+    monitorRequestedUntil:Number(row.monitor_requested_until_ms || 0)
   };
 }
 function publicMachine(machine, machineTotal, jackpotPool=null){
@@ -558,7 +559,7 @@ export default async function handler(req, res){
         getMachine(machineId),
         sb("machine_commands?machine_id=eq." + encodeURIComponent(machineId) + "&id=gt." + encodeURIComponent(String(since)) + "&select=*&order=id.asc&limit=25")
       ]);
-      return json(res, 200, {ok:true, controls:{superSpeedAllowed:machine.machineType==='nova' && machine.capabilities.superSpeedAllowed===true}, commands:rows.map(row=>({id:Number(row.id), machineId:String(row.machine_id), command:row.command || {}, createdAtMs:Number(row.created_at_ms || 0)}))});
+      return json(res, 200, {ok:true, controls:{superSpeedAllowed:machine.machineType==='nova' && machine.capabilities.superSpeedAllowed===true,...(STORE_ID==='store-nebula'?{monitorRequestedUntil:machine.monitorRequestedUntil||0}:{})}, commands:rows.map(row=>({id:Number(row.id), machineId:String(row.machine_id), command:row.command || {}, createdAtMs:Number(row.created_at_ms || 0)}))});
     }
     m = pathname.match(/^\/api\/admin\/machines\/([^/]+)\/super-speed$/);
     if(m && req.method === "POST"){

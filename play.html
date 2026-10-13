@@ -139,6 +139,10 @@ window.addEventListener('message', event=>{
   if(event.source !== $('slot').contentWindow) return;
   if(slotOrigin && event.origin !== slotOrigin) return;
   const msg = event.data || {};
+  if(msg.type==='nova-monitor-ready' && active && slotOrigin){
+    $('slot').contentWindow.postMessage({type:'nova-monitor-session',machineId:active.machineId,sessionId:active.sessionId,token:active.token},slotOrigin);
+    return;
+  }
   if(!msg || !['jag-force-end', 'jackspot-force-end', 'vertex-force-end'].includes(msg.type)) return;
   if(active && (!msg.machineId || String(msg.machineId) === String(active.machineId))){
     endSession({skipConfirm:true, forced:true, snapshot:msg.snapshot || latestSlotSnapshot()});
