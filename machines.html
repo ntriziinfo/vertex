@@ -51,7 +51,7 @@ function render(machines){
     return `<article class="machine">
       <div class="head"><h2>${esc(m.displayName || m.machineId)}</h2><span class="pill ${free ? 'free' : 'lock'}">${free ? '空き' : '利用中'}</span></div>
       <canvas class="graph" data-machine="${esc(m.machineId)}"></canvas>
-      <div class="stats"><div class="stat"><span>G数</span><b>${fmt(s.totalSpins)}</b></div><div class="stat"><span>BB確率</span><b>${s.bigCount>0 && s.totalSpins>0 ? '1/'+(s.totalSpins/s.bigCount).toFixed(1) : '—'}</b></div><div class="stat"><span>${m.machineType==='nova'?'AT初当たり確率':'BB回数'}</span><b>${m.machineType==='nova'?atFirstRate(s):fmt(s.bigCount)+'回'}</b></div><div class="stat"><span>差pt</span><b>${signed(profit)}</b></div></div>
+      <div class="stats"><div class="stat"><span>総回転数</span><b>${fmt(s.totalSpins)} G</b></div><div class="stat"><span>BB確率</span><b>${s.bigCount>0 && s.totalSpins>0 ? '1/'+(s.totalSpins/s.bigCount).toFixed(1) : '—'}</b></div><div class="stat"><span>${m.machineType==='nova'?'AT初当たり確率':'BB回数'}</span><b>${m.machineType==='nova'?atFirstRate(s):fmt(s.bigCount)+'回'}</b></div><div class="stat"><span>現在差枚</span><b>${signed(profit)} pt</b></div></div>
       <div class="actions"><a class="${free ? '' : 'busy'}" href="/play.html?machine=${encodeURIComponent(m.machineId)}">${free ? 'この台で遊ぶ' : 'ただいま利用中・再入場'}</a></div>
     </article>`;
   }).join('');

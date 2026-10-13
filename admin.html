@@ -6,10 +6,11 @@
   <title>Vertex管理画面</title>
   <style>
     *{box-sizing:border-box} body{margin:0;background:#111318;color:#f7f4ea;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Yu Gothic",sans-serif} header{position:sticky;top:0;z-index:5;background:#171a21;border-bottom:1px solid #303641;padding:14px 20px;display:flex;gap:12px;align-items:center;justify-content:space-between} h1{font-size:20px;margin:0} main{padding:20px;display:grid;gap:18px}.panel{background:#1b1f28;border:1px solid #313846;border-radius:8px;padding:16px}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.field{display:grid;gap:6px;min-width:150px}.field input,.field select,.settingMini{height:38px;border-radius:6px;border:1px solid #3d4656;background:#0f1218;color:#fff;padding:0 10px}button{height:38px;border:0;border-radius:6px;padding:0 13px;font-weight:800;cursor:pointer;background:#f0c85a;color:#1b1300}.ghost{background:#293140;color:#f3f7ff}.danger{background:#d54a4a;color:#fff}.muted{color:#9aa4b5;font-size:13px}.machines{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.machine{background:#151922;border:1px solid #2d3440;border-radius:8px;padding:12px;display:grid;gap:9px}.machine h3{margin:0;font-size:18px;display:flex;justify-content:space-between}.pill{font-size:12px;border-radius:999px;padding:3px 8px;background:#303848}.pill.on{background:#1f7a48}.pill.lock{background:#8a5422}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.adminSlumpGraph{width:100%;height:150px;background:#0b0e14;border:1px solid #2b3342;border-radius:6px}.graphStats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.debugBox{border-top:1px solid #2d3440;padding-top:9px;display:grid;gap:8px}.debugBtns{display:flex;gap:6px;flex-wrap:wrap}.debugBtns button{height:34px;padding:0 10px}.debugSelect{height:34px;border-radius:6px;border:1px solid #3d4656;background:#0f1218;color:#fff;padding:0 8px}.stat{background:#0f1218;border-radius:6px;padding:8px}.stat span{display:block;color:#97a3b8;font-size:12px}.stat b{font-size:16px}.passwordList,.results{display:grid;gap:7px;max-height:260px;overflow:auto}.item{display:grid;grid-template-columns:110px 1fr 90px 140px;gap:8px;align-items:center;background:#10141c;border:1px solid #2b3340;border-radius:6px;padding:8px}.code{font-size:20px;letter-spacing:.08em;color:#ffe07c;font-weight:1000}.ok{color:#6aff9e}.bad{color:#ff8b8b}body.locked header,body.locked main{display:none}.authGate{min-height:100vh;display:grid;place-items:center;padding:20px;background:#111318}.authPanel{width:min(420px,100%);background:#1b1f28;border:1px solid #313846;border-radius:8px;padding:22px;display:grid;gap:14px}.authPanel h1{font-size:22px}.authPanel input{width:100%;height:44px;border-radius:6px;border:1px solid #3d4656;background:#0f1218;color:#fff;padding:0 12px}.authPanel button{width:100%;height:44px}body:not(.locked) .authGate{display:none}.topActions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.storeSwitchWrap{display:grid;gap:4px;color:#9aa4b5;font-size:11px;font-weight:700}.storeSwitch{min-width:180px;height:36px;border-radius:6px;border:1px solid #4a5568;background:#0f1218;color:#fff;padding:0 10px}.authPanel .storeSwitch{width:100%;height:44px}.storeSwitch option:disabled{color:#687181}button:disabled{opacity:.45;cursor:not-allowed}@media(max-width:980px){.machines{grid-template-columns:1fr}.item{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
-    .sectionHead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.sectionHead h2{margin:0}.floorControlRow{margin:12px 0 14px;display:grid;grid-template-columns:minmax(390px,1.15fr) minmax(520px,2fr);gap:10px;align-items:stretch}.floorProfit{padding:12px 16px;background:#0f1218;border:1px solid #3d4656;border-radius:6px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.floorMetric{display:flex;align-items:baseline;justify-content:space-between;gap:10px}.floorMetric+.floorMetric{border-left:1px solid #303847;padding-left:14px}.floorMetric span{color:#cbd3df;font-weight:800}.floorMetric b{font-size:28px;color:#f7f4ea;white-space:nowrap}.floorMetric b.positive{color:#62ff9a}.floorMetric b.negative{color:#ff6b7d}.floorMetric b.rtp{color:#ffe07c}.bulkControls{padding:10px;background:#151922;border:1px solid #3d4656;border-radius:6px;display:flex;align-items:end;justify-content:flex-end;gap:8px;flex-wrap:wrap}.bulkControls .field{min-width:115px}.bulkControls .completeField{min-width:170px}.bulkStatus{min-height:18px;margin:-7px 0 12px;text-align:right}.viewSwitch{display:grid;grid-template-columns:1fr 1fr;border:1px solid #414a5a;border-radius:6px;overflow:hidden}.viewSwitch button{min-width:92px;border-radius:0;background:#242b37;color:#cbd3df}.viewSwitch button+button{border-left:1px solid #414a5a}.viewSwitch button.active{background:#f0c85a;color:#1b1300}.machineViewLabel{color:#ffe07c;font-size:12px;font-weight:800}.jackpotPools{display:grid;gap:10px}.jackpotPool{background:#121722;border:1px solid #7557a8;border-radius:8px;padding:14px;display:grid;grid-template-columns:minmax(190px,1fr) minmax(230px,1.2fr);gap:14px;align-items:end}.jackpotPoolAmount{font-size:30px;color:#d8b4ff}.jackpotPool .row{justify-content:flex-end}@media(max-width:1180px){.floorControlRow{grid-template-columns:1fr}.bulkControls{justify-content:flex-start}.bulkStatus{text-align:left}}@media(max-width:620px){.floorProfit{grid-template-columns:1fr}.floorMetric+.floorMetric{border-left:0;border-top:1px solid #303847;padding:10px 0 0}.jackpotPool{grid-template-columns:1fr}.jackpotPool .row{justify-content:flex-start}}
+    .sectionHead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.sectionHead h2{margin:0}.floorControlRow{margin:12px 0 14px;display:grid;grid-template-columns:minmax(390px,1.15fr) minmax(520px,2fr);gap:10px;align-items:stretch}.floorProfit{padding:12px 16px;background:#0f1218;border:1px solid #3d4656;border-radius:6px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.floorMetric{display:flex;align-items:baseline;justify-content:space-between;gap:10px}.floorMetric+.floorMetric{border-left:1px solid #303847;padding-left:14px}.floorMetric span{color:#cbd3df;font-weight:800}.floorMetric b{font-size:28px;color:#f7f4ea;white-space:nowrap}.floorMetric b.positive{color:#62ff9a}.floorMetric b.negative{color:#ff6b7d}.floorMetric b.rtp{color:#ffe07c}.bulkControls{padding:10px;background:#151922;border:1px solid #3d4656;border-radius:6px;display:flex;align-items:end;justify-content:flex-end;gap:8px;flex-wrap:wrap}.bulkControls .field{min-width:115px}.bulkControls .completeField{min-width:170px}.bulkStatus{min-height:18px;margin:-7px 0 12px;text-align:right}.machineViewLabel{color:#ffe07c;font-size:12px;font-weight:800}.jackpotPools{display:grid;gap:10px}.jackpotPool{background:#121722;border:1px solid #7557a8;border-radius:8px;padding:14px;display:grid;grid-template-columns:minmax(190px,1fr) minmax(230px,1.2fr);gap:14px;align-items:end}.jackpotPoolAmount{font-size:30px;color:#d8b4ff}.jackpotPool .row{justify-content:flex-end}@media(max-width:1180px){.floorControlRow{grid-template-columns:1fr}.bulkControls{justify-content:flex-start}.bulkStatus{text-align:left}}@media(max-width:620px){.floorProfit{grid-template-columns:1fr}.floorMetric+.floorMetric{border-left:0;border-top:1px solid #303847;padding:10px 0 0}.jackpotPool{grid-template-columns:1fr}.jackpotPool .row{justify-content:flex-start}}
     .passwordIssue{border:1px solid #41404a;border-radius:7px;margin:0;padding:10px;min-width:0;display:grid;gap:8px;background:#1b1e29}.passwordIssue legend{font-size:12px;color:#ffe07c;padding:0 4px}.passwordIssue .row{flex-wrap:nowrap;align-items:end}.passwordIssue .field{min-width:0;flex:1}.passwordIssue input{width:100%}.issueStatus{font-size:12px;overflow-wrap:anywhere;min-height:18px}.completeSummary{margin-top:5px;font-size:12px;color:#aab5c7}
     .stats{grid-template-columns:repeat(2,minmax(0,1fr))}.issuedCustomer{font-size:17px;overflow-wrap:anywhere}.passwordIssue .code{font-size:26px}
     .superSpeedToggle[aria-pressed="true"]{background:#ffd84d;color:#241900;border:2px solid #fff1a8;box-shadow:0 0 0 2px #c99022,0 0 12px #ffd84d55}
+    .adminGraphWrap{min-width:0;border:1px solid #2b3342;border-radius:7px;background:#100f1c;overflow:hidden}.graphHeading{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:10px 12px 0;color:#aca7be;font-size:11px}.graphCurrent{font-size:20px;white-space:nowrap;font-variant-numeric:tabular-nums}.graphCurrent small{font-size:10px;color:#aca7be;font-weight:400;margin-right:7px}.adminSlumpGraph{display:block;height:180px;border:0;border-radius:0;background:transparent}.positive{color:#89edc5}.negative{color:#ff9baa}.graphStats{grid-template-columns:repeat(3,minmax(0,1fr))}.graphStats .stat{min-width:0;padding:8px 6px}.graphStats b{font-size:clamp(12px,1.3vw,16px);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}@media(max-width:980px){.graphStats b{font-size:16px}}@media(max-width:400px){main{padding:10px}.panel{padding:10px}.machine{padding:10px}.graphCurrent{font-size:18px}.graphStats b{font-size:13px}}
   </style>
 </head>
 <body class="locked">
@@ -25,14 +26,11 @@
   <section class="panel">
     <div class="sectionHead">
       <h2><span id="machineCountLabel">0台</span>状況</h2>
-      <div class="viewSwitch" role="group" aria-label="表示データ切替">
-        <button id="machineTotalViewBtn" type="button">台累計</button>
-        <button id="machinePlayerViewBtn" type="button">個人</button>
-      </div>
+      <span class="machineViewLabel">台累計 / 管理リセット以降</span>
     </div>
     <div class="floorControlRow">
       <div class="floorProfit">
-        <div class="floorMetric"><span>全台合計 現在損益pt</span><b id="floorCurrentProfit">+0</b></div>
+        <div class="floorMetric"><span>全台合計差枚</span><b id="floorCurrentProfit">+0 pt</b></div>
         <div class="floorMetric"><span>全台平均機械割</span><b id="floorAverageRtp" class="rtp">90.0%</b></div>
       </div>
       <div class="bulkControls">
@@ -45,7 +43,7 @@
       </div>
     </div>
     <div id="bulkStatus" class="bulkStatus muted"></div>
-    <p class="muted">各台のグラフ下でパスワードを発行できます。別の台は同時に発行できます。</p>
+    <p class="muted">総回転数・差枚・グラフは、管理リセット以降の全利用者の累計です。差枚はお客様側の増減（＋は獲得、−は消費）を表示します。<br>各台のグラフ下でパスワードを発行できます。別の台は同時に発行できます。</p>
     <div id="machines" class="machines"></div>
   </section>
 
@@ -62,7 +60,6 @@
 <script>
 const $ = id => document.getElementById(id);
 let machines = [];
-let sessionResults = [];
 const machineOperations = new Map();
 const machineDrafts = new Map();
 const passwordIssues = new Map();
@@ -75,11 +72,8 @@ let bulkOperationBusy = false;
 let commandWakeChannel = null;
 try{ commandWakeChannel = new BroadcastChannel('vertex-command-wake'); }catch(error){}
 const ADMIN_STORAGE_KEY = 'vertexAdminPassword';
-const MACHINE_VIEW_STORAGE_KEY = 'vertexAdminMachineView';
 let adminSecret = sessionStorage.getItem(ADMIN_STORAGE_KEY) || '';
-let machineDataView = sessionStorage.getItem(MACHINE_VIEW_STORAGE_KEY) === 'player' ? 'player' : 'total';
 const BULK_SETTING_RTP = Object.freeze([90, 93, 96, 101, 104, 108]);
-const ADDITIVE_STAT_KEYS = ['atFirstCount','totalSessions','totalFee','totalPaid','totalSpins','normalSpins','highSpins','bigCount','midCount','premiumBigCount','grapeCount','smallCount','bellCount','diagonalBellCount','replayCount','suikaCount','cherryCount'];
 function adminHeaders(){ return adminSecret ? {'X-Admin-Password':adminSecret} : {}; }
 function fmt(n){ return Number(n || 0).toLocaleString('ja-JP'); }
 function signed(n){ n = Number(n || 0); return (n >= 0 ? '+' : '') + fmt(n); }
@@ -114,177 +108,49 @@ function appendPoint(points, point){
     points.push(next);
   }
 }
-function individualHistory(endStats, startStats, playerStats){
-  const startSpin = Math.max(0, stat(startStats, 'totalSpins'));
-  const startProfit = statsProfit(startStats);
-  const endSpin = Math.max(0, stat(playerStats, 'totalSpins'));
-  const endProfit = statsProfit(playerStats);
-  const points = [{spin:0, profit:0}];
-  for(const point of normalizeHistory(endStats && endStats.slumpHistory)){
-    if(point.spin < startSpin) continue;
-    appendPoint(points, {spin:point.spin - startSpin, profit:point.profit - startProfit});
-  }
-  appendPoint(points, {spin:endSpin, profit:endProfit});
-  return points;
-}
-function playerStatsFrom(endStats, startStats={}, explicit={}){
-  const countersReset = stat(endStats, 'totalSpins') < stat(startStats, 'totalSpins')
-    || stat(endStats, 'totalFee') < stat(startStats, 'totalFee')
-    || stat(endStats, 'totalPaid') < stat(startStats, 'totalPaid');
-  const baselineStats = countersReset ? {} : startStats;
-  const result = {};
-  for(const key of ADDITIVE_STAT_KEYS){
-    result[key] = Math.max(0, stat(endStats, key) - stat(baselineStats, key));
-  }
-  const explicitMap = {
-    totalSpins:'playerSpins',
-    bigCount:'playerBigCount',
-    midCount:'playerRegCount',
-    grapeCount:'playerGrapeCount',
-    totalFee:'playerTotalFee',
-    totalPaid:'playerTotalPaid'
-  };
-  for(const [key, explicitKey] of Object.entries(explicitMap)){
-    if(explicit[explicitKey] !== undefined && explicit[explicitKey] !== null) result[key] = Math.max(0, num(explicit[explicitKey]));
-  }
-  result.profit = explicit.playerProfit !== undefined && explicit.playerProfit !== null
-    ? num(explicit.playerProfit)
-    : statsProfit(endStats) - statsProfit(baselineStats);
-  if(result.totalSpins === 0 && result.totalFee === 0 && result.totalPaid === 0) result.profit = 0;
-  result.slumpHistory = individualHistory(endStats, baselineStats, result);
-  return result;
-}
-function playerViewForMachine(machine){
-  if(machine.currentSessionId && String(machine.playSessionId || '') !== String(machine.currentSessionId)){
-    const empty = emptyAggregate();
-    return {stats:empty.stats, history:empty.history, label:`個人 / ${machine.currentPlayerName || '利用者なし'}`};
-  }
-  const endStats = machine.stats || {};
-  const startStats = machine.playSessionStartStats || {};
-  const stats = machine.playSessionStartStats ? playerStatsFrom(endStats, startStats) : {...endStats, profit:statsProfit(endStats)};
-  const history = machine.playSessionStartStats
-    ? stats.slumpHistory
-    : normalizeHistory(endStats.slumpHistory || machine.slumpHistory);
-  stats.slumpHistory = history;
-  const playerName = machine.currentPlayerName || (machine.lastEndedSession && machine.lastEndedSession.playerName) || '利用者なし';
-  return {stats, history, label:`個人 / ${playerName}`};
-}
-function playerViewForResult(record){
-  const endStats = record.stats || {
-    totalSpins:record.totalSpins,
-    bigCount:record.bigCount,
-    midCount:record.regCount,
-    grapeCount:record.grapeCount,
-    totalFee:record.totalFee,
-    totalPaid:record.totalPaid,
-    profit:record.profit,
-    slumpHistory:record.slumpHistory
-  };
-  const stats = playerStatsFrom(endStats, record.startStats || {}, record);
-  return {stats, history:stats.slumpHistory};
-}
-function emptyAggregate(){
-  const stats = {profit:0, slumpHistory:[{spin:0, profit:0}]};
-  for(const key of ADDITIVE_STAT_KEYS) stats[key] = 0;
-  return {stats, history:stats.slumpHistory};
-}
-function appendPlayerView(aggregate, playerView){
-  const playerStats = playerView.stats || {};
-  const baseSpin = stat(aggregate.stats, 'totalSpins');
-  const baseProfit = statsProfit(aggregate.stats);
-  for(const key of ADDITIVE_STAT_KEYS) aggregate.stats[key] = stat(aggregate.stats, key) + stat(playerStats, key);
-  aggregate.stats.profit = baseProfit + statsProfit(playerStats);
-  appendPoint(aggregate.history, {spin:baseSpin, profit:baseProfit});
-  for(const point of normalizeHistory(playerView.history)){
-    appendPoint(aggregate.history, {spin:baseSpin + point.spin, profit:baseProfit + point.profit});
-  }
-  appendPoint(aggregate.history, {spin:stat(aggregate.stats, 'totalSpins'), profit:aggregate.stats.profit});
-  aggregate.stats.slumpHistory = aggregate.history;
-}
-function resultsForMachine(machine){
-  const serial = num(machine.resetSerial);
-  const unique = new Map();
-  const addRecord = (record, trustCurrentCycle=false)=>{
-    if(!record || String(record.machineId) !== String(machine.machineId)) return;
-    const hasSerial = record.resetSerial !== undefined && record.resetSerial !== null && record.resetSerial !== '';
-    if(!trustCurrentCycle && (!hasSerial || num(record.resetSerial) !== serial)) return;
-    if(trustCurrentCycle && hasSerial && num(record.resetSerial) !== serial) return;
-    const key = String(record.sessionId || `${record.endedAtMs || record.endedAt}-${record.playerName || ''}`);
-    if(!unique.has(key)) unique.set(key, record);
-  };
-  for(const record of sessionResults){
-    addRecord(record);
-  }
-  addRecord(machine.lastEndedSession && machine.lastEndedSession.record, true);
-  return [...unique.values()].sort((a,b)=>num(a.endedAtMs || Date.parse(a.endedAt))-num(b.endedAtMs || Date.parse(b.endedAt)));
-}
+// Only server-aggregated cabinet data belongs on the floor display.
+// A missing total must never fall back to the active player's snapshot.
 function totalViewForMachine(machine){
-  if(machine.machineTotalStats)return {stats:machine.machineTotalStats,history:machine.machineTotalSlumpHistory || machine.machineTotalStats.slumpHistory || [],label:'台累計 / 全利用者'};
-  const aggregate = emptyAggregate();
-  const records = resultsForMachine(machine);
-  for(const record of records) appendPlayerView(aggregate, playerViewForResult(record));
-  if(machine.currentSessionId) appendPlayerView(aggregate, playerViewForMachine(machine));
-  if(!records.length && !machine.currentSessionId && machine.stats){
-    const fallback = playerViewForMachine(machine);
-    appendPlayerView(aggregate, fallback);
-  }
-  return {...aggregate, label:'台累計 / 全利用者'};
-}
-function displayViewForMachine(machine){
-  return machineDataView === 'player' ? playerViewForMachine(machine) : totalViewForMachine(machine);
+  const stats = machine.machineTotalStats || null;
+  const history = normalizeHistory(machine.machineTotalSlumpHistory || stats?.slumpHistory);
+  if(stats) appendPoint(history, {spin:stat(stats, 'totalSpins'), profit:statsProfit(stats)});
+  return {stats, history, label:stats ? '台累計 / 管理リセット以降' : '台累計データを確認中'};
 }
 function historyFor(machine){ return machine._displayHistory || [{spin:0, profit:0}]; }
-function currentProfit(machine){ const points = historyFor(machine); return Number(points[points.length - 1].profit) || 0; }
 function graphBounds(machine){ const profits = historyFor(machine).map(p => Number(p.profit) || 0); return {min:Math.min(0, ...profits), max:Math.max(0, ...profits)}; }
-function drawableHistory(points){
-  const source = Array.isArray(points) ? points : [];
-  if(source.length < 4) return source;
-  const gaps = [];
-  for(let index = 1; index < source.length; index += 1){
-    const gap = (Number(source[index] && source[index].spin) || 0) - (Number(source[index - 1] && source[index - 1].spin) || 0);
-    if(gap > 0) gaps.push(gap);
+function drawSlump(canvas, history){
+  const ctx = canvas.getContext('2d'); if(!ctx) return;
+  const rect = canvas.getBoundingClientRect(), w = rect.width, h = rect.height;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.round(w*dpr); canvas.height = Math.round(h*dpr); ctx.setTransform(dpr,0,0,dpr,0,0);
+  const points = Array.isArray(history) && history.length ? history.map(p=>({spin:num(p.spin),profit:num(p.profit)})) : [{spin:0,profit:0}];
+  let min = 0, max = 0, end = 1;
+  for(const p of points){min=Math.min(min,p.profit);max=Math.max(max,p.profit);end=Math.max(end,p.spin);}
+  if(min===max){min=-100;max=100;}
+  // Round the scale to readable pt amounts while keeping zero and all data visible.
+  const roughStep=Math.max(50,(max-min)/4), magnitude=10**Math.floor(Math.log10(roughStep));
+  const step=([1,2,5,10].find(value=>value*magnitude>=roughStep)||10)*magnitude;
+  const lower=Math.floor(min/step)*step, upper=Math.ceil(max/step)*step;
+  const ticks=Array.from({length:Math.round((upper-lower)/step)+1},(_,i)=>lower+i*step);
+  const tickLabel=value=>value===0?'0':signed(value);
+  ctx.font='11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+  const left=Math.ceil(Math.max(...ticks.map(value=>ctx.measureText(tickLabel(value)).width)))+17, right=w-12, top=14, bottom=h-24;
+  const x = p => left + p.spin/end*(right-left), y = v => bottom-(v-lower)/(upper-lower)*(bottom-top);
+  ctx.textAlign='right';ctx.textBaseline='middle';ctx.lineWidth=1;
+  for(const value of ticks){
+    const yy=y(value);
+    ctx.setLineDash(value===0?[3,4]:[]);ctx.strokeStyle=value===0?'#80758f':'#302b40';
+    ctx.beginPath();ctx.moveTo(left,yy);ctx.lineTo(right,yy);ctx.stroke();
+    ctx.fillStyle=value===0?'#e3dcef':'#bcb3cd';ctx.fillText(tickLabel(value),left-8,yy);
   }
-  if(!gaps.length) return source;
-  gaps.sort((a,b)=>a-b);
-  const medianGap = gaps[Math.floor(gaps.length / 2)] || 1;
-  const breakThreshold = Math.max(25, medianGap * 12);
-  let lastBreakIndex = -1;
-  for(let index = 1; index < source.length; index += 1){
-    const gap = (Number(source[index] && source[index].spin) || 0) - (Number(source[index - 1] && source[index - 1].spin) || 0);
-    if(gap > breakThreshold && source.length - index >= 3) lastBreakIndex = index;
-  }
-  return lastBreakIndex > 0 ? source.slice(lastBreakIndex) : source;
-}
-function drawSlump(canvas, points){
-  const ctx = canvas.getContext('2d');
-  const dpr = window.devicePixelRatio || 1;
-  const rect = canvas.getBoundingClientRect();
-  canvas.width = Math.max(1, Math.floor(rect.width * dpr));
-  canvas.height = Math.max(1, Math.floor(rect.height * dpr));
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  const w = rect.width, h = rect.height;
-  ctx.clearRect(0,0,w,h);
-  ctx.fillStyle = '#0b0e14';
-  ctx.fillRect(0,0,w,h);
-  ctx.strokeStyle = '#273044';
-  ctx.lineWidth = 1;
-  for(let i=1;i<5;i++){ const y = h*i/5; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
-  points = drawableHistory(Array.isArray(points) && points.length ? points : [{spin:0, profit:0}]);
-  const profits = points.map(p => Number(p.profit) || 0);
-  let min = Math.min(0, ...profits), max = Math.max(0, ...profits);
-  if(min === max){ min -= 100; max += 100; }
-  const firstSpin = Number(points[0] && points[0].spin) || 0;
-  const lastSpin = Number(points[points.length - 1] && points[points.length - 1].spin) || firstSpin;
-  const spinRange = Math.max(1, lastSpin - firstSpin);
-  const xFor = point => ((Number(point && point.spin) || 0) - firstSpin) * w / spinRange;
-  const yFor = v => h - ((v - min) / (max - min)) * h;
-  const zero = yFor(0);
-  ctx.strokeStyle = '#6b7280'; ctx.beginPath(); ctx.moveTo(0, zero); ctx.lineTo(w, zero); ctx.stroke();
-  ctx.strokeStyle = profits[profits.length - 1] >= 0 ? '#62ff9a' : '#ff5c70';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  points.forEach((p,i)=>{ const x = xFor(p), y = yFor(Number(p.profit) || 0); if(i) ctx.lineTo(x,y); else ctx.moveTo(x,y); });
-  ctx.stroke();
+  ctx.setLineDash([]);ctx.fillStyle='#9e95b0';ctx.textBaseline='bottom';
+  ctx.textAlign='left';ctx.fillText('0 G',left,h-3);
+  ctx.textAlign='right';ctx.fillText(`${fmt(points.at(-1).spin)} G`,right,h-3);
+  ctx.strokeStyle=points.at(-1).profit>=0?'#89edc5':'#ff9baa';ctx.lineWidth=2;ctx.lineJoin='round';ctx.beginPath();
+  points.forEach((p,i)=>i?ctx.lineTo(x(p),y(p.profit)):ctx.moveTo(x(p),y(p.profit)));
+  if(points.length===1)ctx.lineTo(right,y(points[0].profit));ctx.stroke();
+  ctx.fillStyle=ctx.strokeStyle;ctx.beginPath();ctx.arc(points.length===1?right:x(points.at(-1)),y(points.at(-1).profit),3,0,Math.PI*2);ctx.fill();
+  canvas.setAttribute('aria-label',`差枚グラフ。最小${fmt(min)}pt、最大${fmt(max)}pt、現在${signed(points.at(-1).profit)}pt`);
 }
 function renderAdminSlumpGraphs(){
   for(const m of machineRows()){
@@ -292,33 +158,15 @@ function renderAdminSlumpGraphs(){
     if(c) drawSlump(c, historyFor(m));
   }
 }
-function updateMachineViewControls(){
-  const totalBtn = $('machineTotalViewBtn');
-  const playerBtn = $('machinePlayerViewBtn');
-  if(totalBtn){
-    totalBtn.classList.toggle('active', machineDataView === 'total');
-    totalBtn.setAttribute('aria-pressed', machineDataView === 'total' ? 'true' : 'false');
-  }
-  if(playerBtn){
-    playerBtn.classList.toggle('active', machineDataView === 'player');
-    playerBtn.setAttribute('aria-pressed', machineDataView === 'player' ? 'true' : 'false');
-  }
-}
-function setMachineDataView(view){
-  machineDataView = view === 'player' ? 'player' : 'total';
-  sessionStorage.setItem(MACHINE_VIEW_STORAGE_KEY, machineDataView);
-  renderMachines();
-}
 function renderMachines(){
   const focused = document.activeElement?.matches('.settingMini,.passwordName') ? document.activeElement : null;
   const focusedField = focused?.id || '';
   const selection = focused?.tagName === 'INPUT' ? [focused.selectionStart,focused.selectionEnd] : null;
-  updateMachineViewControls();
   const floorMachines = liveMachines();
   const floorProfit = floorMachines.reduce((sum, machine) => sum + statsProfit(totalViewForMachine(machine).stats), 0);
   const floorProfitEl = $('floorCurrentProfit');
   if(floorProfitEl){
-    floorProfitEl.textContent = signed(floorProfit);
+    floorProfitEl.textContent = floorMachines.every(m=>m.machineTotalStats) ? signed(floorProfit) + ' pt' : '—';
     floorProfitEl.classList.toggle('positive', floorProfit > 0);
     floorProfitEl.classList.toggle('negative', floorProfit < 0);
   }
@@ -331,8 +179,9 @@ function renderMachines(){
   syncCompleteLimitControl();
   renderJackpotPools();
   $('machines').innerHTML = liveMachines().map(m => {
-    const view = displayViewForMachine(m);
-    const s = view.stats || {};
+    const view = totalViewForMachine(m);
+    const s = view.stats;
+    const profit = statsProfit(s);
     m._displayHistory = view.history;
     const st = status(m);
     const draft = machineDrafts.get(String(m.machineId));
@@ -343,17 +192,16 @@ function renderMachines(){
       ${m.capabilities && m.capabilities.jackpot ? `<div class="stat"><span>5台共有JACKPOT</span><b>${fmt(m.jackpotPool && m.jackpotPool.currentPt)}pt</b></div>` : ''}
       <div class="machineViewLabel">${escapeHtml(view.label)}</div>
       <div class="muted">${m.currentPlayerName ? '利用者: ' + escapeHtml(m.currentPlayerName) : '利用者なし'} / ${m.currentSessionId ? '遊技中' : m.lastEndedSession ? '直前データ保持中' : 'リセット済み'}</div>
-      <canvas class="adminSlumpGraph" data-machine="${m.machineId}"></canvas>
-      ${passwordIssueMarkup(m)}
-      <div class="stats">
-        <div class="stat"><span>G数</span><b>${fmt(stat(s,'totalSpins'))}</b></div>
-        <div class="stat"><span>差pt</span><b>${signed(s.profit ?? ((s.totalPaid||0)-(s.totalFee||0)))}</b></div>
+      <div class="adminGraphWrap">
+        <div class="graphHeading"><span>差枚グラフ / pt</span><b class="graphCurrent ${profit>=0?'positive':'negative'}"><small>現在差枚</small>${s ? signed(profit) + ' pt' : '—'}</b></div>
+        <canvas class="adminSlumpGraph" data-machine="${m.machineId}" role="img"></canvas>
       </div>
       <div class="graphStats">
-        <div class="stat"><span>現在</span><b>${signed(currentProfit(m))}</b></div>
-        <div class="stat"><span>最高</span><b>${signed(graphBounds(m).max)}</b></div>
-        <div class="stat"><span>最低</span><b>${signed(graphBounds(m).min)}</b></div>
+        <div class="stat"><span>総回転数</span><b>${s ? fmt(stat(s,'totalSpins')) + ' G' : '—'}</b></div>
+        <div class="stat"><span>最高差枚</span><b class="positive">${s ? signed(graphBounds(m).max) + ' pt' : '—'}</b></div>
+        <div class="stat"><span>最低差枚</span><b class="negative">${s ? signed(graphBounds(m).min) + ' pt' : '—'}</b></div>
       </div>
+      ${passwordIssueMarkup(m)}
       <fieldset class="row" style="border:0;padding:0;margin:0;min-width:0" id="controls-${m.machineId}" ${operation?.busy ? 'disabled' : ''}>
         <label class="field"><span>設定</span><select class="settingMini" id="setting-${m.machineId}" onchange="rememberMachineDraft('${m.machineId}')">${[1,2,3,4,5,6].map(n => '<option value="' + n + '" ' + (String(draft?.setting ?? machineSettingValue(m)) === String(n) ? 'selected' : '') + '>設定' + n + '</option>').join('')}</select></label>
         <button onclick="applySetting('${m.machineId}')">設定反映</button>
@@ -432,12 +280,10 @@ function renderCurrentPasswordList(){
 }
 async function loadResults(){
   const res = await fetch('/api/results', {headers:adminHeaders()});
-  if(!res.ok){ sessionResults = []; $('results').innerHTML = '<div class="bad">管理パスが必要です</div>'; renderMachines(); return; }
+  if(!res.ok){ $('results').innerHTML = '<div class="bad">管理パスが必要です</div>'; return; }
   const data = await res.json().catch(() => []);
   const rows = Array.isArray(data) ? data : [];
-  sessionResults = rows;
-  $('results').innerHTML = rows.map(r => `<div class="item"><b>${escapeHtml(r.machineName || machineLabelById(r.machineId))}</b><span>${escapeHtml(r.playerName)} / 利用差pt ${signed(r.playerProfit ?? r.profit)}pt / ${fmt(r.playerSpins ?? r.totalSpins)}G / 投入 ${fmt(r.playerTotalFee ?? r.totalFee)}pt / 払出 ${fmt(r.playerTotalPaid ?? r.totalPaid)}pt</span><span>${r.sheets && r.sheets.ok ? '<span class="ok">Sheets</span>' : '<span class="muted">local</span>'}</span><span>${new Date(r.endedAt).toLocaleString('ja-JP')}</span></div>`).join('') || '<div class="muted">まだありません</div>';
-  renderMachines();
+  $('results').innerHTML = rows.map(r => `<div class="item"><b>${escapeHtml(r.machineName || machineLabelById(r.machineId))}</b><span>${escapeHtml(r.playerName)}</span><span>${r.sheets && r.sheets.ok ? '<span class="ok">Sheets</span>' : '<span class="muted">local</span>'}</span><span>${new Date(r.endedAt).toLocaleString('ja-JP')}</span></div>`).join('') || '<div class="muted">まだありません</div>';
 }
 function passwordIssueMarkup(machine){
   const id=machine.machineId, state=passwordIssues.get(id)||{},current=state.current;
@@ -588,7 +434,7 @@ function syncCompleteLimitControl(){
   const values=[...new Set(targets.map(machineCompleteLimitValue))];
   if(!bulkCompleteDirty)field.value=values.length===1?String(values[0]):'';
   $('completeSummary').textContent=values.length===1?'現在：'+fmt(values[0])+'pt（対象'+targets.length+'台共通）':'現在：台ごとに異なります（対象'+targets.length+'台）';
-  if(targets.some(m=>m.machineType==='nova'))$('completeSummary').textContent+=' / NOVAはMY基準';
+  if(targets.some(m=>m.machineType==='nova'))$('completeSummary').textContent+=' / NOVAは累計差枚0基準';
 }
 function setBulkBusy(busy, message=''){
   bulkOperationBusy = !!busy;
@@ -799,8 +645,6 @@ function logoutAdmin(){
 }
 $('authForm').addEventListener('submit', e=>{ e.preventDefault(); enterAdmin($('gatePassword').value); });
 $('logoutBtn').addEventListener('click', logoutAdmin);
-$('machineTotalViewBtn').addEventListener('click', ()=>setMachineDataView('total'));
-$('machinePlayerViewBtn').addEventListener('click', ()=>setMachineDataView('player'));
 window.addEventListener('resize', renderAdminSlumpGraphs);
 let machineRefreshInFlight=false;
 async function refreshAll(){
