@@ -5,6 +5,7 @@ const path = require("path");
 const crypto = require("crypto");
 const { URL } = require("url");
 const {machineTotalFor} = require("./machine-totals.cjs");
+const {settingsPatch} = require("./admin-settings.cjs");
 const {
   STORE_ID,
   STORE_NAME,
@@ -610,7 +611,13 @@ const server = http.createServer(async (req, res)=>{
       if(!machine) return sendJson(res, 400, {ok:false, error:"invalid machine"});
       const playerName = String(body.playerName || "").trim();
       if(!playerName) return sendJson(res, 400, {ok:false, error:"playerName required"});
-      const password = generatePassword();
+      let password;
+      for(let attempt=0; attempt<20; attempt++){
+        password = generatePassword();
+        if(!Object.hasOwn(state.issuedPasswords, password)) break;
+        password = null;
+      }
+      if(!password) return sendJson(res,503,{ok:false,error:"パスワードを発行できませんでした。もう一度お試しください。"});
       const issued = {
         password,
         machineId:machine.machineId,
@@ -866,15 +873,18 @@ const server = http.createServer(async (req, res)=>{
       const machine = machineFor(decodeURIComponent(adminSettingMatch[1]));
       if(!machine) return sendJson(res, 404, {ok:false, error:"machine not found"});
       const body = await readBody(req);
-      const setting = Math.max(1, Math.min(6, Math.round(Number(body.setting) || 1)));
-      const completeLimitPt = Math.max(1, Math.min(999999, Math.round(Number(body.completeLimitPt) || 19000)));
+      let patch;
+      try{patch=settingsPatch(body,machine.machineType);}catch(error){return sendJson(res,400,{ok:false,error:error.message});}
+      if(body.completeLimitPt !== undefined && !machine.capabilities?.completeLimit) return sendJson(res,400,{ok:false,error:"この台はコンプリート設定の対象外です"});
       const currentSettings = machine.lastSnapshot && machine.lastSnapshot.settings ? machine.lastSnapshot.settings : {};
-      const settings = {...currentSettings, setting, completeLimitPt};
+      const setting = patch.setting ?? machine.assignedSetting ?? currentSettings.setting ?? 1;
+      const settings = {...currentSettings, setting, ...patch};
+      const completeLimitPt = (machine.machineType === 'nova' ? settings.completeMyLimitPt : settings.completeLimitPt) || 19000;
       machine.assignedSetting = setting;
       machine.lastSnapshot = machine.lastSnapshot || {machineId:machine.machineId, stats:{}, settings:{}, updatedAt:Date.now()};
       machine.lastSnapshot.settings = settings;
       machine.lastSnapshot.updatedAt = Date.now();
-      const delivered = sendCommand(machine.machineId, {type:"applySettings", settings, id:makeId("cmd")});
+      const delivered = sendCommand(machine.machineId, {type:"applySettings", settings:patch, id:makeId("cmd")});
       saveState();
       broadcastMachines();
       return sendJson(res, 200, {ok:true, setting, completeLimitPt, delivered, machine:publicMachine(machine, machineTotalFor(machine, []))});

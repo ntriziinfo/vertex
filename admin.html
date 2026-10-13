@@ -7,23 +7,13 @@
   <style>
     *{box-sizing:border-box} body{margin:0;background:#111318;color:#f7f4ea;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Yu Gothic",sans-serif} header{position:sticky;top:0;z-index:5;background:#171a21;border-bottom:1px solid #303641;padding:14px 20px;display:flex;gap:12px;align-items:center;justify-content:space-between} h1{font-size:20px;margin:0} main{padding:20px;display:grid;gap:18px}.panel{background:#1b1f28;border:1px solid #313846;border-radius:8px;padding:16px}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.field{display:grid;gap:6px;min-width:150px}.field input,.field select,.settingMini{height:38px;border-radius:6px;border:1px solid #3d4656;background:#0f1218;color:#fff;padding:0 10px}button{height:38px;border:0;border-radius:6px;padding:0 13px;font-weight:800;cursor:pointer;background:#f0c85a;color:#1b1300}.ghost{background:#293140;color:#f3f7ff}.danger{background:#d54a4a;color:#fff}.muted{color:#9aa4b5;font-size:13px}.machines{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.machine{background:#151922;border:1px solid #2d3440;border-radius:8px;padding:12px;display:grid;gap:9px}.machine h3{margin:0;font-size:18px;display:flex;justify-content:space-between}.pill{font-size:12px;border-radius:999px;padding:3px 8px;background:#303848}.pill.on{background:#1f7a48}.pill.lock{background:#8a5422}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.adminSlumpGraph{width:100%;height:150px;background:#0b0e14;border:1px solid #2b3342;border-radius:6px}.graphStats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.debugBox{border-top:1px solid #2d3440;padding-top:9px;display:grid;gap:8px}.debugBtns{display:flex;gap:6px;flex-wrap:wrap}.debugBtns button{height:34px;padding:0 10px}.debugSelect{height:34px;border-radius:6px;border:1px solid #3d4656;background:#0f1218;color:#fff;padding:0 8px}.stat{background:#0f1218;border-radius:6px;padding:8px}.stat span{display:block;color:#97a3b8;font-size:12px}.stat b{font-size:16px}.passwordList,.results{display:grid;gap:7px;max-height:260px;overflow:auto}.item{display:grid;grid-template-columns:110px 1fr 90px 140px;gap:8px;align-items:center;background:#10141c;border:1px solid #2b3340;border-radius:6px;padding:8px}.code{font-size:20px;letter-spacing:.08em;color:#ffe07c;font-weight:1000}.ok{color:#6aff9e}.bad{color:#ff8b8b}body.locked header,body.locked main{display:none}.authGate{min-height:100vh;display:grid;place-items:center;padding:20px;background:#111318}.authPanel{width:min(420px,100%);background:#1b1f28;border:1px solid #313846;border-radius:8px;padding:22px;display:grid;gap:14px}.authPanel h1{font-size:22px}.authPanel input{width:100%;height:44px;border-radius:6px;border:1px solid #3d4656;background:#0f1218;color:#fff;padding:0 12px}.authPanel button{width:100%;height:44px}body:not(.locked) .authGate{display:none}.topActions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.storeSwitchWrap{display:grid;gap:4px;color:#9aa4b5;font-size:11px;font-weight:700}.storeSwitch{min-width:180px;height:36px;border-radius:6px;border:1px solid #4a5568;background:#0f1218;color:#fff;padding:0 10px}.authPanel .storeSwitch{width:100%;height:44px}.storeSwitch option:disabled{color:#687181}button:disabled{opacity:.45;cursor:not-allowed}@media(max-width:980px){.machines{grid-template-columns:1fr}.item{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
     .sectionHead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.sectionHead h2{margin:0}.floorControlRow{margin:12px 0 14px;display:grid;grid-template-columns:minmax(390px,1.15fr) minmax(520px,2fr);gap:10px;align-items:stretch}.floorProfit{padding:12px 16px;background:#0f1218;border:1px solid #3d4656;border-radius:6px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.floorMetric{display:flex;align-items:baseline;justify-content:space-between;gap:10px}.floorMetric+.floorMetric{border-left:1px solid #303847;padding-left:14px}.floorMetric span{color:#cbd3df;font-weight:800}.floorMetric b{font-size:28px;color:#f7f4ea;white-space:nowrap}.floorMetric b.positive{color:#62ff9a}.floorMetric b.negative{color:#ff6b7d}.floorMetric b.rtp{color:#ffe07c}.bulkControls{padding:10px;background:#151922;border:1px solid #3d4656;border-radius:6px;display:flex;align-items:end;justify-content:flex-end;gap:8px;flex-wrap:wrap}.bulkControls .field{min-width:115px}.bulkControls .completeField{min-width:170px}.bulkStatus{min-height:18px;margin:-7px 0 12px;text-align:right}.viewSwitch{display:grid;grid-template-columns:1fr 1fr;border:1px solid #414a5a;border-radius:6px;overflow:hidden}.viewSwitch button{min-width:92px;border-radius:0;background:#242b37;color:#cbd3df}.viewSwitch button+button{border-left:1px solid #414a5a}.viewSwitch button.active{background:#f0c85a;color:#1b1300}.machineViewLabel{color:#ffe07c;font-size:12px;font-weight:800}.jackpotPools{display:grid;gap:10px}.jackpotPool{background:#121722;border:1px solid #7557a8;border-radius:8px;padding:14px;display:grid;grid-template-columns:minmax(190px,1fr) minmax(230px,1.2fr);gap:14px;align-items:end}.jackpotPoolAmount{font-size:30px;color:#d8b4ff}.jackpotPool .row{justify-content:flex-end}@media(max-width:1180px){.floorControlRow{grid-template-columns:1fr}.bulkControls{justify-content:flex-start}.bulkStatus{text-align:left}}@media(max-width:620px){.floorProfit{grid-template-columns:1fr}.floorMetric+.floorMetric{border-left:0;border-top:1px solid #303847;padding:10px 0 0}.jackpotPool{grid-template-columns:1fr}.jackpotPool .row{justify-content:flex-start}}
+    .passwordIssue{border:1px solid #41404a;border-radius:7px;margin:0;padding:10px;min-width:0;display:grid;gap:8px;background:#1b1e29}.passwordIssue legend{font-size:12px;color:#ffe07c;padding:0 4px}.passwordIssue .row{flex-wrap:nowrap;align-items:end}.passwordIssue .field{min-width:0;flex:1}.passwordIssue input{width:100%}.issueStatus{font-size:12px;overflow-wrap:anywhere;min-height:18px}.completeSummary{margin-top:5px;font-size:12px;color:#aab5c7}
   </style>
 </head>
 <body class="locked">
 <div id="authGate" class="authGate"><form id="authForm" class="authPanel"><h1 class="adminTitle">Vertex管理画面</h1><label class="storeSwitchWrap">店舗切替<select class="storeSwitch" aria-label="店舗切替"><option>店舗を読み込み中</option></select></label><p class="muted">この店舗専用の管理パスを入力してください。</p><input id="gatePassword" type="password" autocomplete="current-password" placeholder="管理パス"><button type="submit">入室</button><div id="authError" class="bad"></div></form></div>
 <header><h1 class="adminTitle">Vertex管理画面</h1><div class="topActions"><label class="storeSwitchWrap">店舗切替<select class="storeSwitch" aria-label="店舗切替"><option>店舗を読み込み中</option></select></label><a class="muted" id="customerMachinesLink" href="/machines.html" target="_blank" rel="noopener">台選びページ</a><a class="muted" href="/play.html" target="_blank">プレイ入口</a><button id="logoutBtn" class="ghost">退出</button></div></header>
 <main>
-  <section class="panel">
-    <h2>パスワード発行</h2>
-    <div class="row">
-      <label class="field"><span>名前</span><input id="playerName" placeholder="お客様名"></label>
-      <label class="field"><span>使用台</span><select id="machineSelect"></select></label>
-      <button id="issueBtn">発行</button>
-      <b id="issueResult" class="code"></b>
-    </div>
-    <p class="muted">発行したパスワードは一度だけ使えます。お客様は `/play.html` で入力します。</p>
-  </section>
-
   <section id="jackpotAdminPanel" class="panel" hidden>
     <h2>共有JACKPOT管理</h2>
     <div id="jackpotPools" class="jackpotPools"></div>
@@ -44,10 +34,15 @@
         <div class="floorMetric"><span>全台平均機械割</span><b id="floorAverageRtp" class="rtp">90.0%</b></div>
       </div>
       <div class="bulkControls">
+        <div id="completeStoreControls">
+          <div class="row"><label class="field completeField"><span>店舗共通 コンプリート発動枚数（pt）</span><input id="bulkCompleteLimit" type="number" min="1" max="999999" step="1" required placeholder="変更する枚数" oninput="bulkCompleteDirty=true"></label><button class="bulkAction" type="button" onclick="applyBulkCompleteLimit()">全対象台に反映</button></div>
+          <div id="completeSummary" class="completeSummary"></div>
+        </div>
         <button class="bulkAction danger" type="button" onclick="resetAllMachines()">全台リセット</button>
       </div>
     </div>
     <div id="bulkStatus" class="bulkStatus muted"></div>
+    <p class="muted">各台のグラフ下でパスワードを発行できます。別の台は同時に発行できます。</p>
     <div id="machines" class="machines"></div>
   </section>
 
@@ -67,6 +62,9 @@ let machines = [];
 let sessionResults = [];
 const machineOperations = new Map();
 const machineDrafts = new Map();
+const passwordIssues = new Map();
+let passwordListRequest = 0;
+let bulkCompleteDirty = false;
 let machineListRevision = 0;
 let machineListRequest = 0;
 let bulkOperationBusy = false;
@@ -307,8 +305,9 @@ function setMachineDataView(view){
   renderMachines();
 }
 function renderMachines(){
-  const focusedField = document.activeElement?.matches('.settingMini') ? document.activeElement.id : '';
-  const selectedMachine = $('machineSelect').value;
+  const focused = document.activeElement?.matches('.settingMini,.passwordName') ? document.activeElement : null;
+  const focusedField = focused?.id || '';
+  const selection = focused?.tagName === 'INPUT' ? [focused.selectionStart,focused.selectionEnd] : null;
   updateMachineViewControls();
   const floorMachines = liveMachines();
   const floorProfit = floorMachines.reduce((sum, machine) => sum + statsProfit(totalViewForMachine(machine).stats), 0);
@@ -324,8 +323,7 @@ function renderMachines(){
   const floorAverageRtpEl = $('floorAverageRtp');
   if(floorAverageRtpEl) floorAverageRtpEl.textContent = `${floorAverageRtp.toFixed(1)}%`;
   $('machineCountLabel').textContent = `${floorMachines.length}台`;
-  $('machineSelect').innerHTML = liveMachines().map(m => `<option value="${escapeHtml(m.machineId)}">${escapeHtml(machineLabel(m))}</option>`).join('');
-  if([...$('machineSelect').options].some(option=>option.value === selectedMachine)) $('machineSelect').value = selectedMachine;
+  syncCompleteLimitControl();
   renderJackpotPools();
   $('machines').innerHTML = liveMachines().map(m => {
     const view = displayViewForMachine(m);
@@ -341,6 +339,7 @@ function renderMachines(){
       <div class="machineViewLabel">${escapeHtml(view.label)}</div>
       <div class="muted">${m.currentPlayerName ? '利用者: ' + escapeHtml(m.currentPlayerName) : '利用者なし'} / ${m.currentSessionId ? '遊技中' : m.lastEndedSession ? '直前データ保持中' : 'リセット済み'}</div>
       <canvas class="adminSlumpGraph" data-machine="${m.machineId}"></canvas>
+      ${passwordIssueMarkup(m)}
       <div class="stats">
         <div class="stat"><span>G数</span><b>${fmt(stat(s,'totalSpins'))}</b></div>
         <div class="stat"><span>投入</span><b>${fmt(stat(s,'totalFee'))}pt</b></div>
@@ -354,7 +353,6 @@ function renderMachines(){
       </div>
       <fieldset class="row" style="border:0;padding:0;margin:0;min-width:0" id="controls-${m.machineId}" ${operation?.busy ? 'disabled' : ''}>
         <label class="field"><span>設定</span><select class="settingMini" id="setting-${m.machineId}" onchange="rememberMachineDraft('${m.machineId}')">${[1,2,3,4,5,6].map(n => '<option value="' + n + '" ' + (String(draft?.setting ?? machineSettingValue(m)) === String(n) ? 'selected' : '') + '>設定' + n + '</option>').join('')}</select></label>
-        ${m.capabilities && m.capabilities.completeLimit ? `<label class="field"><span>コンプリート発動枚数</span><input class="settingMini" id="complete-limit-${m.machineId}" type="number" min="1" max="999999" step="1" value="${escapeHtml(draft?.completeLimitPt ?? machineCompleteLimitValue(m))}" oninput="rememberMachineDraft('${m.machineId}')"></label>` : ''}
         <button onclick="applySetting('${m.machineId}')">設定反映</button>
         ${m.machineType==='nova' ? `<button class="ghost" aria-pressed="${m.capabilities?.superSpeedAllowed===true}" onclick="setSuperSpeed('${m.machineId}',${m.capabilities?.superSpeedAllowed!==true},this)">超ハイスピード ${m.capabilities?.superSpeedAllowed===true?'ON':'OFF'}</button>` : ''}
         <button class="danger" ${m.currentSessionId || m.lastEndedSession || m.stats ? '' : 'disabled'} onclick="forceEndMachine('${m.machineId}')">強制終了</button>
@@ -365,7 +363,7 @@ function renderMachines(){
     </article>`;
   }).join('');
   renderAdminSlumpGraphs();
-  if(focusedField) $(focusedField)?.focus({preventScroll:true});
+  if(focusedField){const el=$(focusedField);el?.focus({preventScroll:true});if(selection && selection[0]!==null)el?.setSelectionRange(...selection);}
 }
 function renderJackpotPools(){
   const panel = $('jackpotAdminPanel');
@@ -426,9 +424,12 @@ async function loadMachines(){
   return true;
 }
 async function loadPasswords(){
+  const request = ++passwordListRequest;
   const res = await fetch('/api/admin/passwords', {headers:adminHeaders(), cache:'no-store'});
+  if(request !== passwordListRequest)return;
   if(!res.ok){ $('passwordList').innerHTML = '<div class="bad">管理パスが必要です</div>'; return; }
   const data = await res.json().catch(() => []);
+  if(request !== passwordListRequest)return;
   const rows = Array.isArray(data) ? data : [];
   $('passwordList').innerHTML = rows.map(p => `<div class="item"><b class="code">${escapeHtml(p.password)}</b><span>${escapeHtml(p.playerName)} / ${escapeHtml(machineLabelById(p.machineId))}</span><span>${escapeHtml(p.status)}</span><span>${new Date(p.issuedAt).toLocaleString('ja-JP')}</span></div>`).join('') || '<div class="muted">まだありません</div>';
 }
@@ -441,21 +442,40 @@ async function loadResults(){
   $('results').innerHTML = rows.map(r => `<div class="item"><b>${escapeHtml(r.machineName || machineLabelById(r.machineId))}</b><span>${escapeHtml(r.playerName)} / 利用差pt ${signed(r.playerProfit ?? r.profit)}pt / ${fmt(r.playerSpins ?? r.totalSpins)}G / 投入 ${fmt(r.playerTotalFee ?? r.totalFee)}pt / 払出 ${fmt(r.playerTotalPaid ?? r.totalPaid)}pt</span><span>${r.sheets && r.sheets.ok ? '<span class="ok">Sheets</span>' : '<span class="muted">local</span>'}</span><span>${new Date(r.endedAt).toLocaleString('ja-JP')}</span></div>`).join('') || '<div class="muted">まだありません</div>';
   renderMachines();
 }
-async function issue(){
-  const body = {playerName:$('playerName').value, machineId:$('machineSelect').value};
-  const res = await fetch('/api/admin/issue-password', {method:'POST', headers:{'Content-Type':'application/json', ...adminHeaders()}, body:JSON.stringify(body)});
-  const data = await res.json();
-  if(!data.ok){ alert(data.error || '発行に失敗しました'); return; }
-  const issuedPassword = String(data.issued && data.issued.password || '').trim();
-  if(!issuedPassword){
-    $('issueResult').textContent = '発行済み（番号を取得できませんでした）';
-    alert('番号の表示に失敗しました。重複発行せず、管理者に確認してください。');
-    await loadPasswords();
-    return;
+function passwordIssueMarkup(machine){
+  const id=machine.machineId, state=passwordIssues.get(id)||{};
+  return `<fieldset class="passwordIssue" id="issue-controls-${id}" ${state.busy?'disabled':''}>
+    <legend>パスワード発行</legend><div class="row"><label class="field"><span class="muted">お客様名</span><input class="passwordName" id="player-name-${id}" value="${escapeHtml(state.playerName||'')}" maxlength="100" placeholder="お客様名" autocomplete="off" oninput="rememberPasswordDraft('${id}')"></label><button type="button" onclick="issue('${id}')">発行</button></div>
+    <b class="code" id="issue-code-${id}">${escapeHtml(state.password||'')}</b><div class="issueStatus ${state.failed?'bad':'muted'}" id="issue-status-${id}" role="status" aria-live="polite">${escapeHtml(state.message||'')}</div>
+  </fieldset>`;
+}
+function rememberPasswordDraft(id){
+  passwordIssues.set(id,{...passwordIssues.get(id),playerName:$('player-name-'+id)?.value||''});
+}
+function setPasswordIssue(id, patch){
+  const state={...passwordIssues.get(id),...patch};passwordIssues.set(id,state);
+  const field=$('issue-controls-'+id),message=$('issue-status-'+id),code=$('issue-code-'+id);
+  if(field)field.disabled=!!state.busy;
+  if(message){message.textContent=state.message||'';message.className='issueStatus '+(state.failed?'bad':'muted');}
+  if(code)code.textContent=state.password||'';
+}
+async function issue(id){
+  if(passwordIssues.get(id)?.busy)return;
+  rememberPasswordDraft(id);
+  const playerName=(passwordIssues.get(id)?.playerName||'').trim();
+  if(!playerName){setPasswordIssue(id,{failed:true,message:'お客様名を入力してください。'});$('player-name-'+id)?.focus();return;}
+  setPasswordIssue(id,{busy:true,failed:false,password:'',message:'発行中…'});
+  try{
+    const res=await fetch('/api/admin/issue-password',{method:'POST',headers:{'Content-Type':'application/json',...adminHeaders()},body:JSON.stringify({machineId:id,playerName}),signal:AbortSignal.timeout(20000)});
+    const data=await res.json();
+    if(!res.ok||!data.ok)throw Error(data.error||'発行に失敗しました。');
+    const password=String(data.issued?.password||'').trim();
+    if(!password)throw Error('番号を取得できませんでした。発行済み一覧を確認してください。');
+    setPasswordIssue(id,{busy:false,failed:false,password,message:playerName+' 様のパスワードを発行しました。'});
+  }catch(error){
+    setPasswordIssue(id,{busy:false,failed:true,message:error.name==='TimeoutError'||error.name==='TypeError'?'通信を確認し、再発行する前に発行済み一覧を確認してください。':error.message});
   }
-  $('issueResult').textContent = issuedPassword;
-  $('playerName').value = '';
-  await loadPasswords();
+  void loadPasswords().catch(()=>{});
 }
 async function setSuperSpeed(id,enabled,button){
   button.disabled=true;
@@ -477,7 +497,7 @@ async function applySetting(id){
   }catch(error){ setMachineOperation(id, false, error.message); }
 }
 function rememberMachineDraft(id){
-  machineDrafts.set(String(id), {setting:$('setting-' + id)?.value || '1', completeLimitPt:$('complete-limit-' + id)?.value || 19000});
+  machineDrafts.set(String(id), {setting:$('setting-' + id)?.value || '1'});
 }
 function setMachineOperation(id, busy, message){
   machineListRevision++;
@@ -495,7 +515,7 @@ async function submitMachineUpdate(id, action, body){
   const data = await res.json().catch(()=>({}));
   if(!res.ok || !data.ok) throw new Error(data.error || '更新に失敗しました。台の状態を確認してください。');
   machineListRevision++;
-  machineDrafts.delete(String(id));
+  if(action !== 'setting' || body?.setting !== undefined)machineDrafts.delete(String(id));
   if(data.machine){
     machines = machineRows().map(machine=>String(machine.machineId) === String(id)
       ? {...machine, ...data.machine, jackpotPool:data.machine.jackpotPool || machine.jackpotPool} : machine);
@@ -520,20 +540,32 @@ function machineSettingRtp(machine){
   return profile[machineSettingValue(machine) - 1];
 }
 function machineCompleteLimitValue(machine){
-  return Math.max(1, Math.min(999999, Math.round(Number(machine && machine.settings && machine.settings.completeLimitPt) || 19000)));
+  return Math.max(1, Math.min(999999, Math.round(Number(machine?.machineType==='nova' ? machine.settings?.completeMyLimitPt : machine.settings?.completeLimitPt) || 19000)));
+}
+function completeLimitTargets(){
+  return liveMachines().filter(machine=>machine.capabilities?.completeLimit);
+}
+function syncCompleteLimitControl(){
+  const targets=completeLimitTargets(),field=$('bulkCompleteLimit'),container=$('completeStoreControls');
+  if(!field||!container)return;
+  container.hidden=!targets.length;
+  const values=[...new Set(targets.map(machineCompleteLimitValue))];
+  if(!bulkCompleteDirty)field.value=values.length===1?String(values[0]):'';
+  $('completeSummary').textContent=values.length===1?'現在：'+fmt(values[0])+'pt（対象'+targets.length+'台共通）':'現在：台ごとに異なります（対象'+targets.length+'台）';
+  if(targets.some(m=>m.machineType==='nova'))$('completeSummary').textContent+=' / NOVAはMY基準';
 }
 function setBulkBusy(busy, message=''){
   bulkOperationBusy = !!busy;
+  if($('bulkCompleteLimit'))$('bulkCompleteLimit').disabled=!!busy;
   document.querySelectorAll('.bulkAction').forEach(button => { button.disabled = !!busy || [...machineOperations.values()].some(value=>value.busy); });
   const statusEl = $('bulkStatus');
   if(statusEl) statusEl.textContent = message;
 }
-async function updateMachineSettings(machine, setting, completeLimitPt){
-  return submitMachineUpdate(machine.machineId, 'setting', {setting, completeLimitPt});
+async function updateMachineSettings(machine, setting){
+  return submitMachineUpdate(machine.machineId, 'setting', {setting});
 }
-async function runBulkOperation(label, operation){
+async function runBulkOperation(label, operation, targets=liveMachines()){
   if(bulkOperationBusy || [...machineOperations.values()].some(value=>value.busy)) return false;
-  const targets = liveMachines();
   if(!targets.length){ alert('対象台がありません'); return false; }
   setBulkBusy(true, `${label}中... 0/${targets.length}台`);
   let completed = 0;
@@ -603,11 +635,13 @@ async function applyBulkRandomSettings(){
   }
 }
 async function applyBulkCompleteLimit(){
-  const completeLimitPt = Math.max(1, Math.min(999999, Math.round(Number($('bulkCompleteLimit').value) || 19000)));
-  const targetCount = liveMachines().length;
-  $('bulkCompleteLimit').value = String(completeLimitPt);
-  if(!confirm(`全${targetCount}台のコンプリート発動枚数を${fmt(completeLimitPt)}ptへ変更します。\n各台の設定番号は変更しません。`)) return;
-  await runBulkOperation('コンプリート枚数一括変更', machine => updateMachineSettings(machine, machineSettingValue(machine), completeLimitPt));
+  const field=$('bulkCompleteLimit');if(!field.reportValidity())return;
+  const completeLimitPt=Number(field.value),targets=completeLimitTargets();
+  if(!targets.length)return;
+  if(!confirm(`対象${targets.length}台のコンプリート発動枚数を${fmt(completeLimitPt)}ptへ変更します。\n遊技中の台にも反映されます。`))return;
+  const ok=await runBulkOperation('コンプリート枚数一括変更',machine=>submitMachineUpdate(machine.machineId,'setting',{completeLimitPt}),targets);
+  if(ok)bulkCompleteDirty=false;
+  syncCompleteLimitControl();
 }
 async function resetAllMachines(){
   const targets = liveMachines();
@@ -720,7 +754,6 @@ function logoutAdmin(){
 }
 $('authForm').addEventListener('submit', e=>{ e.preventDefault(); enterAdmin($('gatePassword').value); });
 $('logoutBtn').addEventListener('click', logoutAdmin);
-$('issueBtn').addEventListener('click', issue);
 $('machineTotalViewBtn').addEventListener('click', ()=>setMachineDataView('total'));
 $('machinePlayerViewBtn').addEventListener('click', ()=>setMachineDataView('player'));
 window.addEventListener('resize', renderAdminSlumpGraphs);

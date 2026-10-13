@@ -2,6 +2,7 @@ import * as https from "node:https";
 import * as crypto from "node:crypto";
 import machineTotals from "../machine-totals.cjs";
 import machineConfig from "../machine-config.cjs";
+import adminSettings from "../admin-settings.cjs";
 import {scopeHeaders} from "../supabase-scope.mjs";
 
 const {machineTotalFor} = machineTotals;
@@ -64,7 +65,7 @@ async function sb(path, options={}){
     ...options,
     headers:scopeHeaders({apikey:SUPABASE_KEY, Authorization:"Bearer " + SUPABASE_KEY, "Content-Type":"application/json", ...(options.headers || {})})
   });
-  if(!result.ok) throw new Error(typeof result.data === "string" ? result.data : JSON.stringify(result.data));
+  if(!result.ok) throw Object.assign(new Error(typeof result.data === "string" ? result.data : JSON.stringify(result.data)), {code:result.data?.code});
   return result.data;
 }
 function ms(){ return Date.now(); }
@@ -295,6 +296,17 @@ async function getIssued(password){
 async function saveIssued(issued){
   return sb("issued_passwords?on_conflict=password", {method:"POST", headers:{Prefer:"resolution=merge-duplicates,return=representation"}, body:JSON.stringify({password:issued.password, machine_id:String(issued.machineId), player_name:issued.playerName || "", status:issued.status, issued_at_ms:issued.issuedAt || 0, used_at_ms:issued.usedAt || 0, session_id:issued.sessionId || ""})});
 }
+async function createIssued(machineId, playerName){
+  for(let attempt=0; attempt<20; attempt++){
+    const issued={password:generatePassword(), machineId, playerName, status:"issued", issuedAt:ms(), usedAt:0, sessionId:""};
+    try{
+      // Insert only: concurrent issuers must never overwrite an existing code.
+      await sb("issued_passwords", {method:"POST", body:JSON.stringify({password:issued.password, machine_id:machineId, player_name:playerName, status:"issued", issued_at_ms:issued.issuedAt, used_at_ms:0, session_id:""})});
+      return issued;
+    }catch(error){ if(error.code !== "23505") throw error; }
+  }
+  throw new Error("パスワードを発行できませんでした。もう一度お試しください。");
+}
 function sessionFromRow(row){ return row ? {sessionId:row.session_id, token:row.token, password:row.password, machineId:String(row.machine_id), playerName:row.player_name || "", status:row.status, startedAt:Number(row.started_at_ms || 0), endedAt:Number(row.ended_at_ms || 0), resetSerialAtStart:Number(row.reset_serial_at_start || 0), startSnapshot:row.start_snapshot || null, resultRecord:row.result_record || null, sheets:row.sheets || null} : null; }
 async function getSession(id){
   const rows = await sb("sessions?session_id=eq." + encodeURIComponent(String(id)) + "&select=*&limit=1");
@@ -470,11 +482,9 @@ export default async function handler(req, res){
       if(!adminOk(req)) return json(res, 401, {ok:false, error:"admin password required"});
       const body = await readBody(req);
       if(!validMachineId(body.machineId)) return json(res, 400, {ok:false, error:"invalid machine"});
-      const machine = await getMachine(body.machineId);
       const playerName = String(body.playerName || "").trim();
       if(!playerName) return json(res, 400, {ok:false, error:"playerName required"});
-      const issued = {password:generatePassword(), machineId:machine.machineId, playerName, status:"issued", issuedAt:ms(), usedAt:0, sessionId:""};
-      await saveIssued(issued);
+      const issued = await createIssued(String(body.machineId), playerName);
       return json(res, 200, {ok:true, issued});
     }
     if(pathname === "/api/admin/passwords" && req.method === "GET"){
@@ -576,16 +586,21 @@ export default async function handler(req, res){
       if(!adminOk(req)) return json(res, 401, {ok:false, error:"admin password required"});
       const id = decodeURIComponent(m[1]);
       const body = await readBody(req);
-      const setting = Math.max(1, Math.min(6, Math.round(Number(body.setting) || 1)));
-      const completeLimitPt = Math.max(1, Math.min(999999, Math.round(Number(body.completeLimitPt) || 19000)));
+      if(!validMachineId(id)) return json(res,404,{ok:false,error:"machine not found"});
       const machine = await getMachine(id);
+      let patch;
+      try{patch=adminSettings.settingsPatch(body,machine.machineType);}catch(error){return json(res,400,{ok:false,error:error.message});}
+      if(body.completeLimitPt !== undefined && !machine.capabilities?.completeLimit) return json(res,400,{ok:false,error:"この台はコンプリート設定の対象外です"});
       const currentSettings = machine.lastSnapshot && machine.lastSnapshot.settings ? machine.lastSnapshot.settings : {};
+      const setting = patch.setting ?? machine.assignedSetting ?? currentSettings.setting ?? 1;
+      const nextSettings = {...currentSettings, setting, ...patch};
+      const completeLimitPt = (machine.machineType === 'nova' ? nextSettings.completeMyLimitPt : nextSettings.completeLimitPt) || 19000;
       machine.assignedSetting = setting;
       machine.lastSnapshot = machine.lastSnapshot || {machineId:machine.machineId, stats:{}, settings:{}, updatedAt:ms()};
-      machine.lastSnapshot.settings = {...currentSettings, setting, completeLimitPt};
+      machine.lastSnapshot.settings = nextSettings;
       machine.lastSnapshot.updatedAt = ms();
       await upsertMachine(machine);
-      const row = await insertCommand(machine.machineId, {type:"applySettings", settings:machine.lastSnapshot.settings});
+      const row = await insertCommand(machine.machineId, {type:"applySettings", settings:patch});
       return json(res, 200, {ok:true, setting, completeLimitPt, delivered:true, commandId:row.id, machine:publicMachine(machine, machineTotalFor(machine, []))});
     }
     m = pathname.match(/^\/api\/admin\/machines\/([^/]+)\/reset$/);

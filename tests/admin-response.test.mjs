@@ -77,6 +77,12 @@ test('real gateway settings/reset return fresh cards, preserve auth, cancel sess
     assert.equal((await request('admin/machines/one/reset',{},false)).statusCode,401);assert.equal(calls.length,0);
     const setting=await request('admin/machines/one/setting',{setting:5,completeLimitPt:19000});
     assert.equal(setting.statusCode,200);assert.equal(setting.body.machine.settings.setting,5);assert.equal(setting.body.machine.assignedSetting,5);
+    const limit=await request('admin/machines/one/setting',{completeLimitPt:22000});
+    assert.equal(limit.statusCode,200);assert.equal(limit.body.machine.settings.setting,5);
+    assert.equal(limit.body.machine.settings.completeMyLimitPt,22000);assert.equal(limit.body.machine.settings.completeLimitPt,0);
+    const settingOnly=await request('admin/machines/one/setting',{setting:5});
+    assert.equal(settingOnly.body.machine.settings.completeMyLimitPt,22000);
+    assert.equal((await request('admin/machines/one/setting',{completeLimitPt:0})).statusCode,400);
     calls.length=0;const reset=await request('admin/machines/one/reset');
     assert.equal(reset.statusCode,200);assert.equal(reset.body.machine.resetSerial,1);assert.equal(reset.body.machine.stats,null);
     assert.equal(reset.body.machine.settings.setting,5);assert.equal(reset.body.machine.currentSessionId,'');
