@@ -107,6 +107,12 @@ node server.js
 - `storeId`, `storeName`, `machineId`, `machineName`, `machineType`
 
 ブラウザが突然閉じた場合の強制清算は最後に受信した保存状態を使います。通常終了は終了直前に最新状態を同期します。
+
+### NEBULAのスプレッドシート換金ギャップ
+
+NEBULAのNOVA台（`store-debug`および`store-nebula`、`machineType: nova`）だけ、利用者の差ptがプラスで終了した場合に10%を控除します。スプレッドシートへの送信直前に、精算対象の`playerProfit`を差ptの90%（1pt未満切り捨て）へ置き換えます。例：+1,000pt → +900pt、+101pt → +90pt。0pt・マイナス・他店舗は変更しません。
+
+通常終了と管理者の強制終了で共通です。保存済みの終了履歴、差枚グラフ、ゲーム内表示、`profit`・`stats`・投入／払出カウンターは控除前の値を維持します。送信時は`rawPlayerProfit`（控除前）、`exchangeGapRate`（0.1）、`exchangeGapPt`（控除額）を付加します。受信側の精算は従来どおり`billingBasis: playerProfit`に従います。既存のスプレッドシート行は書き換えません。
 # NOVA 超ハイスピード使用許可
 
 NOVA台のカードに「超ハイスピード OFF/ON」を追加。押すとその台の使用許可を即保存する（初期OFF）。ゲーム側は約5秒ごとに許可を確認し、金色の「超」ボタンからAT確定まで通常AUTOの6倍のテンポで進められる。使用許可ONだけでは遊技は開始しない。

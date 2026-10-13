@@ -50,7 +50,7 @@ replacement(
 replacement(
   api,
   'async function sendToSheets(record){\n  if(!SHEETS_WEBHOOK_URL) return {ok:false, skipped:true, reason:"GOOGLE_SHEETS_WEBHOOK_URL is not set"};\n  try{ return {ok:true, result:await postJson(SHEETS_WEBHOOK_URL, record)}; }catch(e){ return {ok:false, error:e.message}; }\n}',
-  'async function sendToSheets(record){\n  if(!SHEETS_WEBHOOK_URL) return {ok:false, skipped:true, reason:"GOOGLE_SHEETS_WEBHOOK_URL is not set"};\n  try{\n    const result = await postJson(SHEETS_WEBHOOK_URL, record);\n    const ok = Number(result && result.status) >= 200 && Number(result && result.status) < 300;\n    return ok ? {ok:true, result} : {ok:false, error:`Sheets webhook returned ${result && result.status || "unknown"}`};\n  }catch(e){ return {ok:false, error:e.message}; }\n}',
+  'async function sendToSheets(record){\n  if(!SHEETS_WEBHOOK_URL) return {ok:false, skipped:true, reason:"GOOGLE_SHEETS_WEBHOOK_URL is not set"};\n  try{\n    const result = await postJson(SHEETS_WEBHOOK_URL, sheetsSettlementPolicy.sheetsSettlement(record));\n    const ok = Number(result && result.status) >= 200 && Number(result && result.status) < 300;\n    return ok ? {ok:true, result} : {ok:false, error:`Sheets webhook returned ${result && result.status || "unknown"}`};\n  }catch(e){ return {ok:false, error:e.message}; }\n}',
   "treat non-2xx Sheets responses as failures"
 );
 save(api);

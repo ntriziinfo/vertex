@@ -5,6 +5,7 @@ const require=createRequire(import.meta.url),https=require('node:https');
 const policy=require('../../password-issuance.cjs');
 const machines=new Map(['one','two'].map(id=>[id,{machine_id:id,current_session_id:'',current_player_name:'',reset_serial:0}]));
 const passwords=new Map(),sessions=new Map(),results=[];
+const sheetRecords=[];
 const collision=policy.candidate('qa-key','qa-store',{machineId:'one'},null,0);
 passwords.set(collision,{password:collision,machine_id:'unrelated',player_name:'Existing',status:'issued',issued_at_ms:1});
 let requests=0;
@@ -20,6 +21,9 @@ function matches(row,query){
 }
 function answer(url,options={},body){
  requests++;const u=new URL(url),table=u.pathname.split('/').at(-1),q=u.searchParams,method=options.method||'GET';
+ if(u.hostname==='sheets.invalid'){
+  assert.equal(method,'POST');sheetRecords.push(JSON.parse(body));return {status:200,data:{ok:true}};
+ }
  const map={machine_states:machines,issued_passwords:passwords,sessions}[table];
  if(map){
   const key={machine_states:'machine_id',issued_passwords:'password',sessions:'session_id'}[table];
@@ -53,6 +57,37 @@ async function request(path,body={},method='POST',admin=true){
 const issue=(machineId,playerName)=>request('admin/issue-password',{machineId,playerName});
 const current=async()=>{const res=await request('admin/passwords/current',{},'GET');assert.equal(res.statusCode,200);return res.body;};
 const begin=async(password)=>{const res=await request('sessions/start',{password});assert.equal(res.statusCode,200,JSON.stringify(res.body));return res.body.session;};
+if(process.env.QA_SHEETS_ASSERT==='1'){
+ const eligible=['store-debug','store-nebula'].includes(process.env.VERTEX_STORE_ID);
+ const machineId=process.env.VERTEX_STORE_ID==='store-debug'?'nova-01':'one';
+ if(!machines.has(machineId))machines.set(machineId,{machine_id:machineId,current_session_id:'',current_player_name:'',reset_serial:0});
+ for(const [index,[delta,forced]] of [[2000,false],[101,true],[0,false],[-201,true]].entries()){
+  const issued=await issue(machineId,'QA');assert.equal(issued.statusCode,200,JSON.stringify(issued.body));
+  const session=await begin(issued.body.issued.password);
+  const baseline={totalSpins:100,totalFee:300,totalPaid:800};
+  const snapshot={playSessionId:session.sessionId,playSessionStartStats:baseline,stats:{totalSpins:1100,totalFee:3300,totalPaid:3800+delta}};
+  machines.get(machineId).last_snapshot=snapshot;
+  const response=forced
+   ?await request(`admin/machines/${machineId}/force-end`)
+   :await request('sessions/end',{...session,snapshot,storeId:'store-las-vegas',machineType:'jackspot'},'POST',false);
+  assert.equal(response.statusCode,200,JSON.stringify(response.body));assert.equal(response.body.sheets.ok,true);
+  const sent=sheetRecords.at(-1),saved=results.at(-1).record;
+  assert.equal(sheetRecords.length,index+1);
+  assert.equal(saved.playerProfit,delta);assert.equal(response.body.record.playerProfit,delta);
+  assert.equal(sessions.get(session.sessionId).result_record.playerProfit,delta);
+  assert.equal(sent.playerProfit,eligible&&delta>0?Math.floor(delta*9/10):delta);
+  assert.equal(sent.profit,delta+500);assert.deepEqual(sent.stats,snapshot.stats);
+  assert.equal(sent.storeId,process.env.VERTEX_STORE_ID);assert.equal(sent.billingBasis,'playerProfit');
+  assert.equal(sent.playerTotalFee,3000);assert.equal(sent.playerTotalPaid,3000+delta);
+  assert.equal(saved.exchangeGapPt,undefined);
+  if(eligible&&delta>0){assert.equal(sent.rawPlayerProfit,delta);assert.equal(sent.exchangeGapPt,delta-sent.playerProfit);}
+  else assert.deepEqual(sent,saved);
+  const repeated=await request('sessions/end',session,'POST',false);
+  assert.equal(repeated.body.alreadyEnded,true);assert.equal(sheetRecords.length,index+1);
+ }
+ console.log('Sheets settlement, player baseline, normal/forced end, raw history, other stores and duplicate end verified.');
+ process.exit(0);
+}
 assert.equal((await request('admin/passwords/current',{},'GET',false)).statusCode,401);assert.equal(requests,0);
 const [a,a2,b]=await Promise.all([issue('one','Alice'),issue('one','Other admin'),issue('two','Bob')]);
 for(const res of [a,a2,b])assert.equal(res.statusCode,200,JSON.stringify(res.body));

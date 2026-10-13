@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const passwordIssuance = require('./password-issuance.cjs');
+const {sheetsSettlement} = require('./sheets-settlement.cjs');
 const { URL } = require("url");
 const {machineTotalFor} = require("./machine-totals.cjs");
 const {settingsPatch,completionSettings} = require("./admin-settings.cjs");
@@ -451,7 +452,7 @@ function sessionDelta(session, snapshot){
 async function sendToSheets(record){
   if(!SHEETS_WEBHOOK_URL) return {ok:false, skipped:true, reason:"GOOGLE_SHEETS_WEBHOOK_URL is not set"};
   try{
-    const result = await postJson(SHEETS_WEBHOOK_URL, record);
+    const result = await postJson(SHEETS_WEBHOOK_URL, sheetsSettlement(record));
     return {ok:true, result};
   }catch(e){
     return {ok:false, error:e.message};

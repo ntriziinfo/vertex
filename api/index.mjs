@@ -4,6 +4,7 @@ import machineTotals from "../machine-totals.cjs";
 import machineConfig from "../machine-config.cjs";
 import adminSettings from "../admin-settings.cjs";
 import passwordIssuance from "../password-issuance.cjs";
+import sheetsSettlementPolicy from "../sheets-settlement.cjs";
 import {scopeHeaders} from "../supabase-scope.mjs";
 
 const {machineTotalFor} = machineTotals;
@@ -436,7 +437,7 @@ function sessionDelta(session, snapshot){
 async function sendToSheets(record){
   if(!SHEETS_WEBHOOK_URL) return {ok:false, skipped:true, reason:"GOOGLE_SHEETS_WEBHOOK_URL is not set"};
   try{
-    const result = await postJson(SHEETS_WEBHOOK_URL, record);
+    const result = await postJson(SHEETS_WEBHOOK_URL, sheetsSettlementPolicy.sheetsSettlement(record));
     const ok = Number(result && result.status) >= 200 && Number(result && result.status) < 300;
     return ok ? {ok:true, result} : {ok:false, error:`Sheets webhook returned ${result && result.status || "unknown"}`};
   }catch(e){ return {ok:false, error:e.message}; }
