@@ -8,7 +8,8 @@ const STRICT_CONFIG = String(process.env.VERTEX_STRICT_CONFIG || (process.env.VE
 const DEFAULT_STORE_DIRECTORY = [
   {storeId:"store-jag-one", storeName:"Vertex管理画面", adminUrl:""},
   {storeId:"store-las-vegas", storeName:"ロスベガス管理画面", adminUrl:""},
-  {storeId:"store-debug", storeName:"デバッグ", adminUrl:""}
+  {storeId:"store-debug", storeName:"デバッグ", adminUrl:""},
+  {storeId:"store-nebula", storeName:"NEBULA", adminUrl:""}
 ];
 
 function normalizeStoreDefinition(value, index=0){
@@ -159,6 +160,8 @@ function loadMachineDefinitions(){
 
   const preset = loadStorePreset();
   if(preset) return preset;
+
+  if(STORE_ID === "store-nebula") throw new Error("store-nebula machine configuration is required");
 
   return {value:DEFAULT_MACHINE_DEFINITIONS.map(normalizeMachineDefinition), source:"default"};
 }

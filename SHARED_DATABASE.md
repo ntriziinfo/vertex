@@ -65,9 +65,15 @@ Pro側に店舗別の専用領域を作成し、移行元の全7テーブルの�
 | vertex（既存接続を維持） | store-jag-one | public（現状を確認して維持） |
 | lasvegas-control | store-las-vegas | vertex_las_vegas |
 | vertex-debug | store-debug | vertex_debug |
+| nebula-control | store-nebula | vertex_nebula |
 
 既存データがあるpublic領域はそのまま維持できる。そこに接続中のサービスは変更しない。
 未指定・publicは従来の独立DB互換。`vertex_main` もコード上は対応するが、今回は移行しない。
+新設のNEBULAは`vertex_nebula`の指定が必須で、未指定・publicへの接続は拒否する。
+NOVA 12台は`store-configs/store-nebula.machines.json`で定義し、台IDは`nebula-nova-01`〜`nebula-nova-12`。
+既存店舗とゲーム側の端末内保存も混ざらないよう、別IDを使用する。
+`VERTEX_STORE_ID=store-nebula`でビルドすると`nebula-machines.html`が`/machines.html`になり、トップページも台選びへ進む。
+管理画面は`/admin.html`、遊技入口は`/play.html`。他店舗の画面は変更しない。
 
 ## 準備済み
 

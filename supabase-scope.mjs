@@ -3,12 +3,14 @@
 export const STORE_SCHEMAS = Object.freeze({
   "store-jag-one": "vertex_main",
   "store-las-vegas": "vertex_las_vegas",
-  "store-debug": "vertex_debug"
+  "store-debug": "vertex_debug",
+  "store-nebula": "vertex_nebula"
 });
 
 export function resolveDatabaseSchema(env = process.env) {
   const schema = String(env.VERTEX_DB_SCHEMA || "public").trim();
-  if (schema === "public") return schema; // Existing independent deployments.
+  // New shared stores must never fall back into the original store's public data.
+  if (schema === "public" && env.VERTEX_STORE_ID !== "store-nebula") return schema;
   const expected = STORE_SCHEMAS[String(env.VERTEX_STORE_ID || "").trim()];
   if (!expected || schema !== expected) {
     throw new Error("VERTEX_DB_SCHEMA does not match VERTEX_STORE_ID");

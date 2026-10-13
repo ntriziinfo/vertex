@@ -9,6 +9,12 @@ test("existing independent databases retain the public schema", () => {
   assert.equal(resolveDatabaseSchema({VERTEX_STORE_ID: "store-debug"}), "public");
 });
 
+test("Nebula never falls back to the original store when its schema is missing", () => {
+  for(const schema of [undefined, "", "public", "vertex_debug"]){
+    assert.throws(()=>resolveDatabaseSchema({VERTEX_STORE_ID:"store-nebula", VERTEX_DB_SCHEMA:schema}));
+  }
+});
+
 test("shared deployments reject another store's schema and invalid identifiers", () => {
   for (const [store, schema] of Object.entries(STORE_SCHEMAS)) {
     assert.equal(resolveDatabaseSchema({VERTEX_STORE_ID: store, VERTEX_DB_SCHEMA: schema}), schema);

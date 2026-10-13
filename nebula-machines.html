@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0c0b16">
+  <meta name="description" content="NEBULAのNOVA台選び。空き状況と台データを確認して遊技を始められます。">
+  <title>NEBULA | NOVA 台選び</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0c0b16;--panel:#171522;--line:#343044;--muted:#aca7be;--accent:#bba0ff;--green:#89edc5}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 75% 0, #29203d 0,transparent 45%),var(--bg);color:#f6f3ff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Yu Gothic",sans-serif;font-size:14px}button,a{-webkit-tap-highlight-color:transparent}button{font:inherit;cursor:pointer}a:focus-visible,button:focus-visible{outline:3px solid #c3b2ff;outline-offset:4px}[hidden]{display:none!important}
+    .wrap{max-width:1280px;margin:auto;padding:0 28px}.masthead{border-bottom:1px solid var(--line)}.masthead .wrap{min-height:80px;display:flex;align-items:center;justify-content:space-between;gap:15px}.brand{font-size:25px;letter-spacing:.18em;font-weight:800}.brand small{margin-left:16px;font-size:10px;letter-spacing:.15em;color:var(--muted);font-weight:500}.live{font-size:12px;color:var(--muted)}.live i{display:inline-block;width:7px;height:7px;background:var(--green);border-radius:50%;margin-right:7px}
+    .hero{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;padding:40px 0 30px}.eyebrow{font-size:11px;color:var(--accent);letter-spacing:.17em;margin:0 0 10px}.hero h1{font-size:clamp(28px,4vw,38px);letter-spacing:.04em;margin:0 0 12px}.hero p:last-child{color:var(--muted);line-height:1.8;margin:0}.summary{display:flex;gap:30px;flex-shrink:0}.summary div{display:grid;gap:7px}.summary dt{font-size:12px;color:var(--muted)}.summary dd{font-size:30px;margin:0;font-weight:700;font-variant-numeric:tabular-nums}.summary small{font-size:12px;color:var(--muted);font-weight:400;margin-left:5px}.summary .available{color:var(--green)}
+    .toolbar{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:16px 0;border-top:1px solid var(--line)}.filters{display:flex;gap:6px}.filter,.refresh{border:1px solid var(--line);border-radius:7px;padding:9px 15px;background:transparent;color:var(--muted);min-height:40px}.filter[aria-pressed=true]{background:#322b47;color:#fff;border-color:#74618e}.refresh{color:#e2daf7}.refresh:disabled{opacity:.5;cursor:wait}.updated{display:flex;align-items:center;gap:14px;font-size:12px;color:var(--muted)}
+    .notice{padding:14px 16px;border:1px solid #735b31;border-radius:8px;background:#30291e;color:#ffe0a2;line-height:1.6}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;padding-bottom:24px}.machine{border:1px solid var(--line);border-radius:12px;background:linear-gradient(140deg,#1c192b,var(--panel));padding:18px;min-width:0}.head{display:flex;align-items:center;gap:12px;margin-bottom:16px}.number{font-size:29px;font-weight:700;letter-spacing:-.04em;color:#d6c9f7;font-variant-numeric:tabular-nums}.identity{flex:1;min-width:0}.identity h2{font-size:18px;letter-spacing:.07em;margin:0 0 3px}.identity p{font-size:11px;color:var(--muted);margin:0}.pill{font-size:11px;border-radius:20px;padding:6px 10px;border:1px solid #386257;background:#162d28;color:var(--green);white-space:nowrap}.pill.busy{background:#292633;border-color:#4a4357;color:#b9b2c9}.pill.unknown{background:#352b1a;border-color:#6a5431;color:#ffe0a2}
+    .graph-wrap{position:relative;border:1px solid #2a2739;border-radius:7px;background:#100f1c;overflow:hidden}.graph{display:block;width:100%;height:136px}.graph-label{position:absolute;left:10px;top:9px;color:#8d879f;font-size:10px;pointer-events:none}.stats{display:grid;grid-template-columns:1fr 1fr;gap:14px 10px;margin:17px 0}.stat{display:flex;align-items:baseline;justify-content:space-between;gap:6px}.stat dt{font-size:11px;color:var(--muted)}.stat dd{margin:0;font-size:16px;font-weight:650;font-variant-numeric:tabular-nums}.stat dd small{font-size:10px;color:var(--muted);font-weight:400}.positive{color:var(--green)}.negative{color:#ff9baa}.play{display:flex;align-items:center;justify-content:space-between;min-height:45px;padding:11px 14px;border-radius:7px;background:#d8c8ff;color:#221733;text-decoration:none;font-weight:700;font-size:13px}.play:hover{background:#e6dcff}.play.disabled{background:#292534;color:#a29aad;cursor:default}.empty{padding:48px 12px;text-align:center;color:var(--muted);grid-column:1/-1}.footnote{padding:0 0 30px;color:var(--muted);font-size:11px;line-height:1.8}.footer{border-top:1px solid var(--line);padding:22px 0 30px;display:flex;justify-content:space-between;color:#827b95;font-size:11px;letter-spacing:.06em}.footer a{color:var(--muted);text-decoration:none}
+    @media(max-width:1050px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.summary{gap:22px}}
+    @media(max-width:640px){.wrap{padding:0 16px}.masthead .wrap{min-height:64px}.brand{font-size:21px}.brand small{display:none}.hero{padding:28px 0 22px;display:block}.hero h1{font-size:29px}.summary{margin:22px 0 0;gap:35px}.summary dd{font-size:25px}.toolbar{flex-wrap:wrap;gap:12px}.updated{flex:1;justify-content:flex-end;gap:8px}.filter,.refresh{padding:8px 11px}.grid{grid-template-columns:1fr;gap:14px}.machine{padding:16px}.graph{height:150px}.stats{gap:14px 18px}}
+  </style>
+</head>
+<body>
+<header class="masthead"><div class="wrap"><div class="brand">NEBULA<small>NOVA SLOT LOUNGE</small></div><span class="live"><i></i>台選び</span></div></header>
+<main class="wrap">
+  <section class="hero" aria-labelledby="title"><div><p class="eyebrow">MACHINE SELECT</p><h1 id="title">今日の一台を選ぶ。</h1><p>NOVAの空き状況と台データをチェック。<br>遊びたい台を選び、発行されたパスワードで開始できます。</p></div><dl class="summary"><div><dt>設置台数</dt><dd><span id="total">—</span><small>台</small></dd></div><div><dt>空き台</dt><dd class="available"><span id="available">—</span><small>台</small></dd></div><div><dt>利用中</dt><dd><span id="occupied">—</span><small>台</small></dd></div></dl></section>
+  <div class="toolbar"><div class="filters" aria-label="表示する台"><button class="filter" data-filter="all" aria-pressed="true">すべて</button><button class="filter" data-filter="free" aria-pressed="false">空き台のみ</button></div><div class="updated"><span id="updated" role="status">読み込み中</span><button class="refresh" id="refresh">更新</button></div></div>
+  <p id="notice" class="notice" role="alert" hidden></p>
+  <div id="grid" class="grid" aria-busy="true"><p class="empty">台データを読み込んでいます…</p></div>
+  <p class="footnote">表示データは管理リセット以降の累計です。空き状況は30秒ごとに更新され、遊技開始時に再確認されます。<br>遊技には、この店舗の管理者が発行する台専用パスワードが必要です。</p>
+  <footer class="footer"><span>NEBULA / NOVA</span><a href="/admin.html">店舗管理</a></footer>
+</main>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const esc = value => String(value ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num = value => Number.isFinite(Number(value)) ? Number(value) : 0;
+const fmt = value => num(value).toLocaleString('ja-JP');
+const signed = value => (num(value) >= 0 ? '+' : '') + fmt(value);
+let machines = [], filter = 'all', fresh = false, loading = false, lastUpdate = 0;
+function draw(canvas, history){
+  const ctx = canvas.getContext('2d'); if(!ctx) return;
+  const rect = canvas.getBoundingClientRect(), w = rect.width, h = rect.height;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.round(w*dpr); canvas.height = Math.round(h*dpr); ctx.setTransform(dpr,0,0,dpr,0,0);
+  const points = Array.isArray(history) && history.length ? history.map(p=>({spin:num(p.spin),profit:num(p.profit)})) : [{spin:0,profit:0}];
+  let min = 0, max = 0, end = 1;
+  for(const p of points){min=Math.min(min,p.profit);max=Math.max(max,p.profit);end=Math.max(end,p.spin);}
+  if(min===max){min=-100;max=100;}
+  const x = p => 8 + p.spin/end*(w-16), y = v => h-14-(v-min)/(max-min)*(h-44);
+  ctx.strokeStyle='#272335';ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){const yy=30+(h-44)*i/4;ctx.beginPath();ctx.moveTo(8,yy);ctx.lineTo(w-8,yy);ctx.stroke();}
+  ctx.setLineDash([3,4]);ctx.strokeStyle='#514a62';ctx.beginPath();ctx.moveTo(8,y(0));ctx.lineTo(w-8,y(0));ctx.stroke();ctx.setLineDash([]);
+  ctx.strokeStyle=points.at(-1).profit>=0?'#89edc5':'#ff9baa';ctx.lineWidth=2;ctx.lineJoin='round';ctx.beginPath();
+  points.forEach((p,i)=>i?ctx.lineTo(x(p),y(p.profit)):ctx.moveTo(x(p),y(p.profit)));
+  if(points.length===1)ctx.lineTo(w-8,y(points[0].profit));ctx.stroke();
+  canvas.setAttribute('aria-label',`差枚グラフ。最小${fmt(min)}pt、最大${fmt(max)}pt、現在${signed(points.at(-1).profit)}pt`);
+}
+function graphs(){document.querySelectorAll('canvas[data-id]').forEach(canvas=>{const machine=machines.find(m=>m.machineId===canvas.dataset.id);if(machine)draw(canvas,machine.machineTotalSlumpHistory);});}
+function render(){
+  $('total').textContent = machines.length;
+  $('available').textContent = fresh ? machines.filter(m=>!m.locked).length : '—';
+  $('occupied').textContent = fresh ? machines.filter(m=>m.locked).length : '—';
+  const visible = machines.filter(m=>filter==='all'||!m.locked);
+  $('grid').innerHTML = visible.map(m=>{
+    const s=m.machineTotalStats||{}, profit=num(s.profit ?? num(s.totalPaid)-num(s.totalFee));
+    const free=fresh&&!m.locked, number=String(m.machineId).match(/(\d+)$/)?.[1]||'—';
+    const label=!fresh?'状況未確認':m.locked?'利用中':'空き台';
+    return `<article class="machine"><div class="head"><span class="number">${esc(number)}</span><div class="identity"><h2>NOVA</h2><p>${esc(m.displayName||m.machineId)}</p></div><span class="pill ${!fresh?'unknown':m.locked?'busy':''}">${label}</span></div><div class="graph-wrap"><span class="graph-label">差枚グラフ / pt</span><canvas class="graph" data-id="${esc(m.machineId)}" role="img"></canvas></div><dl class="stats"><div class="stat"><dt>総回転</dt><dd>${fmt(s.totalSpins)} <small>G</small></dd></div><div class="stat"><dt>差枚</dt><dd class="${profit>=0?'positive':'negative'}">${signed(profit)} <small>pt</small></dd></div><div class="stat"><dt>投入</dt><dd>${fmt(s.totalFee)} <small>pt</small></dd></div><div class="stat"><dt>払出</dt><dd>${fmt(s.totalPaid)} <small>pt</small></dd></div></dl>${free?`<a class="play" href="/play.html?machine=${encodeURIComponent(m.machineId)}" aria-label="${esc(m.displayName)}で遊ぶ"><span>この台で遊ぶ</span><span aria-hidden="true">→</span></a>`:`<div class="play disabled" aria-disabled="true"><span>${fresh?'ただいま利用中':'更新して空き状況を確認'}</span></div>`}</article>`;
+  }).join('') || '<p class="empty">'+(machines.length?'現在、空き台はありません。':'表示できる台がありません。更新して再確認してください。')+'</p>';
+  graphs();
+}
+async function load(){
+  if(loading)return;loading=true;$('refresh').disabled=true;$('grid').setAttribute('aria-busy','true');
+  try{
+    const responses=await Promise.all(['/api/config','/api/machines'].map(url=>fetch(url,{cache:'no-store',signal:AbortSignal.timeout(12000)})));
+    if(responses.some(r=>!r.ok))throw Error('fetch');
+    const [config,rows]=await Promise.all(responses.map(r=>r.json()));
+    if(config.storeId!=='store-nebula'||!Array.isArray(rows)||rows.length!==12||new Set(rows.map(m=>m.machineId)).size!==12||rows.some(m=>!/^nebula-nova-(0[1-9]|1[0-2])$/.test(m.machineId)||m.machineType!=='nova'))throw Error('store');
+    machines=rows.sort((a,b)=>a.machineId.localeCompare(b.machineId));fresh=true;lastUpdate=Date.now();
+    $('notice').hidden=true;$('updated').textContent=new Date(lastUpdate).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})+' 更新';render();
+  }catch(error){
+    fresh=false;$('notice').textContent='台データを取得できませんでした。通信状況を確認して「更新」を押してください。'+(machines.length?' 下の数値は前回取得時のデータです。':'');$('notice').hidden=false;$('updated').textContent='更新できませんでした';
+    if(machines.length)render();else $('grid').innerHTML='<p class="empty">台データを読み込めませんでした。</p>';
+  }finally{loading=false;$('refresh').disabled=false;$('grid').setAttribute('aria-busy','false');}
+}
+document.querySelectorAll('[data-filter]').forEach(button=>button.addEventListener('click',()=>{filter=button.dataset.filter;document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));render();}));
+$('refresh').addEventListener('click',load);
+let resizeTimer;window.addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(graphs,120);});
+setInterval(()=>{if(!document.hidden)load();},30000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-lastUpdate>30000)load();});
+window.addEventListener('pageshow',event=>{if(event.persisted)load();});
+load();
+</script>
+</body>
+</html>

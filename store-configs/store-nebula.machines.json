@@ -1,0 +1,134 @@
+[
+  {
+    "machineId": "nebula-nova-01",
+    "displayName": "NOVA 1番台",
+    "machineType": "nova",
+    "gameUrl": "https://nova-eta-jet-30.vercel.app/jag.html",
+    "poolId": "",
+    "capabilities": {
+      "completeLimit": true,
+      "jackpot": false
+    }
+  },
+  {
+    "machineId": "nebula-nova-02",
+    "displayName": "NOVA 2番台",
+    "machineType": "nova",
+    "gameUrl": "https://nova-eta-jet-30.vercel.app/jag.html",
+    "poolId": "",
+    "capabilities": {
+      "completeLimit": true,
+      "jackpot": false
+    }
+  },
+  {
+    "machineId": "nebula-nova-03",
+    "displayName": "NOVA 3番台",
+    "machineType": "nova",
+    "gameUrl": "https://nova-eta-jet-30.vercel.app/jag.html",
+    "poolId": "",
+    "capabilities": {
+      "completeLimit": true,
+      "jackpot": false
+    }
+  },
+  {
+    "machineId": "nebula-nova-04",
+    "displayName": "NOVA 4番台",
+    "machineType": "nova",
+    "gameUrl": "https://nova-eta-jet-30.vercel.app/jag.html",
+    "poolId": "",
+    "capabilities": {
+      "completeLimit": true,
+      "jackpot": false
+    }
+  },
+  {
+    "machineId": "nebula-nova-05",
+    "displayName": "NOVA 5番台",
+    "machineType": "nova",
+    "gameUrl": "https://nova-eta-jet-30.vercel.app/jag.html",
+    "poolId": "",
+    "capabilities": {
+      "completeLimit": true,
+      "jackpot": false
+    }
+  },
+  {
+    "machineId": "nebula-nova-06",
+    "displayName": "NOVA 6番台",
+    "machineType": "nova",
+    "gameUrl": "https://nova-eta-jet-30.vercel.app/jag.html",
+    "poolId": "",
+    "capabilities": {
+      "completeLimit": true,
+      "jackpot": false
+    }
+  },
+  {
+    "machineId": "nebula-nova-07",
+    "displayName": "NOVA 7番台",
+    "machineType": "nova",
+    "gameUrl": "https://nova-eta-jet-30.vercel.app/jag.html",
+    "poolId": "",
+    "capabilities": {
+      "completeLimit": true,
+      "jackpot": false
+    }
+  },
+  {
+    "machineId": "nebula-nova-08",
+    "displayName": "NOVA 8番台",
+    "machineType": "nova",
+    "gameUrl": "https://nova-eta-jet-30.vercel.app/jag.html",
+    "poolId": "",
+    "capabilities": {
+      "completeLimit": true,
+      "jackpot": false
+    }
+  },
+  {
+    "machineId": "nebula-nova-09",
+    "displayName": "NOVA 9番台",
+    "machineType": "nova",
+    "gameUrl": "https://nova-eta-jet-30.vercel.app/jag.html",
+    "poolId": "",
+    "capabilities": {
+      "completeLimit": true,
+      "jackpot": false
+    }
+  },
+  {
+    "machineId": "nebula-nova-10",
+    "displayName": "NOVA 10番台",
+    "machineType": "nova",
+    "gameUrl": "https://nova-eta-jet-30.vercel.app/jag.html",
+    "poolId": "",
+    "capabilities": {
+      "completeLimit": true,
+      "jackpot": false
+    }
+  },
+  {
+    "machineId": "nebula-nova-11",
+    "displayName": "NOVA 11番台",
+    "machineType": "nova",
+    "gameUrl": "https://nova-eta-jet-30.vercel.app/jag.html",
+    "poolId": "",
+    "capabilities": {
+      "completeLimit": true,
+      "jackpot": false
+    }
+  },
+  {
+    "machineId": "nebula-nova-12",
+    "displayName": "NOVA 12番台",
+    "machineType": "nova",
+    "gameUrl": "https://nova-eta-jet-30.vercel.app/jag.html",
+    "poolId": "",
+    "capabilities": {
+      "completeLimit": true,
+      "jackpot": false
+    }
+  }
+]
