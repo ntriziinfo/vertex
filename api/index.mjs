@@ -3,6 +3,7 @@ import * as crypto from "node:crypto";
 import machineTotals from "../machine-totals.cjs";
 import machineConfig from "../machine-config.cjs";
 import adminSettings from "../admin-settings.cjs";
+import passwordIssuance from "../password-issuance.cjs";
 import {scopeHeaders} from "../supabase-scope.mjs";
 
 const {machineTotalFor} = machineTotals;
@@ -70,12 +71,6 @@ async function sb(path, options={}){
 }
 function ms(){ return Date.now(); }
 function makeId(prefix){ return prefix + "_" + Date.now() + "_" + crypto.randomBytes(4).toString("hex"); }
-function generatePassword(){
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let value = "";
-  for(let i=0;i<6;i++) value += alphabet[crypto.randomInt(0, alphabet.length)];
-  return value;
-}
 function validMachineId(id){ return !!machineDefinition(id); }
 function machineLabel(id){ const definition = machineDefinition(id); return definition ? definition.displayName : String(id); }
 function jackpotMachineDefinition(id){
@@ -290,20 +285,63 @@ function machineGameUrl(machine, adminOrigin, sessionId){
 }
 async function getIssued(password){
   const rows = await sb("issued_passwords?password=eq." + encodeURIComponent(password) + "&select=*&limit=1");
-  const row = rows[0];
-  return row ? {password:row.password, machineId:String(row.machine_id), playerName:row.player_name || "", status:row.status, issuedAt:Number(row.issued_at_ms || 0), usedAt:Number(row.used_at_ms || 0), sessionId:row.session_id || ""} : null;
+  return passwordIssuance.fromRow(rows[0]);
+}
+async function latestIssued(machineId){
+  const rows=await sb('issued_passwords?machine_id=eq.'+encodeURIComponent(machineId)+'&select=*&order=issued_at_ms.desc,password.desc&limit=1');
+  return passwordIssuance.fromRow(rows[0]);
+}
+async function currentIssued(machine,previous){
+  if(!machine.currentSessionId)return passwordIssuance.current(machine,previous?[previous]:[]);
+  const rows=await sb('issued_passwords?session_id=eq.'+encodeURIComponent(machine.currentSessionId)+'&select=*&limit=1');
+  return passwordIssuance.current(machine,rows.map(passwordIssuance.fromRow));
+}
+async function retirePasswords(machineId,status){
+  return await sb('issued_passwords?machine_id=eq.'+encodeURIComponent(machineId)+'&status=in.(issued,used)',{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({status})})||[];
+}
+async function currentPasswordList(){
+  // No game snapshots/history: this small authenticated response is polled by admins.
+  const states=await sb('machine_states?select=machine_id,current_session_id,current_player_name,ended_at_ms:last_ended_session->endedAt,reset_serial');
+  const machines=MACHINE_DEFINITIONS.map(def=>{
+    const row=states.find(row=>row.machine_id===def.machineId);
+    return row?machineFromRow({...row,last_ended_session:{endedAt:row.ended_at_ms}}):emptyMachine(def.machineId);
+  });
+  const sessions=machines.map(machine=>machine.currentSessionId).filter(Boolean);
+  const filter=sessions.length?'or=(status.eq.issued,session_id.in.('+sessions.map(encodeURIComponent).join(',')+'))':'status=eq.issued';
+  const passwords=[];
+  for(let offset=0;;offset+=1000){
+    const rows=await sb('issued_passwords?select=*&'+filter+'&order=issued_at_ms.desc,password.desc&limit=1000&offset='+offset);
+    passwords.push(...rows.map(passwordIssuance.fromRow));if(rows.length<1000)break;
+  }
+  return machines.map(machine=>passwordIssuance.current(machine,passwords)||{machineId:machine.machineId,status:'available',password:'',playerName:''});
 }
 async function saveIssued(issued){
   return sb("issued_passwords?on_conflict=password", {method:"POST", headers:{Prefer:"resolution=merge-duplicates,return=representation"}, body:JSON.stringify({password:issued.password, machine_id:String(issued.machineId), player_name:issued.playerName || "", status:issued.status, issued_at_ms:issued.issuedAt || 0, used_at_ms:issued.usedAt || 0, session_id:issued.sessionId || ""})});
 }
 async function createIssued(machineId, playerName){
+  const [machine,previous]=await Promise.all([getMachine(machineId),latestIssued(machineId)]);
+  const existing=await currentIssued(machine,previous);
+  if(existing){
+    if(!existing.password)throw Object.assign(new Error('遊技中です。終了後に発行してください。'),{statusCode:409});
+    return existing;
+  }
   for(let attempt=0; attempt<20; attempt++){
-    const issued={password:generatePassword(), machineId, playerName, status:"issued", issuedAt:ms(), usedAt:0, sessionId:""};
+    const issued={password:passwordIssuance.candidate(SUPABASE_KEY,STORE_ID,machine,previous,attempt), machineId, playerName, status:"issued", issuedAt:Math.max(ms(),(previous?.issuedAt||0)+1), usedAt:0, sessionId:""};
     try{
       // Insert only: concurrent issuers must never overwrite an existing code.
       await sb("issued_passwords", {method:"POST", body:JSON.stringify({password:issued.password, machine_id:machineId, player_name:playerName, status:"issued", issued_at_ms:issued.issuedAt, used_at_ms:0, session_id:""})});
-      return issued;
-    }catch(error){ if(error.code !== "23505") throw error; }
+    }catch(error){
+      if(error.code !== '23505')throw error;
+      const winner=await currentIssued(await getMachine(machineId),await latestIssued(machineId));
+      if(winner?.password)return winner;
+      continue;
+    }
+    const [fresh,saved]=await Promise.all([getMachine(machineId),getIssued(issued.password)]);
+    if(fresh.resetSerial!==machine.resetSerial||fresh.lastEndedSession?.sessionId!==machine.lastEndedSession?.sessionId||!['issued','used'].includes(saved?.status)){
+      await sb('issued_passwords?password=eq.'+issued.password+'&status=eq.issued',{method:'PATCH',body:JSON.stringify({status:'cancelled'})});
+      throw Object.assign(new Error('台の終了・リセットと重なりました。最新状態を確認して再発行してください。'),{statusCode:409});
+    }
+    return saved;
   }
   throw new Error("パスワードを発行できませんでした。もう一度お試しください。");
 }
@@ -487,6 +525,10 @@ export default async function handler(req, res){
       const issued = await createIssued(String(body.machineId), playerName);
       return json(res, 200, {ok:true, issued});
     }
+    if(pathname === '/api/admin/passwords/current' && req.method === 'GET'){
+      if(!adminOk(req))return json(res,401,{ok:false,error:'admin password required'});
+      return json(res,200,await currentPasswordList());
+    }
     if(pathname === "/api/admin/passwords" && req.method === "GET"){
       if(!adminOk(req)) return json(res, 401, {ok:false, error:"admin password required"});
       const rows = await sb("issued_passwords?select=*&order=issued_at_ms.desc&limit=80");
@@ -508,6 +550,8 @@ export default async function handler(req, res){
       if(!machine.gameUrl) return json(res, 500, {ok:false, error:"この台のゲームURLが設定されていません"});
       if(issued.status === "used" && existingSession && existingSession.status === "active") return json(res, 200, {ok:true, resumed:true, session:{sessionId:existingSession.sessionId, token:existingSession.token, machineId:machine.machineId, playerName:existingSession.playerName}, iframeUrl:iframeUrlFor(existingSession.sessionId)});
       if(issued.status !== "issued") return json(res, 403, {ok:false, error:"このパスワードは終了済みです"});
+      const latest=await latestIssued(machine.machineId);
+      if(passwordIssuance.current(machine,latest?[latest]:[])?.password!==password)return json(res,403,{ok:false,error:'このパスワードは現在の発行番号ではありません'});
       if(machine.currentSessionId && machine.currentSessionId !== (existingSession && existingSession.sessionId)) return json(res, 409, {ok:false, error:"machine is busy"});
       const session = {sessionId:makeId("sess"), token:crypto.randomBytes(16).toString("hex"), password, machineId:machine.machineId, playerName:issued.playerName, status:"active", startedAt:ms(), endedAt:0, resetSerialAtStart:machine.resetSerial || 0, startSnapshot:machine.lastSnapshot || null};
       issued.status = "used"; issued.usedAt = ms(); issued.sessionId = session.sessionId;
@@ -527,6 +571,7 @@ export default async function handler(req, res){
       await appendResult(record);
       const sheets = await sendToSheets(record);
       session.status = "ended"; session.endedAt = ms(); session.resultRecord = record; session.sheets = sheets;
+      await retirePasswords(machine.machineId,'ended');
       machine.locked = false; machine.currentSessionId = ""; machine.currentPlayerName = ""; machine.lastEndedSession = {sessionId:session.sessionId, playerName:session.playerName, endedAt:session.endedAt, record, sheets};
       await saveSession(session); await upsertMachine(machine);
       return json(res, 200, {ok:true, record, sheets});
@@ -612,6 +657,7 @@ export default async function handler(req, res){
       const preservedSettings = machine.lastSnapshot && machine.lastSnapshot.settings
         ? machine.lastSnapshot.settings
         : {setting:machine.assignedSetting || 1, completeLimitPt:19000};
+      await retirePasswords(machine.machineId,'cancelled');
       machine.locked = false; machine.currentSessionId = ""; machine.currentPlayerName = ""; machine.lastEndedSession = null; machine.lastSnapshot = {machineId:machine.machineId, stats:null, settings:preservedSettings, updatedAt:ms()}; machine.resetSerial = Number(machine.resetSerial || 0) + 1;
       await upsertMachine(machine);
       const row = await insertCommand(machine.machineId, {type:"reset", reason:"admin-reset"});
@@ -627,10 +673,13 @@ export default async function handler(req, res){
         await appendResult(record);
         const sheets = await sendToSheets(record);
         session.status = "ended"; session.endedAt = ms(); session.resultRecord = record; session.sheets = sheets;
+        await retirePasswords(machine.machineId,'ended');
         machine.locked = false; machine.currentSessionId = ""; machine.currentPlayerName = ""; machine.lastEndedSession = {sessionId:session.sessionId, playerName:session.playerName, endedAt:session.endedAt, record, sheets, forced:true};
         await saveSession(session); await upsertMachine(machine);
         return json(res, 200, {ok:true, forced:true, record, sheets});
       }
+      const retired=await retirePasswords(machine.machineId,'cancelled');
+      if(!machine.currentSessionId&&retired.some(row=>!row.session_id))return json(res,200,{ok:true,released:true});
       if(machine.lastEndedSession){
         machine.locked = false; machine.currentSessionId = ""; machine.currentPlayerName = "";
         await upsertMachine(machine);
@@ -666,7 +715,7 @@ export default async function handler(req, res){
     }
     return json(res, 404, {ok:false, error:"not found"});
   }catch(e){
-    try{ return json(res, 500, {ok:false, error:e && e.message ? e.message : String(e)}); }
+    try{ return json(res, Number(e.statusCode)||500, {ok:false, error:e && e.message ? e.message : String(e)}); }
     catch(finalError){ res.statusCode = 500; return res.end("api error"); }
   }
 }

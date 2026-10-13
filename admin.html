@@ -8,6 +8,7 @@
     *{box-sizing:border-box} body{margin:0;background:#111318;color:#f7f4ea;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Yu Gothic",sans-serif} header{position:sticky;top:0;z-index:5;background:#171a21;border-bottom:1px solid #303641;padding:14px 20px;display:flex;gap:12px;align-items:center;justify-content:space-between} h1{font-size:20px;margin:0} main{padding:20px;display:grid;gap:18px}.panel{background:#1b1f28;border:1px solid #313846;border-radius:8px;padding:16px}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.field{display:grid;gap:6px;min-width:150px}.field input,.field select,.settingMini{height:38px;border-radius:6px;border:1px solid #3d4656;background:#0f1218;color:#fff;padding:0 10px}button{height:38px;border:0;border-radius:6px;padding:0 13px;font-weight:800;cursor:pointer;background:#f0c85a;color:#1b1300}.ghost{background:#293140;color:#f3f7ff}.danger{background:#d54a4a;color:#fff}.muted{color:#9aa4b5;font-size:13px}.machines{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.machine{background:#151922;border:1px solid #2d3440;border-radius:8px;padding:12px;display:grid;gap:9px}.machine h3{margin:0;font-size:18px;display:flex;justify-content:space-between}.pill{font-size:12px;border-radius:999px;padding:3px 8px;background:#303848}.pill.on{background:#1f7a48}.pill.lock{background:#8a5422}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.adminSlumpGraph{width:100%;height:150px;background:#0b0e14;border:1px solid #2b3342;border-radius:6px}.graphStats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.debugBox{border-top:1px solid #2d3440;padding-top:9px;display:grid;gap:8px}.debugBtns{display:flex;gap:6px;flex-wrap:wrap}.debugBtns button{height:34px;padding:0 10px}.debugSelect{height:34px;border-radius:6px;border:1px solid #3d4656;background:#0f1218;color:#fff;padding:0 8px}.stat{background:#0f1218;border-radius:6px;padding:8px}.stat span{display:block;color:#97a3b8;font-size:12px}.stat b{font-size:16px}.passwordList,.results{display:grid;gap:7px;max-height:260px;overflow:auto}.item{display:grid;grid-template-columns:110px 1fr 90px 140px;gap:8px;align-items:center;background:#10141c;border:1px solid #2b3340;border-radius:6px;padding:8px}.code{font-size:20px;letter-spacing:.08em;color:#ffe07c;font-weight:1000}.ok{color:#6aff9e}.bad{color:#ff8b8b}body.locked header,body.locked main{display:none}.authGate{min-height:100vh;display:grid;place-items:center;padding:20px;background:#111318}.authPanel{width:min(420px,100%);background:#1b1f28;border:1px solid #313846;border-radius:8px;padding:22px;display:grid;gap:14px}.authPanel h1{font-size:22px}.authPanel input{width:100%;height:44px;border-radius:6px;border:1px solid #3d4656;background:#0f1218;color:#fff;padding:0 12px}.authPanel button{width:100%;height:44px}body:not(.locked) .authGate{display:none}.topActions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.storeSwitchWrap{display:grid;gap:4px;color:#9aa4b5;font-size:11px;font-weight:700}.storeSwitch{min-width:180px;height:36px;border-radius:6px;border:1px solid #4a5568;background:#0f1218;color:#fff;padding:0 10px}.authPanel .storeSwitch{width:100%;height:44px}.storeSwitch option:disabled{color:#687181}button:disabled{opacity:.45;cursor:not-allowed}@media(max-width:980px){.machines{grid-template-columns:1fr}.item{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
     .sectionHead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.sectionHead h2{margin:0}.floorControlRow{margin:12px 0 14px;display:grid;grid-template-columns:minmax(390px,1.15fr) minmax(520px,2fr);gap:10px;align-items:stretch}.floorProfit{padding:12px 16px;background:#0f1218;border:1px solid #3d4656;border-radius:6px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.floorMetric{display:flex;align-items:baseline;justify-content:space-between;gap:10px}.floorMetric+.floorMetric{border-left:1px solid #303847;padding-left:14px}.floorMetric span{color:#cbd3df;font-weight:800}.floorMetric b{font-size:28px;color:#f7f4ea;white-space:nowrap}.floorMetric b.positive{color:#62ff9a}.floorMetric b.negative{color:#ff6b7d}.floorMetric b.rtp{color:#ffe07c}.bulkControls{padding:10px;background:#151922;border:1px solid #3d4656;border-radius:6px;display:flex;align-items:end;justify-content:flex-end;gap:8px;flex-wrap:wrap}.bulkControls .field{min-width:115px}.bulkControls .completeField{min-width:170px}.bulkStatus{min-height:18px;margin:-7px 0 12px;text-align:right}.viewSwitch{display:grid;grid-template-columns:1fr 1fr;border:1px solid #414a5a;border-radius:6px;overflow:hidden}.viewSwitch button{min-width:92px;border-radius:0;background:#242b37;color:#cbd3df}.viewSwitch button+button{border-left:1px solid #414a5a}.viewSwitch button.active{background:#f0c85a;color:#1b1300}.machineViewLabel{color:#ffe07c;font-size:12px;font-weight:800}.jackpotPools{display:grid;gap:10px}.jackpotPool{background:#121722;border:1px solid #7557a8;border-radius:8px;padding:14px;display:grid;grid-template-columns:minmax(190px,1fr) minmax(230px,1.2fr);gap:14px;align-items:end}.jackpotPoolAmount{font-size:30px;color:#d8b4ff}.jackpotPool .row{justify-content:flex-end}@media(max-width:1180px){.floorControlRow{grid-template-columns:1fr}.bulkControls{justify-content:flex-start}.bulkStatus{text-align:left}}@media(max-width:620px){.floorProfit{grid-template-columns:1fr}.floorMetric+.floorMetric{border-left:0;border-top:1px solid #303847;padding:10px 0 0}.jackpotPool{grid-template-columns:1fr}.jackpotPool .row{justify-content:flex-start}}
     .passwordIssue{border:1px solid #41404a;border-radius:7px;margin:0;padding:10px;min-width:0;display:grid;gap:8px;background:#1b1e29}.passwordIssue legend{font-size:12px;color:#ffe07c;padding:0 4px}.passwordIssue .row{flex-wrap:nowrap;align-items:end}.passwordIssue .field{min-width:0;flex:1}.passwordIssue input{width:100%}.issueStatus{font-size:12px;overflow-wrap:anywhere;min-height:18px}.completeSummary{margin-top:5px;font-size:12px;color:#aab5c7}
+    .stats{grid-template-columns:repeat(2,minmax(0,1fr))}.issuedCustomer{font-size:17px;overflow-wrap:anywhere}.passwordIssue .code{font-size:26px}
   </style>
 </head>
 <body class="locked">
@@ -47,7 +48,7 @@
   </section>
 
   <section class="panel">
-    <h2>発行済みパスワード</h2>
+    <h2>現在発行中のパスワード</h2>
     <div id="passwordList" class="passwordList"></div>
   </section>
 
@@ -63,7 +64,8 @@ let sessionResults = [];
 const machineOperations = new Map();
 const machineDrafts = new Map();
 const passwordIssues = new Map();
-let passwordListRequest = 0;
+let passwordCurrentRequest = 0;
+let passwordCurrentLoading = false;
 let bulkCompleteDirty = false;
 let machineListRevision = 0;
 let machineListRequest = 0;
@@ -342,8 +344,6 @@ function renderMachines(){
       ${passwordIssueMarkup(m)}
       <div class="stats">
         <div class="stat"><span>G数</span><b>${fmt(stat(s,'totalSpins'))}</b></div>
-        <div class="stat"><span>投入</span><b>${fmt(stat(s,'totalFee'))}pt</b></div>
-        <div class="stat"><span>払出</span><b>${fmt(stat(s,'totalPaid'))}pt</b></div>
         <div class="stat"><span>差pt</span><b>${signed(s.profit ?? ((s.totalPaid||0)-(s.totalFee||0)))}</b></div>
       </div>
       <div class="graphStats">
@@ -355,7 +355,7 @@ function renderMachines(){
         <label class="field"><span>設定</span><select class="settingMini" id="setting-${m.machineId}" onchange="rememberMachineDraft('${m.machineId}')">${[1,2,3,4,5,6].map(n => '<option value="' + n + '" ' + (String(draft?.setting ?? machineSettingValue(m)) === String(n) ? 'selected' : '') + '>設定' + n + '</option>').join('')}</select></label>
         <button onclick="applySetting('${m.machineId}')">設定反映</button>
         ${m.machineType==='nova' ? `<button class="ghost" aria-pressed="${m.capabilities?.superSpeedAllowed===true}" onclick="setSuperSpeed('${m.machineId}',${m.capabilities?.superSpeedAllowed!==true},this)">超ハイスピード ${m.capabilities?.superSpeedAllowed===true?'ON':'OFF'}</button>` : ''}
-        <button class="danger" ${m.currentSessionId || m.lastEndedSession || m.stats ? '' : 'disabled'} onclick="forceEndMachine('${m.machineId}')">強制終了</button>
+        <button class="danger" id="force-end-${m.machineId}" ${m.currentSessionId || m.lastEndedSession || m.stats || passwordIssues.get(m.machineId)?.current ? '' : 'disabled'} onclick="forceEndMachine('${m.machineId}')">強制終了</button>
         <button class="danger" onclick="resetMachine('${m.machineId}')">管理リセット</button>
         <button class="ghost" onclick="location.href='/play.html?machine=${m.machineId}'">入口</button>
       </fieldset>
@@ -423,15 +423,9 @@ async function loadMachines(){
   renderMachines();
   return true;
 }
-async function loadPasswords(){
-  const request = ++passwordListRequest;
-  const res = await fetch('/api/admin/passwords', {headers:adminHeaders(), cache:'no-store'});
-  if(request !== passwordListRequest)return;
-  if(!res.ok){ $('passwordList').innerHTML = '<div class="bad">管理パスが必要です</div>'; return; }
-  const data = await res.json().catch(() => []);
-  if(request !== passwordListRequest)return;
-  const rows = Array.isArray(data) ? data : [];
-  $('passwordList').innerHTML = rows.map(p => `<div class="item"><b class="code">${escapeHtml(p.password)}</b><span>${escapeHtml(p.playerName)} / ${escapeHtml(machineLabelById(p.machineId))}</span><span>${escapeHtml(p.status)}</span><span>${new Date(p.issuedAt).toLocaleString('ja-JP')}</span></div>`).join('') || '<div class="muted">まだありません</div>';
+function renderCurrentPasswordList(){
+  const rows=[...passwordIssues.values()].filter(state=>state.loaded&&state.current?.password).map(state=>state.current);
+  $('passwordList').innerHTML=rows.map(p=>`<div class="item"><b class="code">${escapeHtml(p.password)}</b><span>${escapeHtml(p.playerName)} / ${escapeHtml(machineLabelById(p.machineId))}</span><span>${p.status==='issued'?'遊技開始待ち':'遊技中'}</span><span>${new Date(p.issuedAt).toLocaleString('ja-JP')}</span></div>`).join('')||'<div class="muted">現在発行中のパスワードはありません</div>';
 }
 async function loadResults(){
   const res = await fetch('/api/results', {headers:adminHeaders()});
@@ -443,39 +437,75 @@ async function loadResults(){
   renderMachines();
 }
 function passwordIssueMarkup(machine){
-  const id=machine.machineId, state=passwordIssues.get(id)||{};
-  return `<fieldset class="passwordIssue" id="issue-controls-${id}" ${state.busy?'disabled':''}>
-    <legend>パスワード発行</legend><div class="row"><label class="field"><span class="muted">お客様名</span><input class="passwordName" id="player-name-${id}" value="${escapeHtml(state.playerName||'')}" maxlength="100" placeholder="お客様名" autocomplete="off" oninput="rememberPasswordDraft('${id}')"></label><button type="button" onclick="issue('${id}')">発行</button></div>
-    <b class="code" id="issue-code-${id}">${escapeHtml(state.password||'')}</b><div class="issueStatus ${state.failed?'bad':'muted'}" id="issue-status-${id}" role="status" aria-live="polite">${escapeHtml(state.message||'')}</div>
+  const id=machine.machineId, state=passwordIssues.get(id)||{},current=state.current;
+  const disabled=state.busy||!state.loaded||machineOperations.get(String(id))?.busy;
+  return `<fieldset class="passwordIssue" id="issue-controls-${id}" ${disabled?'disabled':''}>
+    <legend>${current?'発行済みパスワード':'パスワード発行'}</legend>
+    ${current?`<div class="issuedCustomer">${escapeHtml(current.playerName)} 様</div><b class="code" id="issue-code-${id}">${state.loaded?escapeHtml(current.password||'確認中'):''}</b><div class="muted">${current.status==='issued'?'遊技開始待ち':'遊技中'} · 終了または管理リセット後に再発行できます</div>`:
+    `<div class="row"><label class="field"><span class="muted">お客様名</span><input class="passwordName" id="player-name-${id}" value="${escapeHtml(state.playerName||'')}" maxlength="100" placeholder="お客様名" autocomplete="off" oninput="rememberPasswordDraft('${id}')"></label><button type="button" onclick="issue('${id}')">発行</button></div>`}
+    <div class="issueStatus ${state.failed?'bad':'muted'}" id="issue-status-${id}" role="status" aria-live="polite">${escapeHtml(state.message||(!state.loaded?'発行状態を確認中…':''))}</div>
   </fieldset>`;
+}
+async function loadCurrentPasswords(){
+  if(!adminSecret||passwordCurrentLoading)return;
+  passwordCurrentLoading=true;
+  const request=++passwordCurrentRequest;
+  try{
+    const res=await fetch('/api/admin/passwords/current',{headers:adminHeaders(),cache:'no-store',signal:AbortSignal.timeout(15000)});
+    const rows=await res.json();
+    if(request!==passwordCurrentRequest)return;
+    if(!res.ok||!Array.isArray(rows))throw Error('発行状態の更新に失敗しました。自動で再確認します。');
+    for(const row of rows){
+      const state=passwordIssues.get(row.machineId)||{};
+      if(state.busy)continue;
+      const current=row.status==='available'?null:row;
+      if(!state.loaded||state.failed||JSON.stringify(state.current||null)!==JSON.stringify(current)){
+        setPasswordIssue(row.machineId,{loaded:true,failed:false,current,message:'',...(state.current&&!current?{playerName:''}:{})});
+      }
+    }
+  }catch(error){
+    if(request!==passwordCurrentRequest)return;
+    for(const machine of liveMachines()){
+      if(!passwordIssues.get(machine.machineId)?.busy)setPasswordIssue(machine.machineId,{loaded:false,failed:true,message:'発行状態を更新できません。通信の復旧後に再確認します。'});
+    }
+  }finally{passwordCurrentLoading=false;}
+}
+function clearPasswordIssue(id){
+  passwordCurrentRequest++;
+  setPasswordIssue(id,{loaded:true,busy:false,failed:false,current:null,playerName:'',message:''});
 }
 function rememberPasswordDraft(id){
   passwordIssues.set(id,{...passwordIssues.get(id),playerName:$('player-name-'+id)?.value||''});
 }
 function setPasswordIssue(id, patch){
   const state={...passwordIssues.get(id),...patch};passwordIssues.set(id,state);
-  const field=$('issue-controls-'+id),message=$('issue-status-'+id),code=$('issue-code-'+id);
-  if(field)field.disabled=!!state.busy;
-  if(message){message.textContent=state.message||'';message.className='issueStatus '+(state.failed?'bad':'muted');}
-  if(code)code.textContent=state.password||'';
+  const field=$('issue-controls-'+id);
+  if(field)field.outerHTML=passwordIssueMarkup({machineId:id});
+  const machine=machineRows().find(row=>String(row.machineId)===String(id)),end=$('force-end-'+id);
+  if(end)end.disabled=!(state.current||machine?.currentSessionId||machine?.lastEndedSession||machine?.stats);
+  renderCurrentPasswordList();
 }
 async function issue(id){
-  if(passwordIssues.get(id)?.busy)return;
+  const state=passwordIssues.get(id);
+  if(!state?.loaded||state.busy||state.current||machineOperations.get(String(id))?.busy)return;
   rememberPasswordDraft(id);
   const playerName=(passwordIssues.get(id)?.playerName||'').trim();
   if(!playerName){setPasswordIssue(id,{failed:true,message:'お客様名を入力してください。'});$('player-name-'+id)?.focus();return;}
-  setPasswordIssue(id,{busy:true,failed:false,password:'',message:'発行中…'});
+  passwordCurrentRequest++;
+  setPasswordIssue(id,{busy:true,failed:false,message:'発行中…'});
   try{
     const res=await fetch('/api/admin/issue-password',{method:'POST',headers:{'Content-Type':'application/json',...adminHeaders()},body:JSON.stringify({machineId:id,playerName}),signal:AbortSignal.timeout(20000)});
     const data=await res.json();
     if(!res.ok||!data.ok)throw Error(data.error||'発行に失敗しました。');
     const password=String(data.issued?.password||'').trim();
     if(!password)throw Error('番号を取得できませんでした。発行済み一覧を確認してください。');
-    setPasswordIssue(id,{busy:false,failed:false,password,message:playerName+' 様のパスワードを発行しました。'});
+    passwordCurrentRequest++;
+    setPasswordIssue(id,{loaded:true,busy:false,failed:false,current:data.issued,playerName:'',message:''});
   }catch(error){
-    setPasswordIssue(id,{busy:false,failed:true,message:error.name==='TimeoutError'||error.name==='TypeError'?'通信を確認し、再発行する前に発行済み一覧を確認してください。':error.message});
+    passwordCurrentRequest++;
+    setPasswordIssue(id,{loaded:false,busy:false,failed:true,message:'発行状態を再確認します。 '+error.message});
   }
-  void loadPasswords().catch(()=>{});
+  void loadCurrentPasswords();
 }
 async function setSuperSpeed(id,enabled,button){
   button.disabled=true;
@@ -504,6 +534,8 @@ function setMachineOperation(id, busy, message){
   machineOperations.set(String(id), {busy, message});
   const controls = $('controls-' + id), status = $('operation-' + id);
   if(controls) controls.disabled = busy;
+  const issueField=$('issue-controls-'+id),issueState=passwordIssues.get(id);
+  if(issueField)issueField.disabled=busy||!!issueState?.busy||!issueState?.loaded;
   if(status) status.textContent = message;
   document.querySelectorAll('.bulkAction').forEach(button=>{ button.disabled = bulkOperationBusy || [...machineOperations.values()].some(value=>value.busy); });
 }
@@ -524,6 +556,7 @@ async function submitMachineUpdate(id, action, body){
     // Compatibility while the server is being deployed.
     void loadMachines().catch(()=>{});
   }
+  if(action==='reset')clearPasswordIssue(id);
   try{ commandWakeChannel?.postMessage({type:'vertex-commands-available', machineId:String(id)}); }catch(error){}
   return data;
 }
@@ -651,11 +684,15 @@ async function resetAllMachines(){
   await runBulkOperation('全台リセット', machine => submitMachineUpdate(machine.machineId, 'reset'));
 }
 async function forceEndMachine(id){
+  if(machineOperations.get(String(id))?.busy)return;
   const label = machineLabelById(id);
   if(!confirm(label + "の強制終了を実行しますか？\n\n最後に保存されたデータで清算し、空き台に戻します。")) return;
+  setMachineOperation(id,true,'強制終了を送信中…');
+  try{
   const res = await fetch("/api/admin/machines/" + encodeURIComponent(id) + "/force-end", {method:"POST", headers:adminHeaders()});
   const data = await res.json();
-  if(!data.ok){ alert(data.error || "強制終了に失敗しました"); return; }
+  if(!res.ok||!data.ok)throw Error(data.error || '強制終了に失敗しました');
+  if(!data.queued)clearPasswordIssue(id);
   alert(data.queued
     ? label + "へ強制終了指示を送信しました。お客様画面が再読み込みされ、最新データで終了します。"
     : data.released
@@ -664,7 +701,9 @@ async function forceEndMachine(id){
         ? label + "を強制清算し、空き台に戻しました。"
         : label + "を強制終了しました。空き台に戻しました");
   await new Promise(resolve => setTimeout(resolve, data.queued ? 1800 : 0));
-  await Promise.all([loadMachines(), loadResults()]);
+  setMachineOperation(id,false,data.queued?'強制終了指示を送信しました':'強制終了しました');
+  await Promise.all([loadMachines(), loadResults(),loadCurrentPasswords()]);
+  }catch(error){setMachineOperation(id,false,error.message);}
 }
 async function resetMachine(id){
   if(machineOperations.get(String(id))?.busy) return;
@@ -742,11 +781,13 @@ async function enterAdmin(password){
   adminSecret = value;
   sessionStorage.setItem(ADMIN_STORAGE_KEY, value);
   document.body.classList.remove('locked');
-  await Promise.allSettled([loadMachines(), loadPasswords(), loadResults()]);
+  await Promise.allSettled([loadMachines(), loadResults(),loadCurrentPasswords()]);
 }
 function logoutAdmin(){
   fetch('/api/admin/logout', {method:'POST'}).catch(()=>{});
   adminSecret = '';
+  passwordCurrentRequest++;passwordIssues.clear();
+  $('machines').replaceChildren();$('passwordList').replaceChildren();
   sessionStorage.removeItem(ADMIN_STORAGE_KEY);
   document.body.classList.add('locked');
   $('gatePassword').value = '';
@@ -762,6 +803,9 @@ async function refreshAll(){
   await loadMachines().catch(()=>false);
 }
 setInterval(refreshAll, 60000);
+setInterval(()=>{if(!document.hidden)void loadCurrentPasswords();},5000);
+window.addEventListener('focus',()=>void loadCurrentPasswords());
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)void loadCurrentPasswords();});
 loadVertexConfig();
 if(adminSecret){ enterAdmin(adminSecret); } else { $('gatePassword').focus(); }
 </script>

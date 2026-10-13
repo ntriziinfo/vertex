@@ -599,7 +599,7 @@ export default async function gateway(req, res){
     }
 
     // Admin authentication above is required before returning issued codes.
-    if(pathname === "/api/admin/passwords" && req.method === "GET"){
+    if((pathname === "/api/admin/passwords" || pathname === "/api/admin/passwords/current") && req.method === "GET"){
       const upstream = await delegate(req);
       return sendCaptured(res, req, upstream, sanitizePasswordListResponse);
     }

@@ -3,6 +3,7 @@ const https = require("https");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const passwordIssuance = require('./password-issuance.cjs');
 const { URL } = require("url");
 const {machineTotalFor} = require("./machine-totals.cjs");
 const {settingsPatch} = require("./admin-settings.cjs");
@@ -210,11 +211,17 @@ function adminOk(req){
   return String(provided) === ADMIN_PASSWORD;
 }
 
+function retireLocalPasswords(machineId,status){
+  const rows=Object.values(state.issuedPasswords).filter(row=>String(row.machineId)===String(machineId)&&['issued','used'].includes(row.status));
+  for(const row of rows)row.status=status;
+  return rows;
+}
 function sendJson(res, status, data){
   const body = JSON.stringify(data);
   res.writeHead(status, {
     "Content-Type":"application/json; charset=utf-8",
     "Content-Length":Buffer.byteLength(body),
+    "Cache-Control":"no-store",
     "Access-Control-Allow-Origin":"*",
     "Access-Control-Allow-Methods":"GET,POST,OPTIONS",
     "Access-Control-Allow-Headers":"Content-Type,X-Admin-Password"
@@ -611,6 +618,8 @@ const server = http.createServer(async (req, res)=>{
       if(!machine) return sendJson(res, 400, {ok:false, error:"invalid machine"});
       const playerName = String(body.playerName || "").trim();
       if(!playerName) return sendJson(res, 400, {ok:false, error:"playerName required"});
+      const existing=passwordIssuance.current(machine,Object.values(state.issuedPasswords));
+      if(existing)return sendJson(res,existing.password?200:409,existing.password?{ok:true,issued:existing}:{ok:false,error:'遊技中です。終了後に発行してください。'});
       let password;
       for(let attempt=0; attempt<20; attempt++){
         password = generatePassword();
@@ -632,6 +641,10 @@ const server = http.createServer(async (req, res)=>{
       return sendJson(res, 200, {ok:true, issued});
     }
 
+    if(url.pathname === '/api/admin/passwords/current' && req.method === 'GET'){
+      if(!adminOk(req))return sendJson(res,401,{ok:false,error:'admin password required'});
+      return sendJson(res,200,[...machines.values()].map(machine=>passwordIssuance.current(machine,Object.values(state.issuedPasswords))||{machineId:machine.machineId,status:'available',password:'',playerName:''}));
+    }
     if(url.pathname === "/api/admin/passwords" && req.method === "GET"){
       if(!adminOk(req)) return sendJson(res, 401, {ok:false, error:"admin password required"});
       const items = Object.values(state.issuedPasswords).sort((a,b)=>(b.issuedAt || 0) - (a.issuedAt || 0)).slice(0, 80);
@@ -663,6 +676,7 @@ const server = http.createServer(async (req, res)=>{
         });
       }
       if(issued.status !== "issued") return sendJson(res, 403, {ok:false, error:"このパスワードは終了済みです"});
+      if(passwordIssuance.current(machine,Object.values(state.issuedPasswords))?.password!==password)return sendJson(res,403,{ok:false,error:'このパスワードは現在の発行番号ではありません'});
       if(machine.currentSessionId && machine.currentSessionId !== (existingSession && existingSession.sessionId)) return sendJson(res, 409, {ok:false, error:"machine is busy"});
       const sessionId = makeId("sess");
       const token = crypto.randomBytes(16).toString("hex");
@@ -695,6 +709,7 @@ const server = http.createServer(async (req, res)=>{
       const session = state.sessions[String(body.sessionId || "")];
       if(!session || session.token !== String(body.token || "")) return sendJson(res, 403, {ok:false, error:"invalid session"});
       if(session.status === "ended") return sendJson(res, 200, {ok:true, alreadyEnded:true, record:session.resultRecord || null});
+      if(session.status !== 'active')return sendJson(res,409,{ok:false,error:'session is not active'});
       const machine = machineFor(session.machineId);
       if(!machine) return sendJson(res, 400, {ok:false, error:"machine not found"});
       const snapshot = snapshotForSession(session, machine, body.snapshot);
@@ -706,6 +721,7 @@ const server = http.createServer(async (req, res)=>{
       session.endedAt = Date.now();
       session.resultRecord = record;
       session.sheets = sheets;
+      retireLocalPasswords(machine.machineId,'ended');
       machine.locked = false;
       machine.currentSessionId = "";
       machine.currentPlayerName = "";
@@ -740,6 +756,7 @@ const server = http.createServer(async (req, res)=>{
         session.endedAt = Date.now();
         session.resultRecord = record;
         session.sheets = sheets;
+        retireLocalPasswords(machine.machineId,'ended');
         machine.locked = false;
         machine.currentSessionId = "";
         machine.currentPlayerName = "";
@@ -748,6 +765,8 @@ const server = http.createServer(async (req, res)=>{
         broadcastMachines();
         return sendJson(res, 200, {ok:true, forced:true, record, sheets});
       }
+      const retired=retireLocalPasswords(machine.machineId,'cancelled');
+      if(!machine.currentSessionId&&retired.some(row=>!row.sessionId)){saveState();return sendJson(res,200,{ok:true,released:true});}
       if(machine.lastEndedSession){
         machine.locked = false;
         machine.currentSessionId = "";
@@ -788,6 +807,8 @@ const server = http.createServer(async (req, res)=>{
       const preservedSettings = machine.lastSnapshot && machine.lastSnapshot.settings
         ? machine.lastSnapshot.settings
         : {setting:machine.assignedSetting || 1, completeLimitPt:19000};
+      retireLocalPasswords(machine.machineId,'cancelled');
+      if(machine.currentSessionId&&state.sessions[machine.currentSessionId])Object.assign(state.sessions[machine.currentSessionId],{status:'cancelled',endedAt:Date.now()});
       machine.locked = false;
       machine.currentSessionId = "";
       machine.currentPlayerName = "";

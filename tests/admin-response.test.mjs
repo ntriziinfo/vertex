@@ -8,8 +8,8 @@ const source=fs.readFileSync('admin.html','utf8');
 const fn=name=>source.match(new RegExp(`(?:async )?function ${name}\\([^]*?\\n}`))[0];
 function ui(){
   const requests=[], elements=new Map(), notices=[];
-  const c=vm.createContext({machines:[{machineId:'one',settings:{setting:1}}],machineOperations:new Map(),machineDrafts:new Map(),
-    machineListRevision:0,machineListRequest:0,bulkOperationBusy:false,AbortSignal,
+  const c=vm.createContext({machines:[{machineId:'one',settings:{setting:1}}],machineOperations:new Map(),machineDrafts:new Map(),passwordIssues:new Map([['one',{loaded:true}]]),
+    machineListRevision:0,machineListRequest:0,bulkOperationBusy:false,AbortSignal,clearPasswordIssue:id=>{c.clearedPassword=id;},
     $:id=>{if(!elements.has(id))elements.set(id,{value:id.startsWith('setting-')?'4':'19000'});return elements.get(id);},
     document:{querySelectorAll:()=>[]},adminHeaders:()=>({'X-Admin-Password':'qa'}),machineRows:()=>c.machines,
     machineLabelById:id=>id,confirm:()=>true,renderMachines(){c.renders=(c.renders||0)+1;},
@@ -43,6 +43,7 @@ test('HTTP failure clears busy state, preserves draft and does not claim success
 test('reset updates just the returned machine without rereading historical results',async()=>{
   const h=ui(), p=h.c.resetMachine('one');h.reply(0,{ok:true,machine:{machineId:'one',resetSerial:1,stats:null,currentSessionId:''}});await p;
   assert.equal(h.requests.length,1);assert.match(h.requests[0].url,/\/reset$/);assert.equal(h.c.machines[0].resetSerial,1);
+  assert.equal(h.c.clearedPassword,'one');assert.match(h.c.$('operation-one').textContent,/保存・台へ送信/);
 });
 
 test('real gateway settings/reset return fresh cards, preserve auth, cancel sessions and avoid a second machine read',()=>{

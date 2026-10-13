@@ -66,7 +66,7 @@ const probe = String.raw`
     assert.equal(headers['Content-Profile'], process.env.VERTEX_DB_SCHEMA || 'public');
     if(path === 'machine_states') return [{machine_id:'same-id', current_session_id:'same-session', reset_serial:0, assigned_setting:2}];
     if(path === 'sessions') return [{session_id:'same-session', token:'test-token', machine_id:'same-id', status:'active', reset_serial_at_start:0}];
-    if(path === 'issued_passwords') return method === 'POST' ? [JSON.parse(body)] : [{password:'SAME01', machine_id:'same-id', status:'issued'}];
+    if(path === 'issued_passwords') return method === 'POST' ? [JSON.parse(body)] : [{password:'SAME01', machine_id:'same-id', session_id:'same-session', status:'used', issued_at_ms:1}];
     if(path === 'machine_commands') return [{id:1, machine_id:'same-id', command:{type:'snapshot'}}];
     if(path.startsWith('rpc/')) return [{current_pt:50, version:1, applied:true}];
     return [];
@@ -93,6 +93,7 @@ const probe = String.raw`
   for(const [path, method, body] of [
     ['machines','GET',{}],
     ['admin/passwords','GET',{}],
+    ['admin/passwords/current','GET',{}],
     ['results','GET',{}],
     ['admin/issue-password','POST',{machineId:'same-id', playerName:'synthetic'}],
     ['machines/same-id/commands/poll','GET',{}],
