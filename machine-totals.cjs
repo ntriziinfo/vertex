@@ -1,4 +1,5 @@
-const STAT_KEYS = ["totalSpins", "bigCount", "midCount", "atFirstCount", "totalFee", "totalPaid"];
+const ROLE_STAT_KEYS = ["normalRoleGames", "normalRoleSuikaCount", "normalRoleWeakNovaCount", "normalRoleStrongNovaCount", "normalRoleReplayCount", "normalRoleBellCount", "normalRoleNaviBellCount"];
+const STAT_KEYS = ["totalSpins", "bigCount", "midCount", "atFirstCount", "totalFee", "totalPaid", ...ROLE_STAT_KEYS];
 
 function num(value){
   return Number(value) || 0;
@@ -92,7 +93,7 @@ function playerViewForResult(record){
 }
 
 function emptyTotal(){
-  const stats = {atFirstCount:0, atFirstCountPartial:false, totalSpins:0, bigCount:0, midCount:0, totalFee:0, totalPaid:0, profit:0};
+  const stats = {...Object.fromEntries(STAT_KEYS.map(key=>[key,0])), atFirstCountPartial:false, profit:0};
   const history = [{spin:0, profit:0}];
   stats.slumpHistory = history;
   return {stats, history};
@@ -204,7 +205,7 @@ function completedMachineTotal(machine, record, records=[]){
 
 function machineDisplayBaseline(machine, records=[]){
   const {stats}=machineTotalFor({...machine,currentSessionId:'',lastSnapshot:null},records);
-  return {totalSpins:stats.totalSpins,bigCount:stats.bigCount,atFirstCount:stats.atFirstCount,
+  return {...Object.fromEntries(ROLE_STAT_KEYS.map(key=>[key,stat(stats,key)])),totalSpins:stats.totalSpins,bigCount:stats.bigCount,atFirstCount:stats.atFirstCount,
     atFirstCountPartial:stats.atFirstCountPartial,sinceBonus:num(machine.lastSnapshot?.machineDisplayStats?.sinceBonus ?? machine.lastSnapshot?.normalState?.sinceBonus)};
 }
 

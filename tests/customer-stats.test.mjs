@@ -60,3 +60,21 @@ test('compact checkpoint preserves every player, current play and reset isolatio
   machine.resetSerial++;machine.currentSessionId='';machine.lastSnapshot=null;
   assert.equal(machineTotalFor(machine).stats.totalSpins,0);
 });
+
+test('normal small-role counters persist across player deltas, checkpoints and reloads until an admin reset',()=>{
+  const machine={machineId:'nova-03',resetSerial:3};
+  const record={sessionId:'first',machineId:machine.machineId,resetSerial:3,stats:{totalSpins:2000,normalRoleGames:1000,normalRoleSuikaCount:20,normalRoleNaviBellCount:5}};
+  const saved=completedMachineTotal(machine,record);
+  machine.lastEndedSession={sessionId:record.sessionId,record,machineTotal:saved};
+  const baseline=machineDisplayBaseline(machine);
+  assert.equal(baseline.normalRoleGames,1000);assert.equal(baseline.normalRoleSuikaCount,20);
+  machine.currentSessionId='second';
+  machine.lastSnapshot={playSessionId:'second',playSessionStartStats:record.stats,stats:{...record.stats,totalSpins:2200,normalRoleGames:1100,normalRoleSuikaCount:22,normalRoleNaviBellCount:6}};
+  const total=machineTotalFor(machine).stats;
+  assert.equal(total.normalRoleGames,1100);assert.equal(total.normalRoleSuikaCount,22);assert.equal(total.normalRoleNaviBellCount,6);
+  assert.equal(machineDisplayBaseline(machine).normalRoleGames,1000,'active player is excluded from the launch baseline');
+  assert.deepEqual(machineTotalFor(JSON.parse(JSON.stringify(machine))).stats,total);
+  machine.resetSerial++;machine.currentSessionId='';machine.lastSnapshot=null;
+  assert.equal(machineTotalFor(machine).stats.normalRoleGames,0);
+  assert.equal(machineDisplayBaseline(machine).normalRoleSuikaCount,0);
+});
