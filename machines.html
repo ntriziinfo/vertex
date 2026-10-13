@@ -40,6 +40,10 @@ function draw(canvas, points){
   ctx.beginPath(); points.forEach((p,i)=>{ const x = xFor(i), y = yFor(Number(p.profit)||0); if(i) ctx.lineTo(x,y); else ctx.moveTo(x,y); }); ctx.stroke();
 }
 function visibleMachines(machines){ return Array.isArray(machines) ? machines : []; }
+function atFirstRate(stats){
+  const games=Number(stats.totalSpins),hits=Number(stats.atFirstCount);
+  return !stats.atFirstCountPartial && games>0 && hits>0 ? '1/'+(games/hits).toFixed(1) : '—';
+}
 function render(machines){
   grid.innerHTML = visibleMachines(machines).map(m=>{
     const s = m.machineTotalStats || {}; const profit = s.profit ?? ((s.totalPaid||0)-(s.totalFee||0));
@@ -47,7 +51,7 @@ function render(machines){
     return `<article class="machine">
       <div class="head"><h2>${esc(m.displayName || m.machineId)}</h2><span class="pill ${free ? 'free' : 'lock'}">${free ? '空き' : '使用不可'}</span></div>
       <canvas class="graph" data-machine="${esc(m.machineId)}"></canvas>
-      <div class="stats"><div class="stat"><span>G数</span><b>${fmt(s.totalSpins)}</b></div><div class="stat"><span>BB確率</span><b>${s.bigCount>0 && s.totalSpins>0 ? '1/'+(s.totalSpins/s.bigCount).toFixed(1) : '—'}</b></div><div class="stat"><span>${m.machineType==='nova'?'AT初当たり回数':'BB回数'}</span><b>${fmt(m.machineType==='nova'?s.atFirstCount:s.bigCount)}回${m.machineType==='nova'&&s.atFirstCountPartial?'（更新後）':''}</b></div><div class="stat"><span>差pt</span><b>${signed(profit)}</b></div></div>
+      <div class="stats"><div class="stat"><span>G数</span><b>${fmt(s.totalSpins)}</b></div><div class="stat"><span>BB確率</span><b>${s.bigCount>0 && s.totalSpins>0 ? '1/'+(s.totalSpins/s.bigCount).toFixed(1) : '—'}</b></div><div class="stat"><span>${m.machineType==='nova'?'AT初当たり確率':'BB回数'}</span><b>${m.machineType==='nova'?atFirstRate(s):fmt(s.bigCount)+'回'}</b></div><div class="stat"><span>差pt</span><b>${signed(profit)}</b></div></div>
       <div class="actions"><a class="${free ? '' : 'disabled'}" href="/play.html?machine=${encodeURIComponent(m.machineId)}">この台で遊ぶ</a></div>
     </article>`;
   }).join('');

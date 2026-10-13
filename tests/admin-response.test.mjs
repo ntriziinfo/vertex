@@ -80,9 +80,9 @@ test('real gateway settings/reset return fresh cards, preserve auth, cancel sess
     assert.equal(setting.statusCode,200);assert.equal(setting.body.machine.settings.setting,5);assert.equal(setting.body.machine.assignedSetting,5);
     const limit=await request('admin/machines/one/setting',{completeLimitPt:22000});
     assert.equal(limit.statusCode,200);assert.equal(limit.body.machine.settings.setting,5);
-    assert.equal(limit.body.machine.settings.completeMyLimitPt,22000);assert.equal(limit.body.machine.settings.completeLimitPt,0);
+    assert.equal(limit.body.machine.settings.completeMyLimitPt,0);assert.equal(limit.body.machine.settings.completeLimitPt,22000);assert.equal(limit.body.machine.settings.completeBasis,'net');
     const settingOnly=await request('admin/machines/one/setting',{setting:5});
-    assert.equal(settingOnly.body.machine.settings.completeMyLimitPt,22000);
+    assert.equal(settingOnly.body.machine.settings.completeLimitPt,22000);
     assert.equal((await request('admin/machines/one/setting',{completeLimitPt:0})).statusCode,400);
     calls.length=0;const reset=await request('admin/machines/one/reset');
     assert.equal(reset.statusCode,200);assert.equal(reset.body.machine.resetSerial,1);assert.equal(reset.body.machine.stats,null);
@@ -90,7 +90,7 @@ test('real gateway settings/reset return fresh cards, preserve auth, cancel sess
     assert.equal(reset.body.machine.capabilities.superSpeedAllowed,true);assert.equal(session.status,'cancelled');
     assert.equal(calls.filter(c=>c.table==='machine_states'&&c.method==='GET').length,1);
     assert(calls.some(c=>c.table==='issued_passwords'&&c.method==='PATCH'));
-    maxInFlight=0;const poll=await request('machines/one/commands/poll',{},false,'GET');assert.equal(poll.statusCode,200);assert.equal(maxInFlight,2);
+    maxInFlight=0;const poll=await request('machines/one/commands/poll',{},false,'GET');assert.equal(poll.statusCode,200);assert.equal(maxInFlight,2);assert.equal(poll.body.controls.completeLimitPt,22000);assert.equal(poll.body.controls.completeMyLimitPt,0);
     console.log('gateway lifecycle OK');
   `;
   const result=spawnSync(process.execPath,['--input-type=module','-e',probe],{encoding:'utf8',env:{...process.env,

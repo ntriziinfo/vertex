@@ -142,7 +142,8 @@ function machineFromRow(row){
 function publicMachine(machine, machineTotal, jackpotPool=null){
   const snapshot = machine.lastSnapshot || null;
   const stats = snapshot && snapshot.stats ? snapshot.stats : null;
-  const settings = snapshot && snapshot.settings ? snapshot.settings : {setting:machine.assignedSetting || 1, completeLimitPt:19000};
+  const storedSettings = snapshot && snapshot.settings ? snapshot.settings : {setting:machine.assignedSetting || 1, completeLimitPt:19000};
+  const settings = {...storedSettings,...adminSettings.completionSettings(storedSettings,machine.machineType)};
   return {storeId:STORE_ID, machineId:machine.machineId, displayName:machine.displayName || machineLabel(machine.machineId), machineType:machine.machineType || "generic", gameUrl:machine.gameUrl || "", poolId:machine.poolId || "", jackpotPool:jackpotPool || (snapshot && snapshot.jackpotPool) || null, capabilities:machine.capabilities || {completeLimit:false, jackpot:false}, online:!!machine.online, locked:!!machine.locked, currentSessionId:machine.currentSessionId || "", currentPlayerName:machine.currentPlayerName || "", updatedAt:machine.updatedAt || 0, resetSerial:machine.resetSerial || 0, assignedSetting:machine.assignedSetting || (stats && stats.setting) || settings.setting || 1, lastEndedSession:machine.lastEndedSession || null, playSessionId:snapshot && snapshot.playSessionId || "", playSessionStartStats:snapshot && snapshot.playSessionStartStats || null, settings, stats, slumpHistory:stats && Array.isArray(stats.slumpHistory) ? stats.slumpHistory : [{spin:0, profit:0}], machineTotalStats:machineTotal.stats, machineTotalSlumpHistory:machineTotal.history};
 }
 async function getMachine(id){
@@ -566,7 +567,10 @@ export default async function handler(req, res){
       if(session.status === "ended") return json(res, 200, {ok:true, alreadyEnded:true, record:session.resultRecord || null});
       const machine = await getMachine(session.machineId);
       const snapshot = snapshotForSession(session, machine, body.snapshot);
-      if(body.snapshot && snapshot === body.snapshot) machine.lastSnapshot = snapshot;
+      if(body.snapshot && snapshot === body.snapshot){
+        snapshot.settings={...snapshot.settings,...adminSettings.completionSettings(machine.lastSnapshot?.settings,machine.machineType)};
+        machine.lastSnapshot = snapshot;
+      }
       const record = {...resultPayload(session, machine, {...body, snapshot}), forced:!!body.forced};
       await appendResult(record);
       const sheets = await sendToSheets(record);
@@ -596,7 +600,8 @@ export default async function handler(req, res){
       if(incomingSessionId && incomingSessionId !== String(machine.currentSessionId || "")){
         return json(res, 200, {ok:true, ignored:true, reason:"stale play session"});
       }
-      machine.lastSnapshot = {...body, machineId, online:true, updatedAt:ms()};
+      const completion=adminSettings.completionSettings(machine.lastSnapshot?.settings,machine.machineType);
+      machine.lastSnapshot = {...body, settings:{...body.settings,...completion},machineId, online:true, updatedAt:ms()};
       const definition = machineDefinition(machineId);
       machine.displayName = definition ? definition.displayName : body.name || machine.displayName || machineId;
       machine.updatedAt = ms();
@@ -613,7 +618,7 @@ export default async function handler(req, res){
         getMachine(machineId),
         sb("machine_commands?machine_id=eq." + encodeURIComponent(machineId) + "&id=gt." + encodeURIComponent(String(since)) + "&select=*&order=id.asc&limit=25")
       ]);
-      return json(res, 200, {ok:true, controls:{superSpeedAllowed:machine.machineType==='nova' && machine.capabilities.superSpeedAllowed===true}, commands:rows.map(row=>({id:Number(row.id), machineId:String(row.machine_id), command:row.command || {}, createdAtMs:Number(row.created_at_ms || 0)}))});
+      return json(res, 200, {ok:true, controls:{superSpeedAllowed:machine.machineType==='nova' && machine.capabilities.superSpeedAllowed===true,...adminSettings.completionSettings(machine.lastSnapshot?.settings,machine.machineType)}, commands:rows.map(row=>({id:Number(row.id), machineId:String(row.machine_id), command:row.command || {}, createdAtMs:Number(row.created_at_ms || 0)}))});
     }
     m = pathname.match(/^\/api\/admin\/machines\/([^/]+)\/super-speed$/);
     if(m && req.method === "POST"){
@@ -638,8 +643,8 @@ export default async function handler(req, res){
       if(body.completeLimitPt !== undefined && !machine.capabilities?.completeLimit) return json(res,400,{ok:false,error:"この台はコンプリート設定の対象外です"});
       const currentSettings = machine.lastSnapshot && machine.lastSnapshot.settings ? machine.lastSnapshot.settings : {};
       const setting = patch.setting ?? machine.assignedSetting ?? currentSettings.setting ?? 1;
-      const nextSettings = {...currentSettings, setting, ...patch};
-      const completeLimitPt = (machine.machineType === 'nova' ? nextSettings.completeMyLimitPt : nextSettings.completeLimitPt) || 19000;
+      const nextSettings = {...currentSettings,...adminSettings.completionSettings(currentSettings,machine.machineType), setting, ...patch};
+      const completeLimitPt = nextSettings.completeLimitPt || 19000;
       machine.assignedSetting = setting;
       machine.lastSnapshot = machine.lastSnapshot || {machineId:machine.machineId, stats:{}, settings:{}, updatedAt:ms()};
       machine.lastSnapshot.settings = nextSettings;

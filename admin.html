@@ -37,6 +37,7 @@
       <div class="bulkControls">
         <div id="completeStoreControls">
           <div class="row"><label class="field completeField"><span>店舗共通 コンプリート発動枚数（pt）</span><input id="bulkCompleteLimit" type="number" min="1" max="999999" step="1" required placeholder="変更する枚数" oninput="bulkCompleteDirty=true"></label><button class="bulkAction" type="button" onclick="applyBulkCompleteLimit()">全対象台に反映</button></div>
+          <div class="completeSummary">差枚0を基準に、累計差枚が設定ptへ到達したら停止します。</div>
           <div id="completeSummary" class="completeSummary"></div>
         </div>
         <button class="bulkAction danger" type="button" onclick="resetAllMachines()">全台リセット</button>
@@ -573,7 +574,7 @@ function machineSettingRtp(machine){
   return profile[machineSettingValue(machine) - 1];
 }
 function machineCompleteLimitValue(machine){
-  return Math.max(1, Math.min(999999, Math.round(Number(machine?.machineType==='nova' ? machine.settings?.completeMyLimitPt : machine.settings?.completeLimitPt) || 19000)));
+  return Math.max(1, Math.min(999999, Math.round(Number(machine.settings?.completeLimitPt || (machine?.machineType==='nova' ? machine.settings?.completeMyLimitPt : 0)) || 19000)));
 }
 function completeLimitTargets(){
   return liveMachines().filter(machine=>machine.capabilities?.completeLimit);

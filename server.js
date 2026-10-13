@@ -6,7 +6,7 @@ const crypto = require("crypto");
 const passwordIssuance = require('./password-issuance.cjs');
 const { URL } = require("url");
 const {machineTotalFor} = require("./machine-totals.cjs");
-const {settingsPatch} = require("./admin-settings.cjs");
+const {settingsPatch,completionSettings} = require("./admin-settings.cjs");
 const {
   STORE_ID,
   STORE_NAME,
@@ -265,7 +265,8 @@ function sseSend(res, event, data){
 function publicMachine(machine, machineTotal, jackpotPool=null){
   const snapshot = machine.lastSnapshot || null;
   const stats = snapshot && snapshot.stats ? snapshot.stats : null;
-  const settings = snapshot && snapshot.settings ? snapshot.settings : {setting:machine.assignedSetting || 1, completeLimitPt:19000};
+  const storedSettings = snapshot && snapshot.settings ? snapshot.settings : {setting:machine.assignedSetting || 1, completeLimitPt:19000};
+  const settings = {...storedSettings,...completionSettings(storedSettings,machine.machineType)};
   return {
     storeId:STORE_ID,
     machineId:machine.machineId,
@@ -713,7 +714,10 @@ const server = http.createServer(async (req, res)=>{
       const machine = machineFor(session.machineId);
       if(!machine) return sendJson(res, 400, {ok:false, error:"machine not found"});
       const snapshot = snapshotForSession(session, machine, body.snapshot);
-      if(body.snapshot && snapshot === body.snapshot) machine.lastSnapshot = snapshot;
+      if(body.snapshot && snapshot === body.snapshot){
+        snapshot.settings={...snapshot.settings,...completionSettings(machine.lastSnapshot?.settings,machine.machineType)};
+        machine.lastSnapshot = snapshot;
+      }
       const record = resultPayload(session, machine, {...body, snapshot});
       appendResult(record);
       const sheets = await sendToSheets(record);
@@ -832,6 +836,7 @@ const server = http.createServer(async (req, res)=>{
         return sendJson(res, 200, {ok:true, ignored:true, reason:"stale play session"});
       }
       const snapshot = {...body, machineId, online:true, updatedAt:Date.now()};
+      snapshot.settings={...snapshot.settings,...completionSettings(machine.lastSnapshot?.settings,machine.machineType)};
       machine.lastSnapshot = snapshot;
       const definition = machineDefinition(machineId);
       machine.displayName = definition && definition.displayName || machine.displayName || body.name || machineId;
@@ -854,7 +859,7 @@ const server = http.createServer(async (req, res)=>{
       const since = Number(url.searchParams.get("since") || 0) || 0;
       const commands = (Array.isArray(state.commands) ? state.commands : []).filter(row=>String(row.machineId) === String(machineId) && Number(row.id) > since).slice(-25);
       const machine=machineFor(machineId);
-      return sendJson(res, 200, {ok:true, controls:{superSpeedAllowed:machine?.machineType==='nova' && machine.capabilities?.superSpeedAllowed===true}, commands});
+      return sendJson(res, 200, {ok:true, controls:{superSpeedAllowed:machine?.machineType==='nova' && machine.capabilities?.superSpeedAllowed===true,...completionSettings(machine?.lastSnapshot?.settings,machine?.machineType)}, commands});
     }
 
     const superSpeedMatch=url.pathname.match(/^\/api\/admin\/machines\/([^/]+)\/super-speed$/);
@@ -900,7 +905,8 @@ const server = http.createServer(async (req, res)=>{
       const currentSettings = machine.lastSnapshot && machine.lastSnapshot.settings ? machine.lastSnapshot.settings : {};
       const setting = patch.setting ?? machine.assignedSetting ?? currentSettings.setting ?? 1;
       const settings = {...currentSettings, setting, ...patch};
-      const completeLimitPt = (machine.machineType === 'nova' ? settings.completeMyLimitPt : settings.completeLimitPt) || 19000;
+      Object.assign(settings,completionSettings(settings,machine.machineType));
+      const completeLimitPt = settings.completeLimitPt || 19000;
       machine.assignedSetting = setting;
       machine.lastSnapshot = machine.lastSnapshot || {machineId:machine.machineId, stats:{}, settings:{}, updatedAt:Date.now()};
       machine.lastSnapshot.settings = settings;
