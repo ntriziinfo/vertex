@@ -31,3 +31,5 @@
 #slumpPanel .slumpStats b{font-size:15px;}
 
 .novaStoreData{min-width:0;margin-bottom:12px}.novaStoreData .novaDataHead{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 65px}.novaStoreData .novaHitColumn{height:auto;font-weight:normal}.novaStoreData .novaDataNumber b{font-size:clamp(18px,2.4vw,27px)}
+.novaViewControls{display:flex;gap:14px;flex-wrap:wrap;align-items:center}.novaGraphSwitch{display:flex;gap:6px;margin:0}.novaGraphSwitch button{flex:1;min-width:0;height:36px;padding:6px 15px;border:1px solid #494253;border-radius:6px;background:#141321;color:#bcb5cd;font-family:inherit;font-size:12px;font-weight:700;line-height:1.3;cursor:pointer}.novaGraphSwitch button[aria-pressed="true"]{background:#3d3155;border-color:#bba0ff;color:#fff}.novaGraphSwitch button:focus-visible{outline:2px solid #c3b2ff;outline-offset:2px}
+.novaGraphSwitch[hidden],.novaStoreHitPanel[hidden],.adminGraphWrap[hidden],.graph-wrap[hidden]{display:none!important}

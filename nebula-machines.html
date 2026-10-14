@@ -25,15 +25,15 @@
 <header class="masthead"><div class="wrap"><div class="brand">NEBULA<small>NOVA SLOT LOUNGE</small></div><span class="live"><i></i>台選び</span></div></header>
 <main class="wrap">
   <section class="hero" aria-labelledby="title"><div><p class="eyebrow">MACHINE SELECT</p><h1 id="title">今日の一台を選ぶ。</h1><p>NOVAの空き状況と台データをチェック。<br>遊びたい台を選び、発行されたパスワードで開始できます。</p></div><dl class="summary"><div><dt>設置台数</dt><dd><span id="total">—</span><small>台</small></dd></div><div><dt>空き台</dt><dd class="available"><span id="available">—</span><small>台</small></dd></div><div><dt>利用中</dt><dd><span id="occupied">—</span><small>台</small></dd></div></dl></section>
-  <div class="toolbar"><div class="filters" aria-label="表示する台"><button class="filter" data-filter="all" aria-pressed="true">すべて</button><button class="filter" data-filter="free" aria-pressed="false">空き台のみ</button></div><div class="updated"><span id="updated" role="status">読み込み中</span><button class="refresh" id="refresh">更新</button></div></div>
+  <div class="toolbar"><div class="novaViewControls"><div class="filters" aria-label="表示する台"><button class="filter" data-filter="all" aria-pressed="true">すべて</button><button class="filter" data-filter="free" aria-pressed="false">空き台のみ</button></div><div class="novaGraphSwitch" role="group" aria-label="全台のグラフ切替"><button type="button" data-nova-graph-view="line" aria-pressed="true">グラフ</button><button type="button" data-nova-graph-view="hits" aria-pressed="false">目盛り</button></div></div><div class="updated"><span id="updated" role="status">読み込み中</span><button class="refresh" id="refresh">更新</button></div></div>
   <p id="notice" class="notice" role="alert" hidden></p>
   <div id="grid" class="grid" aria-busy="true"><p class="empty">台データを読み込んでいます…</p></div>
   <p class="footnote">表示データは管理リセット以降の累計です。空き状況は30秒ごとに更新され、遊技開始時に再確認されます。<br>遊技には、この店舗の管理者が発行する台専用パスワードが必要です。利用中の台も、同じパスワードで再入場できます。</p>
   <footer class="footer"><span>NEBULA / NOVA</span><a href="/admin.html">店舗管理</a></footer>
 </main>
-<link rel="stylesheet" href="/nova-data-counter.css?v=20261014-shared-data">
+<link rel="stylesheet" href="/nova-data-counter.css?v=20261014-chart-toggle">
 <script src="/nova-data-counter.js?v=20261014-shared-data"></script>
-<script src="/machine-data.js?v=20261014-shared-data"></script>
+<script src="/machine-data.js?v=20261014-chart-toggle"></script>
 <script src="/slump-graph.js?v=20261014-fit-history"></script>
 <script>
 'use strict';

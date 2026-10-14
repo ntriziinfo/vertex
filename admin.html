@@ -26,7 +26,7 @@
 
   <section class="panel">
     <div class="sectionHead">
-      <h2><span id="machineCountLabel">0台</span>状況</h2>
+      <h2><span id="machineCountLabel">0台</span>状況</h2><div class="novaGraphSwitch" hidden role="group" aria-label="全台のグラフ切替"><button type="button" data-nova-graph-view="line" aria-pressed="true">グラフ</button><button type="button" data-nova-graph-view="hits" aria-pressed="false">目盛り</button></div>
       <span class="machineViewLabel">台累計 / 管理リセット以降</span>
     </div>
     <div class="floorControlRow">
@@ -58,9 +58,9 @@
     <div id="results" class="results"></div>
   </section>
 </main>
-<link rel="stylesheet" href="/nova-data-counter.css?v=20261014-shared-data">
+<link rel="stylesheet" href="/nova-data-counter.css?v=20261014-chart-toggle">
 <script src="/nova-data-counter.js?v=20261014-shared-data"></script>
-<script src="/machine-data.js?v=20261014-shared-data"></script>
+<script src="/machine-data.js?v=20261014-chart-toggle"></script>
 <script src="/slump-graph.js?v=20261014-fit-history"></script>
 <script>
 const $ = id => document.getElementById(id);
