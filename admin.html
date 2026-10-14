@@ -15,6 +15,9 @@
   .floorMetric{flex-wrap:wrap}.floorMetric span{white-space:nowrap}
   .adminDataSwitch{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:12px 0 16px}.adminDataSwitch>span{color:#9aa4b5;font-size:13px;margin-right:4px}.adminDataSwitch button{height:36px;min-width:68px;background:#141321;border:1px solid #494253;color:#bcb5cd}.adminDataSwitch button[aria-pressed="true"]{background:#3d3155;border-color:#bba0ff;color:#fff}.adminDataSwitch button:focus-visible{outline:2px solid #c3b2ff;outline-offset:2px}.machine{align-content:start}.machineDetails{display:grid;gap:9px;min-width:0;align-content:start}.machineSummary{display:none}.machines[data-view="compact"]{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.machines[data-view="compact"] .machineDetails,.machines[data-view="compact"] .pill{display:none}.machines[data-view="compact"] .machineSummary{display:grid;gap:8px}.compactMetric{display:flex;align-items:baseline;justify-content:space-between;gap:8px;min-width:0}.compactMetric>span{font-size:12px;color:#9aa4b5;white-space:nowrap}.compactProfit{font-size:24px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.compactPassword{font-size:22px;letter-spacing:.06em;color:#ffe07c;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.compactPasswordNote{color:#9aa4b5;font-size:13px;font-weight:400;letter-spacing:0}@media(max-width:1100px){.machines[data-view="compact"]{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:800px){.machines[data-view="compact"]{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:460px){.machines[data-view="compact"]{grid-template-columns:1fr}}
 </style>
+<style>
+  .machineSummary{width:100%;height:auto;padding:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;border-radius:4px;min-width:0}.machineSummary:focus-visible{outline:2px solid #c3b2ff;outline-offset:5px}.compactTitle{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:18px;font-weight:800;margin-bottom:3px}.compactChevron{color:#bba0ff;font-size:20px;transition:transform .15s}.machines[data-view="compact"]{align-items:start}.machines[data-view="compact"] .machineTitle{display:none}.machines[data-view="compact"] .machine[data-expanded="true"]{grid-column:span 2;border-color:#9980c7}.machines[data-view="compact"] .machine[data-expanded="true"] .machineDetails{display:grid;border-top:1px solid #3d344e;padding-top:12px;margin-top:3px}.machine[data-expanded="true"] .compactChevron{transform:rotate(180deg)}@media(max-width:460px){.machines[data-view="compact"] .machine[data-expanded="true"]{grid-column:span 1}}
+</style>
 </head>
 <body class="locked">
 <div id="authGate" class="authGate"><form id="authForm" class="authPanel"><h1 class="adminTitle">Vertex管理画面</h1><label class="storeSwitchWrap">店舗切替<select class="storeSwitch" aria-label="店舗切替"><option>店舗を読み込み中</option></select></label><p class="muted">この店舗専用の管理パスを入力してください。</p><input id="gatePassword" type="password" autocomplete="current-password" placeholder="管理パス"><button type="submit">入室</button><div id="authError" class="bad"></div></form></div>
@@ -69,6 +72,7 @@
 const $ = id => document.getElementById(id);
 let machines = [];
 let adminDataView = 'line';
+const expandedMachineDetails = new Set();
 const machineOperations = new Map();
 const machineDrafts = new Map();
 const passwordIssues = new Map();
@@ -133,6 +137,12 @@ function setAdminDataView(view){
   adminDataView=view;
   renderAdminSlumpGraphs();
 }
+function toggleMachineDetails(id){
+  if(adminDataView!=='compact')return;
+  if(expandedMachineDetails.has(id))expandedMachineDetails.delete(id);
+  else expandedMachineDetails.add(id);
+  renderAdminSlumpGraphs();
+}
 function renderAdminSlumpGraphs(){
   const hasNova=machineRows().some(machine=>machine.machineType==='nova');
   if(adminDataView==='hits'&&!hasNova)adminDataView='line';
@@ -141,15 +151,22 @@ function renderAdminSlumpGraphs(){
     button.setAttribute('aria-pressed',String(button.dataset.adminView===adminDataView));
     button.hidden=button.dataset.adminView==='hits'&&!hasNova;
   });
+  document.querySelectorAll('[data-admin-machine]').forEach(card=>{
+    const id=card.dataset.adminMachine,expanded=expandedMachineDetails.has(id);
+    card.dataset.expanded=String(expanded);
+    const toggle=card.querySelector('.machineSummary');
+    toggle.setAttribute('aria-expanded',String(expanded));
+    toggle.setAttribute('aria-label',machineLabelById(id)+'の詳細を'+(expanded?'閉じる':'開く'));
+  });
   NovaStoreData.setGraphView(adminDataView==='hits'?'hits':'line',machineRows());
-  if(adminDataView==='compact')return;
   for(const m of machineRows()){
+    if(adminDataView==='compact'&&!expandedMachineDetails.has(String(m.machineId)))continue;
     const c = document.querySelector('canvas[data-machine="' + m.machineId + '"]');
     if(c) drawSlump(c, historyFor(m));
   }
 }
 function renderMachines(){
-  const focused = document.activeElement?.matches('.settingMini,.passwordName') ? document.activeElement : null;
+  const focused = document.activeElement?.matches('.settingMini,.passwordName,.machineSummary') ? document.activeElement : null;
   const focusedField = focused?.id || '';
   const selection = focused?.tagName === 'INPUT' ? [focused.selectionStart,focused.selectionEnd] : null;
   const floorMachines = liveMachines();
@@ -176,10 +193,10 @@ function renderMachines(){
     const st = status(m);
     const draft = machineDrafts.get(String(m.machineId));
     const operation = machineOperations.get(String(m.machineId));
-    return `<article class="machine">
-      <h3>${escapeHtml(machineLabel(m))} <span class="pill ${st[1]}">${st[0]}</span></h3>
-      <div class="machineSummary"><div class="compactMetric"><span>現在差枚</span><b class="compactProfit ${profit>=0?'positive':'negative'}">${s ? signed(profit) + ' pt' : '—'}</b></div><div class="compactMetric"><span>パスワード</span><b class="compactPassword" id="compact-password-${m.machineId}">${compactPasswordMarkup(m.machineId)}</b></div></div>
-      <div class="machineDetails">
+    return `<article class="machine" data-admin-machine="${escapeHtml(m.machineId)}">
+      <h3 class="machineTitle">${escapeHtml(machineLabel(m))} <span class="pill ${st[1]}">${st[0]}</span></h3>
+      <button type="button" class="machineSummary" id="compact-toggle-${m.machineId}" aria-expanded="false" aria-controls="machine-details-${m.machineId}" onclick="toggleMachineDetails('${m.machineId}')"><span class="compactTitle"><span>${escapeHtml(machineLabel(m))}</span><span class="compactChevron" aria-hidden="true">⌄</span></span><span class="compactMetric"><span>現在差枚</span><b class="compactProfit ${profit>=0?'positive':'negative'}">${s ? signed(profit) + ' pt' : '—'}</b></span><span class="compactMetric"><span>パスワード</span><b class="compactPassword" id="compact-password-${m.machineId}">${compactPasswordMarkup(m.machineId)}</b></span></button>
+      <div class="machineDetails" id="machine-details-${m.machineId}">
       <div class="muted">${escapeHtml(machineTypeLabel(m))}${m.poolId ? ' / プール: ' + escapeHtml(m.poolId) : ''}</div>
       ${m.capabilities && m.capabilities.jackpot ? `<div class="stat"><span>5台共有JACKPOT</span><b>${fmt(m.jackpotPool && m.jackpotPool.currentPt)}pt</b></div>` : ''}
       <div class="machineViewLabel">${escapeHtml(view.label)}</div>
