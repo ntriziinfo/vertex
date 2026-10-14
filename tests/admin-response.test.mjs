@@ -31,6 +31,7 @@ test('setting reports progress immediately, coalesces double-click, uses one req
 });
 test('old list responses cannot overwrite an operation that just completed',async()=>{
   const h=ui(), list=h.c.loadMachines(), update=h.c.applySetting('one');
+  assert.equal(h.requests[0].options.headers['X-Admin-Password'],'qa');
   h.reply(1,{ok:true,setting:4,machine:{machineId:'one',settings:{setting:4}}});await update;
   h.reply(0,[{machineId:'one',settings:{setting:1}}]);assert.equal(await list,false);
   assert.equal(h.c.machines[0].settings.setting,4);
@@ -76,6 +77,9 @@ test('real gateway settings/reset return fresh cards, preserve auth, cancel sess
       await gateway(req,res);assert.equal(req.__vertexResetMachine,undefined);return res;
     }
     assert.equal((await request('admin/machines/one/reset',{},false)).statusCode,401);assert.equal(calls.length,0);
+    const publicList=await request('machines',{},false,'GET'),adminList=await request('machines',{},true,'GET');
+    assert.equal(publicList.body[0].currentPlayerName,'利用中');
+    assert.equal(adminList.body[0].currentPlayerName,'tester');
     const setting=await request('admin/machines/one/setting',{setting:5,completeLimitPt:19000});
     assert.equal(setting.statusCode,200);assert.equal(setting.body.machine.settings.setting,5);assert.equal(setting.body.machine.assignedSetting,5);
     const limit=await request('admin/machines/one/setting',{completeLimitPt:22000});
