@@ -94,3 +94,13 @@ test('bounded BIG AT and special-zone history spans player changes with cumulati
  assert(end.slumpHistory.length<=40);assert(encodeURIComponent(JSON.stringify(end)).length<12000);
  machine.resetSerial++;assert.equal(machineDisplayBaseline(machine).dataHits.length,0);
 });
+
+test('phase-specific hit intervals survive machine aggregation without adding AT games to normal games',()=>{
+ const machine={machineId:'nova-01',resetSerial:1};
+ const first={machineId:machine.machineId,sessionId:'first',resetSerial:1,stats:{totalSpins:800,dataHitSeq:1,dataHits:[{seq:1,spin:200,kind:'AT',games:200,phase:'normal'}]}};
+ machine.lastEndedSession={sessionId:first.sessionId,record:first,machineTotal:completedMachineTotal(machine,first)};
+ const next={machineId:machine.machineId,sessionId:'next',resetSerial:1,startStats:{totalSpins:800,dataHitSeq:1},stats:{totalSpins:820,dataHitSeq:2,dataHits:[{seq:2,spin:820,kind:'BIG',games:20,phase:'normal'}]}};
+ const saved=completedMachineTotal(machine,next);machine.lastEndedSession={sessionId:next.sessionId,record:next,machineTotal:saved};
+ const latest=machineDisplayBaseline(machine).dataHits.at(-1);
+ assert.equal(latest.spin,820);assert.equal(latest.games,20);assert.equal(latest.phase,'normal');
+});
