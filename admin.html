@@ -58,7 +58,10 @@
     <div id="results" class="results"></div>
   </section>
 </main>
-<script src="/slump-graph.js?v=20261014-newest-left"></script>
+<link rel="stylesheet" href="/nova-data-counter.css?v=20261014-shared-data">
+<script src="/nova-data-counter.js?v=20261014-shared-data"></script>
+<script src="/machine-data.js?v=20261014-shared-data"></script>
+<script src="/slump-graph.js?v=20261014-shared-data"></script>
 <script>
 const $ = id => document.getElementById(id);
 let machines = [];
@@ -122,6 +125,7 @@ function historyFor(machine){ return machine._displayHistory || [{spin:0, profit
 function graphBounds(machine){ const profits = historyFor(machine).map(p => Number(p.profit) || 0); return {min:Math.min(0, ...profits), max:Math.max(0, ...profits)}; }
 function drawSlump(canvas, history){ VertexSlumpGraph.draw(canvas,history); }
 function renderAdminSlumpGraphs(){
+  NovaStoreData.renderAll(machineRows());
   for(const m of machineRows()){
     const c = document.querySelector('canvas[data-machine="' + m.machineId + '"]');
     if(c) drawSlump(c, historyFor(m));
@@ -160,10 +164,11 @@ function renderMachines(){
       <div class="muted">${escapeHtml(machineTypeLabel(m))}${m.poolId ? ' / プール: ' + escapeHtml(m.poolId) : ''}</div>
       ${m.capabilities && m.capabilities.jackpot ? `<div class="stat"><span>5台共有JACKPOT</span><b>${fmt(m.jackpotPool && m.jackpotPool.currentPt)}pt</b></div>` : ''}
       <div class="machineViewLabel">${escapeHtml(view.label)}</div>
+      ${NovaStoreData.markup(m)}
       <div class="muted">${m.currentPlayerName ? '利用者: ' + escapeHtml(m.currentPlayerName) : '利用者なし'} / ${m.currentSessionId ? '遊技中' : m.lastEndedSession ? '直前データ保持中' : 'リセット済み'}</div>
       <div class="adminGraphWrap">
         <div class="graphHeading"><span>差枚グラフ / pt</span><b class="graphCurrent ${profit>=0?'positive':'negative'}"><small>現在差枚</small>${s ? signed(profit) + ' pt' : '—'}</b></div>
-        <div class="graph-scroll" tabindex="0" aria-label="差枚グラフを左右にスクロール"><div class="graph-track"><canvas class="adminSlumpGraph" data-machine="${m.machineId}" role="img"></canvas></div></div><div class="graph-axis-note">左が最新 / 1目盛り1,000G / 左右にスクロール</div>
+        <div class="graph-scroll" tabindex="0" aria-label="差枚グラフを左右にスクロール"><div class="graph-track"><canvas class="adminSlumpGraph" data-machine="${m.machineId}" role="img"></canvas></div></div><div class="graph-axis-note">左が過去・右が最新 / 1目盛り1,000G / 左右にスクロール</div>
       </div>
       <div class="graphStats">
         <div class="stat"><span>総回転数</span><b>${s ? fmt(stat(s,'totalSpins')) + ' G' : '—'}</b></div>

@@ -56,6 +56,8 @@ function playerView(endStats={}, startStats={}, explicit={}){
   const baselineStats = countersReset ? {} : startStats;
   const stats = {};
   for(const key of STAT_KEYS) stats[key] = Math.max(0, stat(endStats, key) - stat(baselineStats, key));
+  // This is the current phase's interval, not a per-player cumulative counter.
+  if(['normal','art'].includes(endStats.dataInterval?.phase)) stats.dataInterval={phase:endStats.dataInterval.phase,games:Math.max(0,num(endStats.dataInterval.games))};
   stats.dataHits=(Array.isArray(endStats.dataHits)?endStats.dataHits:[])
     .filter(hit=>num(hit.seq)>stat(baselineStats,'dataHitSeq')&&['BIG','AT','ZONE'].includes(hit.kind))
     .slice(-20).map(hit=>({seq:num(hit.seq)-stat(baselineStats,'dataHitSeq'),spin:Math.max(0,num(hit.spin)-stat(baselineStats,'totalSpins')),kind:hit.kind,zone:String(hit.zone||''),games:Math.max(0,num(hit.games)),...(['normal','art'].includes(hit.phase)?{phase:hit.phase}:{})}));
@@ -113,6 +115,7 @@ function appendPlayerView(aggregate, view){
   }
   aggregate.stats.dataHits=aggregate.stats.dataHits.slice(-20);
   for(const key of STAT_KEYS) aggregate.stats[key] = stat(aggregate.stats, key) + stat(view.stats, key);
+  if(view.stats.dataInterval) aggregate.stats.dataInterval={...view.stats.dataInterval};
   aggregate.stats.atFirstCountPartial ||= !!view.stats.atFirstCountPartial;
   aggregate.stats.profit = baseProfit + statsProfit(view.stats);
   appendPoint(aggregate.history, {spin:baseSpin, profit:baseProfit});
@@ -193,7 +196,14 @@ function machineTotalFor(machine, records=[]){
   const saved = machine.lastEndedSession?.machineTotal;
   const hasSaved = saved && saved.sessionId === machine.lastEndedSession.sessionId
     && num(saved.resetSerial) === num(machine.resetSerial) && saved.stats && Array.isArray(saved.history);
-  if(hasSaved)appendPlayerView(aggregate, saved);
+  if(hasSaved){
+    appendPlayerView(aggregate, saved);
+    // Checkpoints created before interval aggregation can recover from their matching final snapshot.
+    const snapshot=machine.lastSnapshot;
+    if(!aggregate.stats.dataInterval&&snapshot?.playSessionId===saved.sessionId&&['normal','art'].includes(snapshot.stats?.dataInterval?.phase)){
+      aggregate.stats.dataInterval={phase:snapshot.stats.dataInterval.phase,games:Math.max(0,num(snapshot.stats.dataInterval.games))};
+    }
+  }
   const completed = hasSaved ? [] : recordsForMachine(machine, records);
   for(const record of completed) appendPlayerView(aggregate, playerViewForResult(record));
   const current = currentPlayerView(machine);
@@ -215,7 +225,7 @@ function completedMachineTotal(machine, record, records=[]){
 
 function machineDisplayBaseline(machine, records=[]){
   const {stats,history}=machineTotalFor({...machine,currentSessionId:'',lastSnapshot:null},records);
-  return {...Object.fromEntries([...ROLE_STAT_KEYS,...DATA_STAT_KEYS].map(key=>[key,stat(stats,key)])),dataHits:stats.dataHits,slumpHistory:compactHistory(history,40),profit:stats.profit,totalSpins:stats.totalSpins,bigCount:stats.bigCount,atFirstCount:stats.atFirstCount,
+  return {...Object.fromEntries([...ROLE_STAT_KEYS,...DATA_STAT_KEYS].map(key=>[key,stat(stats,key)])),...(stats.dataInterval?{dataInterval:{...stats.dataInterval}}:{}),dataHits:stats.dataHits,slumpHistory:compactHistory(history,40),profit:stats.profit,totalSpins:stats.totalSpins,bigCount:stats.bigCount,atFirstCount:stats.atFirstCount,
     atFirstCountPartial:stats.atFirstCountPartial,sinceBonus:num(machine.lastSnapshot?.machineDisplayStats?.sinceBonus ?? machine.lastSnapshot?.normalState?.sinceBonus)};
 }
 

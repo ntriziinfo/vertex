@@ -21,7 +21,7 @@ function ui(){
     sessionStorage:{getItem:key=>key==='vertexAdminMachineView'?'player':null},
     document:{getElementById:element,querySelectorAll:()=>[],querySelector:()=>null},window:{devicePixelRatio:1},
   });
-  vm.runInContext(source('slump-graph.js'),c);
+  vm.runInContext(source('slump-graph.js')+source('nova-data-counter.js')+source('machine-data.js'),c);
   return {c,element};
 }
 test('admin cards ignore a saved personal view and use cabinet totals for all values',()=>{
@@ -57,7 +57,7 @@ test('admin graph keeps the full cumulative span with pt ticks and a G axis acro
   const attrs={};const canvas={dataset:{},closest:()=>null,getContext:()=>ctx,getBoundingClientRect:()=>({width:340,height:180}),setAttribute:(k,v)=>attrs[k]=v};
   // The former gap filter discarded the first two points in this history.
   c.drawSlump(canvas,[{spin:0,profit:0},{spin:100,profit:-2500},{spin:12000,profit:100},{spin:12050,profit:200},{spin:12100,profit:300},{spin:12150,profit:400}]);
-  assert.deepEqual(labels.filter(text=>text.endsWith(' G')),['12,000 G','11,000 G','10,000 G']);assert.match(attrs['aria-label'],/左が最新/);assert.match(attrs['aria-label'],/総回転12,150G/);
+  assert.deepEqual(labels.filter(text=>text.endsWith(' G')),['11,000 G','12,000 G','13,000 G']);assert.match(attrs['aria-label'],/右が最新/);assert.match(attrs['aria-label'],/総回転12,150G/);
   assert(labels.some(text=>text.startsWith('-')));assert(labels.some(text=>text.startsWith('+')));
   assert.match(attrs['aria-label'],/最小-2,500pt/);assert.match(attrs['aria-label'],/現在\+400pt/);
   assert(lines.every(([x,y])=>Number.isFinite(x)&&Number.isFinite(y)));
@@ -69,4 +69,18 @@ test('ended history hides individual play statistics while keeping settlement st
   await c.loadResults();
   assert.match(element('results').innerHTML,/検証利用者/);assert.match(element('results').innerHTML,/Sheets/);
   assert.doesNotMatch(element('results').innerHTML,/98,765|54,321|123,456|222,221|利用差pt|投入|払出/);
+});
+test('chronological graph follows the newest games, retains a past scroll on refresh and has increasing point positions',()=>{
+ const {c}=ui(),paths=[];let current=[];const track={style:{}};
+ const scroller={clientWidth:340,scrollLeft:0,get scrollWidth(){return parseFloat(track.style.width)||340;},addEventListener(type,fn){this.onScroll=fn;}};
+ const ctx={save(){},restore(){},rect(){},clip(){},setTransform(){},measureText:t=>({width:t.length*6}),setLineDash(){},beginPath(){current=[];},stroke(){paths.push(current);},fill(){},arc(){},fillText(){},moveTo(x){current.push(x);},lineTo(x){current.push(x);}};
+ const canvas={dataset:{id:'scroll-check'},style:{},parentElement:track,closest:()=>scroller,getContext:()=>ctx,getBoundingClientRect:()=>({width:340,height:180}),setAttribute(){}};
+ const history=[{spin:0,profit:0},{spin:12000,profit:200},{spin:12873,profit:5432}];
+ c.VertexSlumpGraph.draw(canvas,history);
+ assert.equal(scroller.scrollLeft,scroller.scrollWidth-340);
+ const line=paths.find(p=>p.length===3);assert(line[0]<line[1]&&line[1]<line[2]);
+ scroller.scrollLeft=250;scroller.onScroll();
+ c.VertexSlumpGraph.draw(canvas,[...history,{spin:14001,profit:4000}]);assert.equal(scroller.scrollLeft,250);
+ scroller.scrollLeft=scroller.scrollWidth-340;scroller.onScroll();
+ c.VertexSlumpGraph.draw(canvas,[...history,{spin:16001,profit:4000}]);assert.equal(scroller.scrollLeft,scroller.scrollWidth-340);
 });

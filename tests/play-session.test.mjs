@@ -45,7 +45,7 @@ test('customer end in progress is not interrupted by a late watchdog response',a
 });
 test('occupied NEBULA card links to password entry while unavailable data stays disabled',()=>{
  const html=fs.readFileSync(new URL('../nebula-machines.html',import.meta.url),'utf8'),elements=new Map();
- const c=vm.createContext({machines:[{machineId:'nova-01',displayName:'NOVA 1番台',locked:true}],fresh:true,filter:'all',num:Number,fmt:String,signed:String,esc:String,atFirstRate:()=>'-',graphs(){},$:id=>{if(!elements.has(id))elements.set(id,{});return elements.get(id);}});
+ const c=vm.createContext({machines:[{machineId:'nova-01',displayName:'NOVA 1番台',locked:true}],fresh:true,filter:'all',num:Number,fmt:String,signed:String,esc:String,atFirstRate:()=>'-',NovaStoreData:{markup:()=>''},graphs(){},$:id=>{if(!elements.has(id))elements.set(id,{});return elements.get(id);}});
  vm.runInContext(html.match(/function render\([^]*?\n}/)[0],c);c.render();
  assert.match(c.$('grid').innerHTML,/<a class="play busy" href="\/play.html\?machine=nova-01"/);
  assert.match(c.$('grid').innerHTML,/ただいま利用中・再入場/);assert.doesNotMatch(c.$('grid').innerHTML,/aria-disabled/);

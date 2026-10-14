@@ -104,3 +104,17 @@ test('phase-specific hit intervals survive machine aggregation without adding AT
  const latest=machineDisplayBaseline(machine).dataHits.at(-1);
  assert.equal(latest.spin,820);assert.equal(latest.games,20);assert.equal(latest.phase,'normal');
 });
+test('phase interval is preserved across players, but reset to zero at AT end without adding AT games',()=>{
+ const first={machineId:'nova-01',resetSerial:0,sessionId:'a',endedAtMs:1,stats:{totalSpins:800,totalFee:2400,totalPaid:2500,dataNormalGames:200,dataAtGames:600,dataInterval:{phase:'art',games:80},atFirstCount:1}};
+ const machine={machineId:'nova-01',resetSerial:0,currentSessionId:'b',lastSnapshot:{playSessionId:'b',playSessionStartStats:first.stats,stats:{...first.stats,totalSpins:810,totalFee:2430,totalPaid:2580,dataAtGames:610,dataInterval:{phase:'art',games:90}}}};
+ let total=machineTotalFor(machine,[first]);
+ assert.equal(total.stats.totalSpins,810);assert.deepEqual(total.stats.dataInterval,{phase:'art',games:90});
+ machine.lastSnapshot.stats.dataInterval={phase:'normal',games:0};
+ total=machineTotalFor(machine,[first]);assert.deepEqual(total.stats.dataInterval,{phase:'normal',games:0});
+ machine.lastSnapshot.stats.dataNormalGames=210;machine.lastSnapshot.stats.totalSpins=820;machine.lastSnapshot.stats.dataInterval.games=10;
+ total=machineTotalFor(machine,[first]);assert.equal(total.stats.dataNormalGames,210);assert.equal(total.stats.dataAtGames,610);assert.equal(total.stats.dataInterval.games,10);
+ const waiting=machineTotalFor({...machine,lastSnapshot:null},[first]);assert.equal(waiting.stats.dataInterval.games,80,'waiting for a new player snapshot preserves the previous interval');
+ const saved=machineTotalFor({machineId:'nova-01',resetSerial:0},[first]);delete saved.stats.dataInterval;
+ const idle=machineTotalFor({machineId:'nova-01',resetSerial:0,lastEndedSession:{sessionId:'a',machineTotal:{...saved,resetSerial:0,sessionId:'a'}},lastSnapshot:{playSessionId:'a',stats:first.stats}});
+ assert.deepEqual(idle.stats.dataInterval,{phase:'art',games:80},'older checkpoint recovers only its matching final snapshot');
+});
