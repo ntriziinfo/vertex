@@ -11,7 +11,7 @@
     .stats{grid-template-columns:repeat(2,minmax(0,1fr))}.issuedCustomer{font-size:17px;overflow-wrap:anywhere}.passwordIssue .code{font-size:26px}
     .superSpeedToggle[aria-pressed="true"]{background:#ffd84d;color:#241900;border:2px solid #fff1a8;box-shadow:0 0 0 2px #c99022,0 0 12px #ffd84d55}
     .adminGraphWrap{min-width:0;border:1px solid #2b3342;border-radius:7px;background:#100f1c;overflow:hidden}.graphHeading{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:10px 12px 0;color:#aca7be;font-size:11px}.graphCurrent{font-size:20px;white-space:nowrap;font-variant-numeric:tabular-nums}.graphCurrent small{font-size:10px;color:#aca7be;font-weight:400;margin-right:7px}.adminSlumpGraph{display:block;height:180px;border:0;border-radius:0;background:transparent}.positive{color:#89edc5}.negative{color:#ff9baa}.graphStats{grid-template-columns:repeat(3,minmax(0,1fr))}.graphStats .stat{min-width:0;padding:8px 6px}.graphStats b{font-size:clamp(12px,1.3vw,16px);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}@media(max-width:980px){.graphStats b{font-size:16px}}@media(max-width:400px){main{padding:10px}.panel{padding:10px}.machine{padding:10px}.graphCurrent{font-size:18px}.graphStats b{font-size:13px}}
-  .graph-scroll{overflow-x:auto;min-width:0;scrollbar-width:thin;touch-action:pan-x pan-y}.graph-track{position:relative}.graph-track canvas{position:sticky;left:0;max-width:none}.graph-axis-note{padding:0 12px 6px;font-size:10px;color:#aca7be}
+  .graph-scroll{overflow:hidden;min-width:0}.graph-track{width:100%;min-width:0}.graph-track canvas{width:100%;max-width:100%}.graph-axis-note{padding:0 12px 6px;font-size:10px;color:#aca7be}
 </style>
 </head>
 <body class="locked">
@@ -61,7 +61,7 @@
 <link rel="stylesheet" href="/nova-data-counter.css?v=20261014-shared-data">
 <script src="/nova-data-counter.js?v=20261014-shared-data"></script>
 <script src="/machine-data.js?v=20261014-shared-data"></script>
-<script src="/slump-graph.js?v=20261014-shared-data"></script>
+<script src="/slump-graph.js?v=20261014-fit-history"></script>
 <script>
 const $ = id => document.getElementById(id);
 let machines = [];
@@ -168,7 +168,7 @@ function renderMachines(){
       <div class="muted">${m.currentPlayerName ? '利用者: ' + escapeHtml(m.currentPlayerName) : '利用者なし'} / ${m.currentSessionId ? '遊技中' : m.lastEndedSession ? '直前データ保持中' : 'リセット済み'}</div>
       <div class="adminGraphWrap">
         <div class="graphHeading"><span>差枚グラフ / pt</span><b class="graphCurrent ${profit>=0?'positive':'negative'}"><small>現在差枚</small>${s ? signed(profit) + ' pt' : '—'}</b></div>
-        <div class="graph-scroll" tabindex="0" aria-label="差枚グラフを左右にスクロール"><div class="graph-track"><canvas class="adminSlumpGraph" data-machine="${m.machineId}" role="img"></canvas></div></div><div class="graph-axis-note">左が過去・右が最新 / 1目盛り1,000G / 左右にスクロール</div>
+        <div class="graph-scroll"><div class="graph-track"><canvas class="adminSlumpGraph" data-machine="${m.machineId}" role="img"></canvas></div></div><div class="graph-axis-note">左が過去・右が最新 / 全履歴を幅に合わせて表示</div>
       </div>
       <div class="graphStats">
         <div class="stat"><span>総回転数</span><b>${s ? fmt(stat(s,'totalSpins')) + ' G' : '—'}</b></div>

@@ -57,7 +57,7 @@ test('admin graph keeps the full cumulative span with pt ticks and a G axis acro
   const attrs={};const canvas={dataset:{},closest:()=>null,getContext:()=>ctx,getBoundingClientRect:()=>({width:340,height:180}),setAttribute:(k,v)=>attrs[k]=v};
   // The former gap filter discarded the first two points in this history.
   c.drawSlump(canvas,[{spin:0,profit:0},{spin:100,profit:-2500},{spin:12000,profit:100},{spin:12050,profit:200},{spin:12100,profit:300},{spin:12150,profit:400}]);
-  assert.deepEqual(labels.filter(text=>text.endsWith(' G')),['11,000 G','12,000 G','13,000 G']);assert.match(attrs['aria-label'],/右が最新/);assert.match(attrs['aria-label'],/総回転12,150G/);
+  assert.deepEqual(labels.filter(text=>text.endsWith(' G')),['0 G','5,000 G','10,000 G']);assert.match(attrs['aria-label'],/右が最新/);assert.match(attrs['aria-label'],/総回転12,150G/);
   assert(labels.some(text=>text.startsWith('-')));assert(labels.some(text=>text.startsWith('+')));
   assert.match(attrs['aria-label'],/最小-2,500pt/);assert.match(attrs['aria-label'],/現在\+400pt/);
   assert(lines.every(([x,y])=>Number.isFinite(x)&&Number.isFinite(y)));
@@ -70,17 +70,15 @@ test('ended history hides individual play statistics while keeping settlement st
   assert.match(element('results').innerHTML,/検証利用者/);assert.match(element('results').innerHTML,/Sheets/);
   assert.doesNotMatch(element('results').innerHTML,/98,765|54,321|123,456|222,221|利用差pt|投入|払出/);
 });
-test('chronological graph follows the newest games, retains a past scroll on refresh and has increasing point positions',()=>{
+test('chronological graph fits all points into a fixed card at 10k, 50k and 100k games',()=>{
  const {c}=ui(),paths=[];let current=[];const track={style:{}};
  const scroller={clientWidth:340,scrollLeft:0,get scrollWidth(){return parseFloat(track.style.width)||340;},addEventListener(type,fn){this.onScroll=fn;}};
  const ctx={save(){},restore(){},rect(){},clip(){},setTransform(){},measureText:t=>({width:t.length*6}),setLineDash(){},beginPath(){current=[];},stroke(){paths.push(current);},fill(){},arc(){},fillText(){},moveTo(x){current.push(x);},lineTo(x){current.push(x);}};
  const canvas={dataset:{id:'scroll-check'},style:{},parentElement:track,closest:()=>scroller,getContext:()=>ctx,getBoundingClientRect:()=>({width:340,height:180}),setAttribute(){}};
- const history=[{spin:0,profit:0},{spin:12000,profit:200},{spin:12873,profit:5432}];
- c.VertexSlumpGraph.draw(canvas,history);
- assert.equal(scroller.scrollLeft,scroller.scrollWidth-340);
- const line=paths.find(p=>p.length===3);assert(line[0]<line[1]&&line[1]<line[2]);
- scroller.scrollLeft=250;scroller.onScroll();
- c.VertexSlumpGraph.draw(canvas,[...history,{spin:14001,profit:4000}]);assert.equal(scroller.scrollLeft,250);
- scroller.scrollLeft=scroller.scrollWidth-340;scroller.onScroll();
- c.VertexSlumpGraph.draw(canvas,[...history,{spin:16001,profit:4000}]);assert.equal(scroller.scrollLeft,scroller.scrollWidth-340);
+ for(const end of [10000,50000,100000]){
+   paths.length=0;scroller.scrollLeft=250;
+   c.VertexSlumpGraph.draw(canvas,[{spin:0,profit:0},{spin:end/2,profit:200},{spin:end,profit:5432}]);
+   assert.equal(scroller.scrollLeft,0);assert.equal(track.style.width,'100%');assert.equal(canvas.style.width,'100%');assert.equal(canvas.width,340);
+   const line=paths.find(p=>p.length===3);assert(line[0]<line[1]&&line[1]<line[2]);assert(line.every(x=>x>=0&&x<=340));
+ }
 });
