@@ -76,6 +76,34 @@ async function rejectsStaleState(session){
  assert.equal(response.statusCode,409,JSON.stringify(response.body));
  assert.deepEqual(machines.get(session.machineId),before);
 }
+if(process.env.QA_RESUME_ASSERT==='1'){
+ let prior=null;
+ for(let i=0;i<3;i++){
+  const issued=await issue('one','Player'+i),started=await request('sessions/start',{password:issued.body.issued.password});
+  assert.equal(started.statusCode,200,JSON.stringify(started.body));
+  const session=started.body.session;
+  assert.equal(new URL(started.body.iframeUrl).searchParams.get('resumeFromStore'),'1');
+  if(prior){assert.deepEqual(started.body.resumeState.state.runtimeState,prior.runtimeState);assert.equal(started.body.resumeState.baseline,null);}
+  const stats={totalSpins:(i+1)*100,totalFee:(i+1)*300,totalPaid:(i+1)*400};
+  const snapshot={playSessionId:session.sessionId,capturedAt:1000+i*100,endPreparedAt:1000+i*100,
+   playSessionStartStats:prior?.stats||{totalSpins:0,totalFee:0,totalPaid:0},stats,
+   settings:{setting:1},resumeSettings:{setting:1,initialSevenVersion:148},
+   normalState:{flow:{phase:'art',remaining:800,stock:2}},
+   runtimeState:{replayAccountingVersion:2,session:{active:true,phase:'a_type_bonus',paid:72},pendingSpin:{version:1,result:'NEBULA',stopped:[false,false,true]}}};
+  const state=await request('machines/one/state',snapshot,'POST',false);assert.equal(state.statusCode,200,JSON.stringify(state.body));
+  const late=await request('machines/one/state',{...snapshot,capturedAt:999,normalState:{}},'POST',false);assert.equal(late.body.ignored,true);
+  const resumed=await request('sessions/start',{password:issued.body.issued.password});
+  assert.deepEqual(resumed.body.resumeState.baseline,snapshot.playSessionStartStats);assert.deepEqual(resumed.body.resumeState.state.runtimeState,snapshot.runtimeState);
+  const end=i===1?await request('admin/machines/one/force-end'):await request('sessions/end',{...session,snapshot});
+  assert.equal(end.statusCode,200,JSON.stringify(end.body));assert.equal(end.body.record.playerSpins,100);assert.equal(end.body.record.playerProfit,100);
+  prior=snapshot;
+ }
+ await request('admin/machines/one/reset');
+ const issued=await issue('one','Reset'),started=await request('sessions/start',{password:issued.body.issued.password});
+ assert.equal(started.body.resumeState.state,null);
+ console.log('Cross-player state, same-player baseline, stale snapshots, normal/forced end and explicit reset verified.');
+ process.exit(0);
+}
 if(process.env.QA_TOTALS_ASSERT==='1'){
  // More than one API page of legacy players must survive migration.
  for(let i=0;i<501;i++){

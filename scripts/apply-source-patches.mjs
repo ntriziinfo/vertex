@@ -56,12 +56,12 @@ replacement(
 save(api);
 
 const play = load("play.html");
-replacement(play, 'let active = null;\nlet machineNames = new Map();', 'let active = null;\nlet slotOrigin = "";\nlet machineNames = new Map();', "track the game iframe origin");
+replacement(play, 'let active = null;\nlet machineNames = new Map();', 'let active = null;\nlet slotOrigin = "";', "track the game iframe origin");
 replacement(play, "  $('slot').src = data.iframeUrl;\n  $('login').hidden = true;", "  slotOrigin = new URL(data.iframeUrl, location.href).origin;\n  $('slot').src = data.iframeUrl;\n  $('login').hidden = true;", "capture the iframe origin at session start");
 replacement(
   play,
   "  const res = await fetch('/api/sessions/end', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...active, snapshot, forced:!!options.forced})});\n  const data = await res.json();\n  clearSlotLocalState();\n  active = null;\n  $('play').hidden = true;\n  $('slot').src = 'about:blank';\n  $('ended').hidden = false;\n  $('sendStatus').textContent = data.sheets && data.sheets.ok ? 'スプレッドシートへ送信済みです。' : 'ローカルに記録しました。スプレッドシート連携URLが未設定の場合はこの表示になります。';",
-  "  try{\n    const res = await fetch('/api/sessions/end', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...active, snapshot, forced:!!options.forced})});\n    const data = await res.json().catch(()=>({}));\n    if(!res.ok || !data.ok) throw new Error(data.error || '終了処理に失敗しました');\n    clearSlotLocalState();\n    active = null;\n    slotOrigin = '';\n    $('play').hidden = true;\n    $('slot').src = 'about:blank';\n    $('ended').hidden = false;\n    $('sendStatus').textContent = data.sheets && data.sheets.ok ? 'スプレッドシートへ送信済みです。' : '終了データを保存しました。Sheets未連携または送信失敗時は管理画面で確認してください。';\n  }catch(error){\n    $('endBtn').disabled = false;\n    $('endBtn').textContent = '終了してデータ送信';\n    alert(error.message || '終了処理に失敗しました。画面を閉じずに再実行してください。');\n  }",
+  "    const res = await fetch('/api/sessions/end', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...active, snapshot, forced:!!options.forced})});\n    const data = await res.json().catch(()=>({}));\n    if(!res.ok || !data.ok) throw new Error(data.error || '終了処理に失敗しました');\n    clearSlotLocalState();\n    active = null;\n    slotOrigin = '';\n    $('play').hidden = true;\n    $('slot').src = 'about:blank';\n    $('ended').hidden = false;\n    $('sendStatus').textContent = data.sheets && data.sheets.ok ? 'スプレッドシートへ送信済みです。' : '終了データを保存しました。Sheets未連携または送信失敗時は管理画面で確認してください。';\n  }catch(error){\n    $('endBtn').disabled = false;\n    $('endBtn').textContent = '終了してデータ送信';\n    alert(error.message || '終了処理に失敗しました。画面を閉じずに再実行してください。');\n  }",
   "do not show a false successful end state"
 );
 replacement(

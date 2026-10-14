@@ -3,7 +3,7 @@ import path from "node:path";
 
 const root = path.resolve(import.meta.dirname, "..");
 const output = path.join(root, "dist");
-const publicFiles = ["index.html", "admin.html", "machines.html", "play.html", "monitor.html"];
+const publicFiles = ["index.html", "admin.html", "machines.html", "play.html", "monitor.html", "slump-graph.js"];
 
 fs.rmSync(output, {recursive:true, force:true});
 fs.mkdirSync(output, {recursive:true});

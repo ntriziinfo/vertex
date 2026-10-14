@@ -11,7 +11,8 @@
     .stats{grid-template-columns:repeat(2,minmax(0,1fr))}.issuedCustomer{font-size:17px;overflow-wrap:anywhere}.passwordIssue .code{font-size:26px}
     .superSpeedToggle[aria-pressed="true"]{background:#ffd84d;color:#241900;border:2px solid #fff1a8;box-shadow:0 0 0 2px #c99022,0 0 12px #ffd84d55}
     .adminGraphWrap{min-width:0;border:1px solid #2b3342;border-radius:7px;background:#100f1c;overflow:hidden}.graphHeading{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:10px 12px 0;color:#aca7be;font-size:11px}.graphCurrent{font-size:20px;white-space:nowrap;font-variant-numeric:tabular-nums}.graphCurrent small{font-size:10px;color:#aca7be;font-weight:400;margin-right:7px}.adminSlumpGraph{display:block;height:180px;border:0;border-radius:0;background:transparent}.positive{color:#89edc5}.negative{color:#ff9baa}.graphStats{grid-template-columns:repeat(3,minmax(0,1fr))}.graphStats .stat{min-width:0;padding:8px 6px}.graphStats b{font-size:clamp(12px,1.3vw,16px);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}@media(max-width:980px){.graphStats b{font-size:16px}}@media(max-width:400px){main{padding:10px}.panel{padding:10px}.machine{padding:10px}.graphCurrent{font-size:18px}.graphStats b{font-size:13px}}
-  </style>
+  .graph-scroll{overflow-x:auto;min-width:0;scrollbar-width:thin;touch-action:pan-x pan-y}.graph-track{position:relative}.graph-track canvas{position:sticky;left:0;max-width:none}.graph-axis-note{padding:0 12px 6px;font-size:10px;color:#aca7be}
+</style>
 </head>
 <body class="locked">
 <div id="authGate" class="authGate"><form id="authForm" class="authPanel"><h1 class="adminTitle">Vertex管理画面</h1><label class="storeSwitchWrap">店舗切替<select class="storeSwitch" aria-label="店舗切替"><option>店舗を読み込み中</option></select></label><p class="muted">この店舗専用の管理パスを入力してください。</p><input id="gatePassword" type="password" autocomplete="current-password" placeholder="管理パス"><button type="submit">入室</button><div id="authError" class="bad"></div></form></div>
@@ -57,6 +58,7 @@
     <div id="results" class="results"></div>
   </section>
 </main>
+<script src="/slump-graph.js?v=20261014"></script>
 <script>
 const $ = id => document.getElementById(id);
 let machines = [];
@@ -118,40 +120,7 @@ function totalViewForMachine(machine){
 }
 function historyFor(machine){ return machine._displayHistory || [{spin:0, profit:0}]; }
 function graphBounds(machine){ const profits = historyFor(machine).map(p => Number(p.profit) || 0); return {min:Math.min(0, ...profits), max:Math.max(0, ...profits)}; }
-function drawSlump(canvas, history){
-  const ctx = canvas.getContext('2d'); if(!ctx) return;
-  const rect = canvas.getBoundingClientRect(), w = rect.width, h = rect.height;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.width = Math.round(w*dpr); canvas.height = Math.round(h*dpr); ctx.setTransform(dpr,0,0,dpr,0,0);
-  const points = Array.isArray(history) && history.length ? history.map(p=>({spin:num(p.spin),profit:num(p.profit)})) : [{spin:0,profit:0}];
-  let min = 0, max = 0, end = 1;
-  for(const p of points){min=Math.min(min,p.profit);max=Math.max(max,p.profit);end=Math.max(end,p.spin);}
-  if(min===max){min=-100;max=100;}
-  // Round the scale to readable pt amounts while keeping zero and all data visible.
-  const roughStep=Math.max(50,(max-min)/4), magnitude=10**Math.floor(Math.log10(roughStep));
-  const step=([1,2,5,10].find(value=>value*magnitude>=roughStep)||10)*magnitude;
-  const lower=Math.floor(min/step)*step, upper=Math.ceil(max/step)*step;
-  const ticks=Array.from({length:Math.round((upper-lower)/step)+1},(_,i)=>lower+i*step);
-  const tickLabel=value=>value===0?'0':signed(value);
-  ctx.font='11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-  const left=Math.ceil(Math.max(...ticks.map(value=>ctx.measureText(tickLabel(value)).width)))+17, right=w-12, top=14, bottom=h-24;
-  const x = p => left + p.spin/end*(right-left), y = v => bottom-(v-lower)/(upper-lower)*(bottom-top);
-  ctx.textAlign='right';ctx.textBaseline='middle';ctx.lineWidth=1;
-  for(const value of ticks){
-    const yy=y(value);
-    ctx.setLineDash(value===0?[3,4]:[]);ctx.strokeStyle=value===0?'#80758f':'#302b40';
-    ctx.beginPath();ctx.moveTo(left,yy);ctx.lineTo(right,yy);ctx.stroke();
-    ctx.fillStyle=value===0?'#e3dcef':'#bcb3cd';ctx.fillText(tickLabel(value),left-8,yy);
-  }
-  ctx.setLineDash([]);ctx.fillStyle='#9e95b0';ctx.textBaseline='bottom';
-  ctx.textAlign='left';ctx.fillText('0 G',left,h-3);
-  ctx.textAlign='right';ctx.fillText(`${fmt(points.at(-1).spin)} G`,right,h-3);
-  ctx.strokeStyle=points.at(-1).profit>=0?'#89edc5':'#ff9baa';ctx.lineWidth=2;ctx.lineJoin='round';ctx.beginPath();
-  points.forEach((p,i)=>i?ctx.lineTo(x(p),y(p.profit)):ctx.moveTo(x(p),y(p.profit)));
-  if(points.length===1)ctx.lineTo(right,y(points[0].profit));ctx.stroke();
-  ctx.fillStyle=ctx.strokeStyle;ctx.beginPath();ctx.arc(points.length===1?right:x(points.at(-1)),y(points.at(-1).profit),3,0,Math.PI*2);ctx.fill();
-  canvas.setAttribute('aria-label',`差枚グラフ。最小${fmt(min)}pt、最大${fmt(max)}pt、現在${signed(points.at(-1).profit)}pt`);
-}
+function drawSlump(canvas, history){ VertexSlumpGraph.draw(canvas,history); }
 function renderAdminSlumpGraphs(){
   for(const m of machineRows()){
     const c = document.querySelector('canvas[data-machine="' + m.machineId + '"]');
@@ -194,7 +163,7 @@ function renderMachines(){
       <div class="muted">${m.currentPlayerName ? '利用者: ' + escapeHtml(m.currentPlayerName) : '利用者なし'} / ${m.currentSessionId ? '遊技中' : m.lastEndedSession ? '直前データ保持中' : 'リセット済み'}</div>
       <div class="adminGraphWrap">
         <div class="graphHeading"><span>差枚グラフ / pt</span><b class="graphCurrent ${profit>=0?'positive':'negative'}"><small>現在差枚</small>${s ? signed(profit) + ' pt' : '—'}</b></div>
-        <canvas class="adminSlumpGraph" data-machine="${m.machineId}" role="img"></canvas>
+        <div class="graph-scroll" tabindex="0" aria-label="差枚グラフを左右にスクロール"><div class="graph-track"><canvas class="adminSlumpGraph" data-machine="${m.machineId}" role="img"></canvas></div></div><div class="graph-axis-note">1目盛り1,000G / 左右にスクロール</div>
       </div>
       <div class="graphStats">
         <div class="stat"><span>総回転数</span><b>${s ? fmt(stat(s,'totalSpins')) + ' G' : '—'}</b></div>

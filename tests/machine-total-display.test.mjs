@@ -21,6 +21,7 @@ function ui(){
     sessionStorage:{getItem:key=>key==='vertexAdminMachineView'?'player':null},
     document:{getElementById:element,querySelectorAll:()=>[],querySelector:()=>null},window:{devicePixelRatio:1},
   });
+  vm.runInContext(source('slump-graph.js'),c);
   return {c,element};
 }
 test('admin cards ignore a saved personal view and use cabinet totals for all values',()=>{
@@ -51,12 +52,12 @@ test('admin graph keeps the full cumulative span with pt ticks and a G axis acro
   const {c}=ui();
   vm.runInContext(script('admin.html').split("$('authForm').addEventListener")[0],c);
   const labels=[], lines=[];
-  const ctx={setTransform(){},measureText:text=>({width:text.length*6}),setLineDash(){},beginPath(){},stroke(){},fill(){},arc(){},
+  const ctx={save(){},restore(){},rect(){},clip(){},setTransform(){},measureText:text=>({width:text.length*6}),setLineDash(){},beginPath(){},stroke(){},fill(){},arc(){},
     fillText(text){labels.push(text);},moveTo(x,y){lines.push([x,y]);},lineTo(x,y){lines.push([x,y]);}};
-  const attrs={};const canvas={getContext:()=>ctx,getBoundingClientRect:()=>({width:340,height:180}),setAttribute:(k,v)=>attrs[k]=v};
+  const attrs={};const canvas={dataset:{},closest:()=>null,getContext:()=>ctx,getBoundingClientRect:()=>({width:340,height:180}),setAttribute:(k,v)=>attrs[k]=v};
   // The former gap filter discarded the first two points in this history.
   c.drawSlump(canvas,[{spin:0,profit:0},{spin:100,profit:-2500},{spin:12000,profit:100},{spin:12050,profit:200},{spin:12100,profit:300},{spin:12150,profit:400}]);
-  assert(labels.includes('0 G'));assert(labels.includes('12,150 G'));
+  assert(labels.includes('0 G'));assert(labels.includes('1,000 G'));assert(labels.includes('2,000 G'));assert.match(attrs['aria-label'],/総回転12,150G/);
   assert(labels.some(text=>text.startsWith('-')));assert(labels.some(text=>text.startsWith('+')));
   assert.match(attrs['aria-label'],/最小-2,500pt/);assert.match(attrs['aria-label'],/現在\+400pt/);
   assert(lines.every(([x,y])=>Number.isFinite(x)&&Number.isFinite(y)));

@@ -18,7 +18,8 @@
     @media(max-width:1050px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.summary{gap:22px}}
     @media(max-width:640px){.wrap{padding:0 16px}.masthead .wrap{min-height:64px}.brand{font-size:21px}.brand small{display:none}.hero{padding:28px 0 22px;display:block}.hero h1{font-size:29px}.summary{margin:22px 0 0;gap:35px}.summary dd{font-size:25px}.toolbar{flex-wrap:wrap;gap:12px}.updated{flex:1;justify-content:flex-end;gap:8px}.filter,.refresh{padding:8px 11px}.grid{grid-template-columns:1fr;gap:14px}.machine{padding:16px}.graph{height:150px}.stats{gap:14px 18px}}
     .machine-total-label{color:var(--accent);font-size:11px;margin:0 0 10px}
-  </style>
+  .graph-scroll{overflow-x:auto;min-width:0;scrollbar-width:thin;touch-action:pan-x pan-y}.graph-track{position:relative}.graph-track canvas{position:sticky;left:0;max-width:none}.graph-axis-note{padding:0 12px 6px;font-size:10px;color:#aca7be}
+</style>
 </head>
 <body>
 <header class="masthead"><div class="wrap"><div class="brand">NEBULA<small>NOVA SLOT LOUNGE</small></div><span class="live"><i></i>台選び</span></div></header>
@@ -30,6 +31,7 @@
   <p class="footnote">表示データは管理リセット以降の累計です。空き状況は30秒ごとに更新され、遊技開始時に再確認されます。<br>遊技には、この店舗の管理者が発行する台専用パスワードが必要です。利用中の台も、同じパスワードで再入場できます。</p>
   <footer class="footer"><span>NEBULA / NOVA</span><a href="/admin.html">店舗管理</a></footer>
 </main>
+<script src="/slump-graph.js?v=20261014"></script>
 <script>
 'use strict';
 const $ = id => document.getElementById(id);
@@ -38,40 +40,7 @@ const num = value => Number.isFinite(Number(value)) ? Number(value) : 0;
 const fmt = value => num(value).toLocaleString('ja-JP');
 const signed = value => (num(value) >= 0 ? '+' : '') + fmt(value);
 let machines = [], filter = 'all', fresh = false, loading = false, lastUpdate = 0;
-function draw(canvas, history){
-  const ctx = canvas.getContext('2d'); if(!ctx) return;
-  const rect = canvas.getBoundingClientRect(), w = rect.width, h = rect.height;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.width = Math.round(w*dpr); canvas.height = Math.round(h*dpr); ctx.setTransform(dpr,0,0,dpr,0,0);
-  const points = Array.isArray(history) && history.length ? history.map(p=>({spin:num(p.spin),profit:num(p.profit)})) : [{spin:0,profit:0}];
-  let min = 0, max = 0, end = 1;
-  for(const p of points){min=Math.min(min,p.profit);max=Math.max(max,p.profit);end=Math.max(end,p.spin);}
-  if(min===max){min=-100;max=100;}
-  // Round the scale to readable pt amounts while keeping zero and all data visible.
-  const roughStep=Math.max(50,(max-min)/4), magnitude=10**Math.floor(Math.log10(roughStep));
-  const step=([1,2,5,10].find(value=>value*magnitude>=roughStep)||10)*magnitude;
-  const lower=Math.floor(min/step)*step, upper=Math.ceil(max/step)*step;
-  const ticks=Array.from({length:Math.round((upper-lower)/step)+1},(_,i)=>lower+i*step);
-  const tickLabel=value=>value===0?'0':signed(value);
-  ctx.font='11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-  const left=Math.ceil(Math.max(...ticks.map(value=>ctx.measureText(tickLabel(value)).width)))+17, right=w-12, top=14, bottom=h-24;
-  const x = p => left + p.spin/end*(right-left), y = v => bottom-(v-lower)/(upper-lower)*(bottom-top);
-  ctx.textAlign='right';ctx.textBaseline='middle';ctx.lineWidth=1;
-  for(const value of ticks){
-    const yy=y(value);
-    ctx.setLineDash(value===0?[3,4]:[]);ctx.strokeStyle=value===0?'#80758f':'#302b40';
-    ctx.beginPath();ctx.moveTo(left,yy);ctx.lineTo(right,yy);ctx.stroke();
-    ctx.fillStyle=value===0?'#e3dcef':'#bcb3cd';ctx.fillText(tickLabel(value),left-8,yy);
-  }
-  ctx.setLineDash([]);ctx.fillStyle='#9e95b0';ctx.textBaseline='bottom';
-  ctx.textAlign='left';ctx.fillText('0 G',left,h-3);
-  ctx.textAlign='right';ctx.fillText(`${fmt(points.at(-1).spin)} G`,right,h-3);
-  ctx.strokeStyle=points.at(-1).profit>=0?'#89edc5':'#ff9baa';ctx.lineWidth=2;ctx.lineJoin='round';ctx.beginPath();
-  points.forEach((p,i)=>i?ctx.lineTo(x(p),y(p.profit)):ctx.moveTo(x(p),y(p.profit)));
-  if(points.length===1)ctx.lineTo(right,y(points[0].profit));ctx.stroke();
-  ctx.fillStyle=ctx.strokeStyle;ctx.beginPath();ctx.arc(points.length===1?right:x(points.at(-1)),y(points.at(-1).profit),3,0,Math.PI*2);ctx.fill();
-  canvas.setAttribute('aria-label',`差枚グラフ。最小${fmt(min)}pt、最大${fmt(max)}pt、現在${signed(points.at(-1).profit)}pt`);
-}
+function draw(canvas, history){ VertexSlumpGraph.draw(canvas,history); }
 function graphs(){document.querySelectorAll('canvas[data-id]').forEach(canvas=>{const machine=machines.find(m=>m.machineId===canvas.dataset.id);if(machine)draw(canvas,machine.machineTotalSlumpHistory);});}
 function atFirstRate(stats){
   const games=Number(stats.totalSpins),hits=Number(stats.atFirstCount);
@@ -86,7 +55,7 @@ function render(){
     const s=m.machineTotalStats||{}, profit=num(s.profit ?? num(s.totalPaid)-num(s.totalFee));
     const number=String(m.machineId).match(/(\d+)$/)?.[1]||'—';
     const label=!fresh?'状況未確認':m.locked?'利用中':'空き台';
-    return `<article class="machine"><div class="head"><span class="number">${esc(number)}</span><div class="identity"><h2>NOVA</h2><p>${esc(m.displayName||m.machineId)}</p></div><span class="pill ${!fresh?'unknown':m.locked?'busy':''}">${label}</span></div><p class="machine-total-label">台累計 / 管理リセット以降</p><div class="graph-wrap"><div class="graph-heading"><span class="graph-label">差枚グラフ / pt</span><span class="graph-current ${profit>=0?'positive':'negative'}"><small>現在差枚</small>${signed(profit)} pt</span></div><canvas class="graph" data-id="${esc(m.machineId)}" role="img"></canvas></div><dl class="stats"><div class="stat"><dt>総回転数</dt><dd>${fmt(s.totalSpins)} <small>G</small></dd></div><div class="stat"><dt>差枚</dt><dd class="${profit>=0?'positive':'negative'}">${signed(profit)} <small>pt</small></dd></div><div class="stat"><dt>BB確率</dt><dd>${s.bigCount>0 && s.totalSpins>0 ? '1/'+(s.totalSpins/s.bigCount).toFixed(1) : '—'}</dd></div><div class="stat"><dt>AT初当たり確率</dt><dd>${atFirstRate(s)}</dd></div></dl>${fresh?`<a class="play ${m.locked?'busy':''}" href="/play.html?machine=${encodeURIComponent(m.machineId)}" aria-label="${esc(m.displayName)}${m.locked?'へ再入場':'で遊ぶ'}"><span>${m.locked?'ただいま利用中・再入場':'この台で遊ぶ'}</span><span aria-hidden="true">→</span></a>`:`<div class="play disabled" aria-disabled="true"><span>更新して空き状況を確認</span></div>`}</article>`;
+    return `<article class="machine"><div class="head"><span class="number">${esc(number)}</span><div class="identity"><h2>NOVA</h2><p>${esc(m.displayName||m.machineId)}</p></div><span class="pill ${!fresh?'unknown':m.locked?'busy':''}">${label}</span></div><p class="machine-total-label">台累計 / 管理リセット以降</p><div class="graph-wrap"><div class="graph-heading"><span class="graph-label">差枚グラフ / pt</span><span class="graph-current ${profit>=0?'positive':'negative'}"><small>現在差枚</small>${signed(profit)} pt</span></div><div class="graph-scroll" tabindex="0" aria-label="差枚グラフを左右にスクロール"><div class="graph-track"><canvas class="graph" data-id="${esc(m.machineId)}" role="img"></canvas></div></div><div class="graph-axis-note">1目盛り1,000G / 左右にスクロール</div></div><dl class="stats"><div class="stat"><dt>総回転数</dt><dd>${fmt(s.totalSpins)} <small>G</small></dd></div><div class="stat"><dt>差枚</dt><dd class="${profit>=0?'positive':'negative'}">${signed(profit)} <small>pt</small></dd></div><div class="stat"><dt>BB確率</dt><dd>${s.bigCount>0 && s.totalSpins>0 ? '1/'+(s.totalSpins/s.bigCount).toFixed(1) : '—'}</dd></div><div class="stat"><dt>AT初当たり確率</dt><dd>${atFirstRate(s)}</dd></div></dl>${fresh?`<a class="play ${m.locked?'busy':''}" href="/play.html?machine=${encodeURIComponent(m.machineId)}" aria-label="${esc(m.displayName)}${m.locked?'へ再入場':'で遊ぶ'}"><span>${m.locked?'ただいま利用中・再入場':'この台で遊ぶ'}</span><span aria-hidden="true">→</span></a>`:`<div class="play disabled" aria-disabled="true"><span>更新して空き状況を確認</span></div>`}</article>`;
   }).join('') || '<p class="empty">'+(machines.length?'現在、空き台はありません。':'表示できる台がありません。更新して再確認してください。')+'</p>';
   graphs();
 }

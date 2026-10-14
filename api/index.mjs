@@ -1,3 +1,4 @@
+import machineResume from "../machine-resume.cjs";
 import * as https from "node:https";
 import * as crypto from "node:crypto";
 import machineTotals from "../machine-totals.cjs";
@@ -283,6 +284,7 @@ function machineGameUrl(machine, adminOrigin, sessionId, displayBaseline){
   url.searchParams.set("server", adminOrigin);
   url.searchParams.set("creditBaseline", "0");
   url.searchParams.set("playSessionId", String(sessionId || ""));
+  if(machine.machineType==='nova')url.searchParams.set('resumeFromStore','1');
   if(displayBaseline && machine.machineType==='nova')url.searchParams.set('machineDisplay',JSON.stringify(displayBaseline));
   return url.toString();
 }
@@ -569,7 +571,7 @@ export default async function handler(req, res){
       const displayBaseline=existingSession?.startSnapshot?.machineDisplayBaseline || machineDisplayBaseline({...machine,lastSnapshot:existingSession ? existingSession.startSnapshot : machine.lastSnapshot});
       const iframeUrlFor = sessionId=>machineGameUrl(machine, origin, sessionId,displayBaseline);
       if(!machine.gameUrl) return json(res, 500, {ok:false, error:"この台のゲームURLが設定されていません"});
-      if(issued.status === "used" && existingSession && existingSession.status === "active") return json(res, 200, {ok:true, resumed:true, session:{sessionId:existingSession.sessionId, token:existingSession.token, machineId:machine.machineId, playerName:existingSession.playerName}, iframeUrl:iframeUrlFor(existingSession.sessionId)});
+      if(issued.status === "used" && existingSession && existingSession.status === "active") return json(res, 200, {ok:true, resumed:true, session:{sessionId:existingSession.sessionId, token:existingSession.token, machineId:machine.machineId, playerName:existingSession.playerName}, resumeState:machineResume.forSession(machine,existingSession), iframeUrl:iframeUrlFor(existingSession.sessionId)});
       if(issued.status !== "issued") return json(res, 403, {ok:false, error:"このパスワードは終了済みです"});
       const latest=await latestIssued(machine.machineId);
       if(passwordIssuance.current(machine,latest?[latest]:[])?.password!==password)return json(res,403,{ok:false,error:'このパスワードは現在の発行番号ではありません'});
@@ -578,7 +580,7 @@ export default async function handler(req, res){
       issued.status = "used"; issued.usedAt = ms(); issued.sessionId = session.sessionId;
       machine.locked = true; machine.currentSessionId = session.sessionId; machine.currentPlayerName = session.playerName;
       await saveIssued(issued); await saveSession(session); await upsertMachine(machine);
-      return json(res, 200, {ok:true, session:{sessionId:session.sessionId, token:session.token, machineId:machine.machineId, playerName:session.playerName}, iframeUrl:iframeUrlFor(session.sessionId)});
+      return json(res, 200, {ok:true, session:{sessionId:session.sessionId, token:session.token, machineId:machine.machineId, playerName:session.playerName}, resumeState:machineResume.forSession(machine,session), iframeUrl:iframeUrlFor(session.sessionId)});
     }
     if(pathname === "/api/sessions/end" && req.method === "POST"){
       const body = await readBody(req);
@@ -622,6 +624,7 @@ export default async function handler(req, res){
       if(incomingSessionId && incomingSessionId !== String(machine.currentSessionId || "")){
         return json(res, 200, {ok:true, ignored:true, reason:"stale play session"});
       }
+      if(String(machine.lastSnapshot?.playSessionId)===incomingSessionId && Number(body.capturedAt||0)<Number(machine.lastSnapshot?.capturedAt||0))return json(res,200,{ok:true,ignored:true});
       const completion=adminSettings.completionSettings(machine.lastSnapshot?.settings,machine.machineType);
       machine.lastSnapshot = {...body, settings:{...body.settings,...completion},machineId, online:true, updatedAt:ms()};
       const definition = machineDefinition(machineId);
@@ -693,10 +696,20 @@ export default async function handler(req, res){
     m = pathname.match(/^\/api\/admin\/machines\/([^/]+)\/force-end$/);
     if(m && req.method === "POST"){
       if(!adminOk(req)) return json(res, 401, {ok:false, error:"admin password required"});
-      const machine = await getMachine(decodeURIComponent(m[1]));
+      let machine = await getMachine(decodeURIComponent(m[1]));
       const session = machine.currentSessionId ? await getSession(machine.currentSessionId) : null;
       if(session && session.status !== "active") return json(res, 200, {ok:true, alreadyEnded:true, record:session.resultRecord || null, sheets:session.sheets || null});
       if(session && session.status === "active"){
+        if(machine.machineType==='nova'&&!(machine.lastSnapshot?.endPreparedAt&&machine.lastSnapshot.playSessionId===session.sessionId)){
+          await insertCommand(machine.machineId,{type:'prepareEnd',sessionId:session.sessionId});
+          const deadline=ms()+6500;
+          while(ms()<deadline){
+            await new Promise(resolve=>setTimeout(resolve,350));
+            machine=await getMachine(machine.machineId);
+            if(String(machine.currentSessionId)!==String(session.sessionId))return json(res,409,{ok:false,error:'台の状態が変更されました。更新してください'});
+            if(machine.lastSnapshot?.endPreparedAt&&machine.lastSnapshot.playSessionId===session.sessionId)break;
+          }
+        }
         await hydrateMachineTotal(machine);
         const record = {...resultPayload(session, machine, {snapshot:snapshotForSession(session, machine)}), forced:true, forcedBy:"admin"};
         const machineTotal=completedMachineTotal(machine,record);

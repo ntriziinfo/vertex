@@ -30,6 +30,7 @@
 const $ = id => document.getElementById(id);
 let active = null;
 let slotOrigin = "";
+let resumeState=null, novaHandoff=false, pendingSnapshot=null;
 let machineNames = new Map();
 let sessionWatchTimer = null, sessionWatchInFlight = false, sessionWatchRequested = false;
 let endingSession = false;
@@ -83,6 +84,8 @@ async function start(){
   const data = await res.json();
   if(!data.ok){ $('error').textContent = friendlyError(data.error); $('startBtn').disabled = false; $('startBtn').textContent = 'この台で開始'; return; }
   active = data.session;
+  resumeState=data.resumeState||null;
+  novaHandoff=new URL(data.iframeUrl,location.href).searchParams.get('resumeFromStore')==='1';
   $('machineLabel').textContent = machineName(active.machineId);
   $('playerLabel').textContent = active.playerName ? ` / ${active.playerName}` : '';
   slotOrigin = new URL(data.iframeUrl, location.href).origin;
@@ -150,13 +153,22 @@ function latestSlotSnapshot(){
   }catch(e){}
   return null;
 }
+function requestSlotSnapshot(){
+  return new Promise((resolve,reject)=>{
+    const requestId=crypto.randomUUID();
+    const timer=setTimeout(()=>{pendingSnapshot=null;reject(Error('台の保存状態を確認できません。画面を閉じずに終了を再実行してください。'));},12000);
+    pendingSnapshot={requestId,resolve:value=>{clearTimeout(timer);pendingSnapshot=null;resolve(value);}};
+    $('slot').contentWindow.postMessage({type:'nova-store-prepare-end',sessionId:active.sessionId,requestId},slotOrigin);
+  });
+}
 async function endSession(options={}){
   if(!active || endingSession) return;
   if(!options.skipConfirm && !confirm('終了してデータを送信します。終了後はこのパスワードでは続きから遊べません。')) return;
   endingSession=true;
   clearTimeout(sessionWatchTimer);sessionWatchTimer=null;
   $('endBtn').disabled = true;
-  let snapshot = options.snapshot || latestSlotSnapshot();
+  try{
+  let snapshot = options.snapshot || (novaHandoff ? await requestSlotSnapshot() : latestSlotSnapshot());
   if(!snapshot){
     $('endBtn').textContent = '最新データ同期中...';
     try{
@@ -166,7 +178,6 @@ async function endSession(options={}){
     snapshot = latestSlotSnapshot();
   }
   $('endBtn').textContent = '送信中...';
-  try{
     const res = await fetch('/api/sessions/end', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...active, snapshot, forced:!!options.forced})});
     const data = await res.json().catch(()=>({}));
     if(!res.ok || !data.ok) throw new Error(data.error || '終了処理に失敗しました');
@@ -190,6 +201,14 @@ window.addEventListener('message', event=>{
   if(event.source !== $('slot').contentWindow) return;
   if(slotOrigin && event.origin !== slotOrigin) return;
   const msg = event.data || {};
+  if(active && msg.sessionId===active.sessionId){
+    if(msg.type==='nova-store-ready'){
+      event.source.postMessage({type:'nova-store-bootstrap',sessionId:active.sessionId,resumeState},slotOrigin);return;
+    }
+    if(msg.type==='nova-store-end-ready'&&pendingSnapshot?.requestId===msg.requestId&&msg.snapshot?.playSessionId===active.sessionId){
+      pendingSnapshot.resolve(msg.snapshot);return;
+    }
+  }
   if(!msg || !['jag-force-end', 'jackspot-force-end', 'vertex-force-end'].includes(msg.type)) return;
   if(active && (!msg.machineId || String(msg.machineId) === String(active.machineId))){
     endSession({skipConfirm:true, forced:true, snapshot:msg.snapshot || latestSlotSnapshot()});

@@ -1,3 +1,4 @@
+const machineResume = require("./machine-resume.cjs");
 const http = require("http");
 const https = require("https");
 const fs = require("fs");
@@ -365,6 +366,7 @@ function machineGameUrl(machine, adminOrigin, sessionId="", displayBaseline){
     target.searchParams.set("server", adminOrigin);
     target.searchParams.set("creditBaseline", "0");
     if(sessionId) target.searchParams.set("playSessionId", String(sessionId));
+    if(machine.machineType==='nova')target.searchParams.set('resumeFromStore','1');
     if(displayBaseline && machine.machineType==='nova')target.searchParams.set('machineDisplay',JSON.stringify(displayBaseline));
     return target.toString();
   }catch(error){
@@ -676,7 +678,7 @@ const server = http.createServer(async (req, res)=>{
           ok:true,
           resumed:true,
           session:{sessionId:existingSession.sessionId, token:existingSession.token, machineId:machine.machineId, playerName:existingSession.playerName},
-          iframeUrl:iframeUrlFor(existingSession.sessionId)
+          resumeState:machineResume.forSession(machine,existingSession), iframeUrl:iframeUrlFor(existingSession.sessionId)
         });
       }
       if(issued.status !== "issued") return sendJson(res, 403, {ok:false, error:"このパスワードは終了済みです"});
@@ -705,7 +707,7 @@ const server = http.createServer(async (req, res)=>{
       machine.currentPlayerName = session.playerName;
       saveState();
       broadcastMachines();
-      return sendJson(res, 200, {ok:true, session:{sessionId, token, machineId:machine.machineId, playerName:session.playerName}, iframeUrl:iframeUrlFor(sessionId)});
+      return sendJson(res, 200, {ok:true, session:{sessionId, token, machineId:machine.machineId, playerName:session.playerName}, resumeState:machineResume.forSession(machine,session), iframeUrl:iframeUrlFor(sessionId)});
     }
 
     if(url.pathname === "/api/sessions/status" && req.method === "POST"){
@@ -768,6 +770,15 @@ const server = http.createServer(async (req, res)=>{
       const session = machine.currentSessionId ? state.sessions[machine.currentSessionId] : null;
       if(session && session.status !== "active") return sendJson(res, 200, {ok:true, alreadyEnded:true, record:session.resultRecord || null, sheets:session.sheets || null});
       if(session && session.status === "active"){
+        if(machine.machineType==='nova'&&!(machine.lastSnapshot?.endPreparedAt&&machine.lastSnapshot.playSessionId===session.sessionId)){
+          sendCommand(machine.machineId,{type:'prepareEnd',sessionId:session.sessionId});
+          const deadline=Date.now()+6500;
+          while(Date.now()<deadline){
+            await new Promise(resolve=>setTimeout(resolve,100));
+            if(String(machine.currentSessionId)!==String(session.sessionId))return sendJson(res,409,{ok:false,error:'台の状態が変更されました。更新してください'});
+            if(machine.lastSnapshot?.endPreparedAt&&machine.lastSnapshot.playSessionId===session.sessionId)break;
+          }
+        }
         const record = {...resultPayload(session, machine, {snapshot:snapshotForSession(session, machine)}), forced:true, forcedBy:"admin"};
         const machineTotal=completedMachineTotal(machine,record,readResultRecords(Number.MAX_SAFE_INTEGER));
         appendResult(record);
@@ -855,6 +866,7 @@ const server = http.createServer(async (req, res)=>{
         || Number(incomingSession.resetSerialAtStart || 0) !== Number(machine.resetSerial || 0))){
         return sendJson(res, 409, {ok:false, error:"stale play session"});
       }
+      if(String(machine.lastSnapshot?.playSessionId)===incomingSessionId && Number(body.capturedAt||0)<Number(machine.lastSnapshot?.capturedAt||0))return sendJson(res,200,{ok:true,ignored:true});
       const snapshot = {...body, machineId, online:true, updatedAt:Date.now()};
       snapshot.settings={...snapshot.settings,...completionSettings(machine.lastSnapshot?.settings,machine.machineType)};
       machine.lastSnapshot = snapshot;
