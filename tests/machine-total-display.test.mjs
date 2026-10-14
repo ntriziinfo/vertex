@@ -57,7 +57,7 @@ test('admin graph keeps the full cumulative span with pt ticks and a G axis acro
   const attrs={};const canvas={dataset:{},closest:()=>null,getContext:()=>ctx,getBoundingClientRect:()=>({width:340,height:180}),setAttribute:(k,v)=>attrs[k]=v};
   // The former gap filter discarded the first two points in this history.
   c.drawSlump(canvas,[{spin:0,profit:0},{spin:100,profit:-2500},{spin:12000,profit:100},{spin:12050,profit:200},{spin:12100,profit:300},{spin:12150,profit:400}]);
-  assert(labels.includes('0 G'));assert(labels.includes('1,000 G'));assert(labels.includes('2,000 G'));assert.match(attrs['aria-label'],/総回転12,150G/);
+  assert.deepEqual(labels.filter(text=>text.endsWith(' G')),['12,000 G','11,000 G','10,000 G']);assert.match(attrs['aria-label'],/左が最新/);assert.match(attrs['aria-label'],/総回転12,150G/);
   assert(labels.some(text=>text.startsWith('-')));assert(labels.some(text=>text.startsWith('+')));
   assert.match(attrs['aria-label'],/最小-2,500pt/);assert.match(attrs['aria-label'],/現在\+400pt/);
   assert(lines.every(([x,y])=>Number.isFinite(x)&&Number.isFinite(y)));

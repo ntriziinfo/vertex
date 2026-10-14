@@ -58,7 +58,7 @@
     <div id="results" class="results"></div>
   </section>
 </main>
-<script src="/slump-graph.js?v=20261014"></script>
+<script src="/slump-graph.js?v=20261014-newest-left"></script>
 <script>
 const $ = id => document.getElementById(id);
 let machines = [];
@@ -163,7 +163,7 @@ function renderMachines(){
       <div class="muted">${m.currentPlayerName ? '利用者: ' + escapeHtml(m.currentPlayerName) : '利用者なし'} / ${m.currentSessionId ? '遊技中' : m.lastEndedSession ? '直前データ保持中' : 'リセット済み'}</div>
       <div class="adminGraphWrap">
         <div class="graphHeading"><span>差枚グラフ / pt</span><b class="graphCurrent ${profit>=0?'positive':'negative'}"><small>現在差枚</small>${s ? signed(profit) + ' pt' : '—'}</b></div>
-        <div class="graph-scroll" tabindex="0" aria-label="差枚グラフを左右にスクロール"><div class="graph-track"><canvas class="adminSlumpGraph" data-machine="${m.machineId}" role="img"></canvas></div></div><div class="graph-axis-note">1目盛り1,000G / 左右にスクロール</div>
+        <div class="graph-scroll" tabindex="0" aria-label="差枚グラフを左右にスクロール"><div class="graph-track"><canvas class="adminSlumpGraph" data-machine="${m.machineId}" role="img"></canvas></div></div><div class="graph-axis-note">左が最新 / 1目盛り1,000G / 左右にスクロール</div>
       </div>
       <div class="graphStats">
         <div class="stat"><span>総回転数</span><b>${s ? fmt(stat(s,'totalSpins')) + ' G' : '—'}</b></div>
