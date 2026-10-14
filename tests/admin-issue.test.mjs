@@ -9,7 +9,7 @@ test('separate machine cards issue in parallel and responses never replace anoth
  const c=vm.createContext({passwordIssues:new Map(['one','two'].map(id=>[id,{loaded:true}])),passwordCurrentRequest:0,machineOperations:new Map(),machineRows:()=>[],renderCurrentPasswordList(){},escapeHtml:String,AbortSignal,adminHeaders:()=>({}),loadPasswords:async()=>{},loadCurrentPasswords:async()=>{},
   $:id=>{if(!elements.has(id))elements.set(id,{value:'',focus(){}});return elements.get(id);},
   fetch:(url,options)=>new Promise(resolve=>requests.push({url,body:JSON.parse(options.body),resolve}))});
- for(const name of ['passwordIssueMarkup','rememberPasswordDraft','setPasswordIssue','issue'])vm.runInContext(fn(name),c);
+ for(const name of ['compactPasswordMarkup','passwordIssueMarkup','rememberPasswordDraft','setPasswordIssue','issue'])vm.runInContext(fn(name),c);
  c.$('player-name-one').value='Alice';c.$('player-name-two').value='Bob';
  const a=c.issue('one'),b=c.issue('two');await c.issue('one');
  assert.equal(requests.length,2);assert(c.passwordIssues.get('one').busy);assert(c.passwordIssues.get('two').busy);
@@ -23,7 +23,7 @@ test('separate machine cards issue in parallel and responses never replace anoth
 test('uncertain issue blocks retries until a server refresh and preserves the entered name',async()=>{
  const elements=new Map();const c=vm.createContext({passwordIssues:new Map([['one',{loaded:true}]]),passwordCurrentRequest:0,machineOperations:new Map(),machineRows:()=>[],renderCurrentPasswordList(){},escapeHtml:String,AbortSignal,adminHeaders:()=>({}),loadPasswords:async()=>{},loadCurrentPasswords:async()=>{},
   $:id=>{if(!elements.has(id))elements.set(id,{value:'Alice',focus(){}});return elements.get(id);},fetch:async()=>{throw new TypeError('network');}});
- for(const name of ['passwordIssueMarkup','rememberPasswordDraft','setPasswordIssue','issue'])vm.runInContext(fn(name),c);
+ for(const name of ['compactPasswordMarkup','passwordIssueMarkup','rememberPasswordDraft','setPasswordIssue','issue'])vm.runInContext(fn(name),c);
  await c.issue('one');assert.equal(c.passwordIssues.get('one').loaded,false);assert.equal(c.passwordIssues.get('one').playerName,'Alice');assert.match(c.$('issue-controls-one').outerHTML,/disabled/);
 });
 test('global completion change excludes unsupported machines and sends no setting numbers',async()=>{
@@ -39,7 +39,7 @@ test('polling adopts other administrators, releases ended passwords and rejects 
  const c=vm.createContext({passwordIssues:states,passwordCurrentRequest:0,passwordCurrentLoading:false,adminSecret:'qa',AbortSignal,
   machineOperations:new Map(),machineRows:()=>[],liveMachines:()=>[{machineId:'one'},{machineId:'two'}],escapeHtml:String,renderCurrentPasswordList(){},adminHeaders:()=>({}),
   $:id=>{if(!elements.has(id))elements.set(id,{});return elements.get(id);},fetch:()=>new Promise(resolve=>requests.push(resolve))});
- for(const name of ['passwordIssueMarkup','setPasswordIssue','clearPasswordIssue','loadCurrentPasswords'])vm.runInContext(fn(name),c);
+ for(const name of ['compactPasswordMarkup','passwordIssueMarkup','setPasswordIssue','clearPasswordIssue','loadCurrentPasswords'])vm.runInContext(fn(name),c);
  const old=c.loadCurrentPasswords();c.clearPasswordIssue('one');c.setPasswordIssue('one',{current:{machineId:'one',password:'NEW',playerName:'B',status:'issued'}});
  requests.shift()({ok:true,json:async()=>[{machineId:'one',password:'OLD',status:'issued'}]});await old;
  assert.equal(states.get('one').current.password,'NEW');

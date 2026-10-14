@@ -12,6 +12,8 @@
     .superSpeedToggle[aria-pressed="true"]{background:#ffd84d;color:#241900;border:2px solid #fff1a8;box-shadow:0 0 0 2px #c99022,0 0 12px #ffd84d55}
     .adminGraphWrap{min-width:0;border:1px solid #2b3342;border-radius:7px;background:#100f1c;overflow:hidden}.graphHeading{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:10px 12px 0;color:#aca7be;font-size:11px}.graphCurrent{font-size:20px;white-space:nowrap;font-variant-numeric:tabular-nums}.graphCurrent small{font-size:10px;color:#aca7be;font-weight:400;margin-right:7px}.adminSlumpGraph{display:block;height:180px;border:0;border-radius:0;background:transparent}.positive{color:#89edc5}.negative{color:#ff9baa}.graphStats{grid-template-columns:repeat(3,minmax(0,1fr))}.graphStats .stat{min-width:0;padding:8px 6px}.graphStats b{font-size:clamp(12px,1.3vw,16px);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}@media(max-width:980px){.graphStats b{font-size:16px}}@media(max-width:400px){main{padding:10px}.panel{padding:10px}.machine{padding:10px}.graphCurrent{font-size:18px}.graphStats b{font-size:13px}}
   .graph-scroll{overflow:hidden;min-width:0}.graph-track{width:100%;min-width:0}.graph-track canvas{width:100%;max-width:100%}.graph-axis-note{padding:0 12px 6px;font-size:10px;color:#aca7be}
+  .floorMetric{flex-wrap:wrap}.floorMetric span{white-space:nowrap}
+  .adminDataSwitch{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:12px 0 16px}.adminDataSwitch>span{color:#9aa4b5;font-size:13px;margin-right:4px}.adminDataSwitch button{height:36px;min-width:68px;background:#141321;border:1px solid #494253;color:#bcb5cd}.adminDataSwitch button[aria-pressed="true"]{background:#3d3155;border-color:#bba0ff;color:#fff}.adminDataSwitch button:focus-visible{outline:2px solid #c3b2ff;outline-offset:2px}.machine{align-content:start}.machineDetails{display:grid;gap:9px;min-width:0;align-content:start}.machineSummary{display:none}.machines[data-view="compact"]{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.machines[data-view="compact"] .machineDetails,.machines[data-view="compact"] .pill{display:none}.machines[data-view="compact"] .machineSummary{display:grid;gap:8px}.compactMetric{display:flex;align-items:baseline;justify-content:space-between;gap:8px;min-width:0}.compactMetric>span{font-size:12px;color:#9aa4b5;white-space:nowrap}.compactProfit{font-size:24px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.compactPassword{font-size:22px;letter-spacing:.06em;color:#ffe07c;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.compactPasswordNote{color:#9aa4b5;font-size:13px;font-weight:400;letter-spacing:0}@media(max-width:1100px){.machines[data-view="compact"]{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:800px){.machines[data-view="compact"]{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:460px){.machines[data-view="compact"]{grid-template-columns:1fr}}
 </style>
 </head>
 <body class="locked">
@@ -26,7 +28,7 @@
 
   <section class="panel">
     <div class="sectionHead">
-      <h2><span id="machineCountLabel">0台</span>状況</h2><div class="novaGraphSwitch" hidden role="group" aria-label="全台のグラフ切替"><button type="button" data-nova-graph-view="line" aria-pressed="true">グラフ</button><button type="button" data-nova-graph-view="hits" aria-pressed="false">目盛り</button></div>
+      <h2><span id="machineCountLabel">0台</span>状況</h2>
       <span class="machineViewLabel">台累計 / 管理リセット以降</span>
     </div>
     <div class="floorControlRow">
@@ -45,6 +47,7 @@
     </div>
     <div id="bulkStatus" class="bulkStatus muted"></div>
     <p class="muted">総回転数・差枚・グラフは、管理リセット以降の全利用者の累計です。差枚はお客様側の増減（＋は獲得、−は消費）を表示します。<br>各台のグラフ下でパスワードを発行できます。別の台は同時に発行できます。</p>
+    <div class="adminDataSwitch" role="group" aria-label="全台の表示切替"><span>表示</span><button type="button" data-admin-view="line" aria-pressed="true" onclick="setAdminDataView('line')">グラフ</button><button type="button" data-admin-view="hits" aria-pressed="false" onclick="setAdminDataView('hits')">目盛り</button><button type="button" data-admin-view="compact" aria-pressed="false" onclick="setAdminDataView('compact')">簡略</button></div>
     <div id="machines" class="machines"></div>
   </section>
 
@@ -60,11 +63,12 @@
 </main>
 <link rel="stylesheet" href="/nova-data-counter.css?v=20261014-chart-toggle">
 <script src="/nova-data-counter.js?v=20261014-shared-data"></script>
-<script src="/machine-data.js?v=20261014-chart-toggle"></script>
+<script src="/machine-data.js?v=20261014-admin-compact"></script>
 <script src="/slump-graph.js?v=20261014-fit-history"></script>
 <script>
 const $ = id => document.getElementById(id);
 let machines = [];
+let adminDataView = 'line';
 const machineOperations = new Map();
 const machineDrafts = new Map();
 const passwordIssues = new Map();
@@ -124,8 +128,21 @@ function totalViewForMachine(machine){
 function historyFor(machine){ return machine._displayHistory || [{spin:0, profit:0}]; }
 function graphBounds(machine){ const profits = historyFor(machine).map(p => Number(p.profit) || 0); return {min:Math.min(0, ...profits), max:Math.max(0, ...profits)}; }
 function drawSlump(canvas, history){ VertexSlumpGraph.draw(canvas,history); }
+function setAdminDataView(view){
+  if(!['line','hits','compact'].includes(view))return;
+  adminDataView=view;
+  renderAdminSlumpGraphs();
+}
 function renderAdminSlumpGraphs(){
-  NovaStoreData.renderAll(machineRows());
+  const hasNova=machineRows().some(machine=>machine.machineType==='nova');
+  if(adminDataView==='hits'&&!hasNova)adminDataView='line';
+  $('machines').dataset.view=adminDataView;
+  document.querySelectorAll('[data-admin-view]').forEach(button=>{
+    button.setAttribute('aria-pressed',String(button.dataset.adminView===adminDataView));
+    button.hidden=button.dataset.adminView==='hits'&&!hasNova;
+  });
+  NovaStoreData.setGraphView(adminDataView==='hits'?'hits':'line',machineRows());
+  if(adminDataView==='compact')return;
   for(const m of machineRows()){
     const c = document.querySelector('canvas[data-machine="' + m.machineId + '"]');
     if(c) drawSlump(c, historyFor(m));
@@ -161,6 +178,8 @@ function renderMachines(){
     const operation = machineOperations.get(String(m.machineId));
     return `<article class="machine">
       <h3>${escapeHtml(machineLabel(m))} <span class="pill ${st[1]}">${st[0]}</span></h3>
+      <div class="machineSummary"><div class="compactMetric"><span>現在差枚</span><b class="compactProfit ${profit>=0?'positive':'negative'}">${s ? signed(profit) + ' pt' : '—'}</b></div><div class="compactMetric"><span>パスワード</span><b class="compactPassword" id="compact-password-${m.machineId}">${compactPasswordMarkup(m.machineId)}</b></div></div>
+      <div class="machineDetails">
       <div class="muted">${escapeHtml(machineTypeLabel(m))}${m.poolId ? ' / プール: ' + escapeHtml(m.poolId) : ''}</div>
       ${m.capabilities && m.capabilities.jackpot ? `<div class="stat"><span>5台共有JACKPOT</span><b>${fmt(m.jackpotPool && m.jackpotPool.currentPt)}pt</b></div>` : ''}
       <div class="machineViewLabel">${escapeHtml(view.label)}</div>
@@ -185,6 +204,7 @@ function renderMachines(){
         <button class="ghost" onclick="window.open('/play.html?machine=${encodeURIComponent(m.machineId)}','_blank','noopener')">入口</button>
       </fieldset>
       <div class="muted" id="operation-${m.machineId}" role="status" aria-live="polite">${escapeHtml(operation?.message || '')}</div>
+      </div>
     </article>`;
   }).join('');
   renderAdminSlumpGraphs();
@@ -259,6 +279,12 @@ async function loadResults(){
   const rows = Array.isArray(data) ? data : [];
   $('results').innerHTML = rows.map(r => `<div class="item"><b>${escapeHtml(r.machineName || machineLabelById(r.machineId))}</b><span>${escapeHtml(r.playerName)}</span><span>${r.sheets && r.sheets.ok ? '<span class="ok">Sheets</span>' : '<span class="muted">local</span>'}</span><span>${new Date(r.endedAt).toLocaleString('ja-JP')}</span></div>`).join('') || '<div class="muted">まだありません</div>';
 }
+function compactPasswordMarkup(id){
+  const state=passwordIssues.get(id);
+  if(!state?.loaded)return '<span class="compactPasswordNote">'+(state?.failed?'更新待ち':'確認中…')+'</span>';
+  if(state.current)return escapeHtml(state.current.password||'確認中…');
+  return '<span class="compactPasswordNote">'+(state.busy?'発行中…':'未発行')+'</span>';
+}
 function passwordIssueMarkup(machine){
   const id=machine.machineId, state=passwordIssues.get(id)||{},current=state.current;
   const disabled=state.busy||!state.loaded||machineOperations.get(String(id))?.busy;
@@ -304,6 +330,8 @@ function setPasswordIssue(id, patch){
   const state={...passwordIssues.get(id),...patch};passwordIssues.set(id,state);
   const field=$('issue-controls-'+id);
   if(field)field.outerHTML=passwordIssueMarkup({machineId:id});
+  const compact=$('compact-password-'+id);
+  if(compact)compact.innerHTML=compactPasswordMarkup(id);
   const machine=machineRows().find(row=>String(row.machineId)===String(id)),end=$('force-end-'+id);
   if(end)end.disabled=!(state.current||machine?.currentSessionId||machine?.lastEndedSession||machine?.stats);
   renderCurrentPasswordList();

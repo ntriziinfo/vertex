@@ -47,5 +47,9 @@ globalThis.NovaStoreData=(()=>{
       NovaDataCounter.render(root,view,stats);
     });
   }
-  return {markup,renderAll};
+  function setGraphView(view,machines){
+    if(!['line','hits'].includes(view))return;
+    graphView=view;renderAll(machines);
+  }
+  return {markup,renderAll,setGraphView};
 })();

@@ -14,7 +14,7 @@ const machine = {
 function ui(){
   const elements = new Map();
   const element=id=>{
-    if(!elements.has(id))elements.set(id,{innerHTML:'',textContent:'',value:'',classList:{toggle(){}},setAttribute(){},querySelectorAll(){return [];}});
+    if(!elements.has(id))elements.set(id,{dataset:{},innerHTML:'',textContent:'',value:'',classList:{toggle(){}},setAttribute(){},querySelectorAll(){return [];}});
     return elements.get(id);
   };
   const c=vm.createContext({
