@@ -16,7 +16,11 @@
 .novaHitChart{display:flex;gap:5px;padding:7px 5px 3px;background:#030812;border:2px solid #257add;border-radius:5px;}
 .novaHitScale{display:flex;flex-direction:column;justify-content:space-between;padding-bottom:17px;width:28px;flex:none;font:10px ui-monospace,monospace;color:#a5bed3;}
 .novaHitBars{display:flex;align-items:end;gap:3px;overflow-x:auto;min-width:0;flex:1;scrollbar-width:thin;}
-.novaHitColumn{flex:1 0 17px;min-width:17px;max-width:32px;border:0;background:none;border-radius:0;box-shadow:none;padding:0;color:#37e793;cursor:pointer;}
+.novaHitColumn{flex:1 1 0;min-width:0;max-width:32px;border:0;background:none;border-radius:0;box-shadow:none;padding:0;color:#37e793;cursor:pointer;}
+.novaHitPager{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:8px;font-size:10px;color:#bfccdb;}
+.novaHitPager button{padding:6px 5px;min-width:0;border:1px solid #49647c;border-radius:4px;background:#101e2c;color:#dfedff;font-size:11px;cursor:pointer;}
+.novaHitPager button:disabled{opacity:.35;cursor:default;}
+.novaHitPager span{white-space:nowrap;font-variant-numeric:tabular-nums;}
 .novaHitColumn[data-kind=BIG]{color:#ff4359}.novaHitColumn[data-kind=CURRENT]{color:#ffce54;}
 .novaHitCells{display:flex;flex-direction:column;gap:3px;height:107px;}
 .novaHitCells i{display:block;flex:1;background:#26323c;border-radius:1px;}

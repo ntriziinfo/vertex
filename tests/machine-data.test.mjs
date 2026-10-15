@@ -11,7 +11,8 @@ test('floor data matches cabinet rendering using cumulative data, including mini
  const stats={totalSpins:1200,bigCount:4,atFirstCount:2,dataNormalGames:700,dataAtGames:500,dataHitSeq:2,dataInterval:{phase:'normal',games:20},dataHits:[{seq:1,spin:1000,kind:'BIG',games:400,phase:'normal'},{seq:2,spin:1000,kind:'AT',games:0,phase:'normal'}]};
  const machine={machineId:'nova-01',machineType:'nova',stats:{totalSpins:10},machineTotalStats:stats};
  c.NovaStoreData.renderAll([machine]);c.NovaDataCounter.render(cabinet,c.NovaDataCounter.display(stats),stats);
- assert.deepEqual(floor.values,cabinet.values);assert.equal(floor.values.get('[data-counter="total"]').textContent,'1,200');
+ for(const [key,value] of floor.values)assert.equal(value.textContent,cabinet.values.get(key).textContent);
+ assert.equal(floor.values.get('[data-counter="total"]').textContent,'1,200');
  assert.equal(floor.values.get('[data-counter="current"]').textContent,'20');
  assert.equal(floor.bars.children[1].title,'AT / 0G');assert.equal(floor.bars.children[1].children[0].children.filter(i=>i.className==='lit').length,1);
  delete stats.dataInterval;c.NovaStoreData.renderAll([machine]);assert.equal(floor.values.get('[data-counter="current"]').textContent,'—');

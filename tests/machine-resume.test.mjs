@@ -8,9 +8,10 @@ import vm from 'node:vm';
 test('local controller creates the same session-scoped handoff entry as the cloud controller',()=>{
  const source=fs.readFileSync('server.js','utf8'),c=vm.createContext({URL,STORE_ID:'qa-store'});
  vm.runInContext(source.match(/function machineGameUrl\([^]*?\n}/)[0],c);
- const url=new URL(c.machineGameUrl({machineId:'nova-01',machineType:'nova',gameUrl:'https://game.invalid/jag.html'},'https://control.invalid','session-qa',{totalSpins:1000}));
+ const url=new URL(c.machineGameUrl({machineId:'nova-01',machineType:'nova',gameUrl:'https://game.invalid/jag.html'},'https://control.invalid','session-qa',{totalSpins:1000,dataHits:Array.from({length:10000},(_,i)=>({seq:i+1,kind:'BIG',games:800}))}));
  assert.equal(url.searchParams.get('resumeFromStore'),'1');assert.equal(url.searchParams.get('playSessionId'),'session-qa');
  assert.equal(url.searchParams.get('server'),'https://control.invalid');assert.equal(JSON.parse(url.searchParams.get('machineDisplay')).totalSpins,1000);
+ assert.equal(JSON.parse(url.searchParams.get('machineDisplay')).dataHits.length,0);assert(url.toString().length<1000);
 });
 
 test('real gateway hands off saved BIG and unfinished reels across players without resetting machine totals',()=>{

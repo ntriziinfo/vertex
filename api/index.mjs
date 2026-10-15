@@ -285,7 +285,7 @@ function machineGameUrl(machine, adminOrigin, sessionId, displayBaseline){
   url.searchParams.set("creditBaseline", "0");
   url.searchParams.set("playSessionId", String(sessionId || ""));
   if(machine.machineType==='nova')url.searchParams.set('resumeFromStore','1');
-  if(displayBaseline && machine.machineType==='nova')url.searchParams.set('machineDisplay',JSON.stringify(displayBaseline));
+  if(displayBaseline && machine.machineType==='nova')url.searchParams.set('machineDisplay',JSON.stringify({...displayBaseline,dataHits:[]}));
   return url.toString();
 }
 async function getIssued(password){
@@ -571,7 +571,7 @@ export default async function handler(req, res){
       const displayBaseline=existingSession?.startSnapshot?.machineDisplayBaseline || machineDisplayBaseline({...machine,lastSnapshot:existingSession ? existingSession.startSnapshot : machine.lastSnapshot});
       const iframeUrlFor = sessionId=>machineGameUrl(machine, origin, sessionId,displayBaseline);
       if(!machine.gameUrl) return json(res, 500, {ok:false, error:"この台のゲームURLが設定されていません"});
-      if(issued.status === "used" && existingSession && existingSession.status === "active") return json(res, 200, {ok:true, resumed:true, session:{sessionId:existingSession.sessionId, token:existingSession.token, machineId:machine.machineId, playerName:existingSession.playerName}, resumeState:machineResume.forSession(machine,existingSession), iframeUrl:iframeUrlFor(existingSession.sessionId)});
+      if(issued.status === "used" && existingSession && existingSession.status === "active") return json(res, 200, {ok:true, resumed:true, session:{sessionId:existingSession.sessionId, token:existingSession.token, machineId:machine.machineId, playerName:existingSession.playerName}, machineDisplayBaseline:displayBaseline,resumeState:machineResume.forSession(machine,existingSession), iframeUrl:iframeUrlFor(existingSession.sessionId)});
       if(issued.status !== "issued") return json(res, 403, {ok:false, error:"このパスワードは終了済みです"});
       const latest=await latestIssued(machine.machineId);
       if(passwordIssuance.current(machine,latest?[latest]:[])?.password!==password)return json(res,403,{ok:false,error:'このパスワードは現在の発行番号ではありません'});
@@ -580,7 +580,7 @@ export default async function handler(req, res){
       issued.status = "used"; issued.usedAt = ms(); issued.sessionId = session.sessionId;
       machine.locked = true; machine.currentSessionId = session.sessionId; machine.currentPlayerName = session.playerName;
       await saveIssued(issued); await saveSession(session); await upsertMachine(machine);
-      return json(res, 200, {ok:true, session:{sessionId:session.sessionId, token:session.token, machineId:machine.machineId, playerName:session.playerName}, resumeState:machineResume.forSession(machine,session), iframeUrl:iframeUrlFor(session.sessionId)});
+      return json(res, 200, {ok:true, session:{sessionId:session.sessionId, token:session.token, machineId:machine.machineId, playerName:session.playerName}, machineDisplayBaseline:displayBaseline,resumeState:machineResume.forSession(machine,session), iframeUrl:iframeUrlFor(session.sessionId)});
     }
     if(pathname === "/api/sessions/end" && req.method === "POST"){
       const body = await readBody(req);

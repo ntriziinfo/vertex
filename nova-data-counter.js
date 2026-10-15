@@ -1,6 +1,7 @@
-/* Bounded display statistics. Never changes game state or consumes lottery RNG. */
+/* Full hit history with bounded page rendering. No lottery RNG or game-state changes. */
 globalThis.NovaDataCounter=(()=>{
   const limit=20, keys=['dataNormalGames','dataAtGames','dataHitSeq'];
+  const pages=new WeakMap(),machinePages=new Map();
   const n=value=>Number.isFinite(Number(value))?Math.max(0,Number(value)):0;
   const names={sosuke:'宗介',toto:'とと',urapi:'うらぴ',giru:'ギル',sora:'空',ouma:'逢魔'};
   function snapshot(stats){return Object.fromEntries(keys.map(key=>[key,n(stats?.[key])]));}
@@ -30,7 +31,7 @@ globalThis.NovaDataCounter=(()=>{
     init(stats);
     const spin=n(stats.totalSpins),seq=n(stats.dataHitSeq)+1;
     const interval=stats.dataInterval;
-    stats.dataHits=[...(stats.dataHits||[]),{seq,spin,kind,zone,games:interval?n(interval.games):Math.max(0,spin-n(stats.dataLastHitSpin)),...(interval?{phase:interval.phase}:{})}].slice(-limit);
+    (stats.dataHits??=[]).push({seq,spin,kind,zone,games:interval?n(interval.games):Math.max(0,spin-n(stats.dataLastHitSpin)),...(interval?{phase:interval.phase}:{})});
     if(interval)interval.games=0;
     stats.dataHitSeq=seq;stats.dataLastHitSpin=spin;
   }
@@ -54,7 +55,7 @@ globalThis.NovaDataCounter=(()=>{
       const spin=n(base?.totalSpins)+Math.max(0,n(hit.spin)-n(base?start?.totalSpins:0));
       hits.push({...hit,spin,games:hit.phase?n(hit.games):hits.length?Math.max(0,spin-hits.at(-1).spin):n(hit.games)});
     }
-    output.hits=hits.slice(-limit);
+    output.hits=hits;
     output.current=stats.dataInterval?n(stats.dataInterval.games):hits.length?Math.max(0,total-hits.at(-1).spin):Math.max(0,n(stats.totalSpins)-n(stats.dataLastHitSpin??stats.totalSpins));
     output.currentPhase=stats.dataInterval?.phase||'normal';
     return output;
@@ -80,7 +81,21 @@ globalThis.NovaDataCounter=(()=>{
     const recorded=n(view.dataNormalGames)+n(view.dataAtGames);
     set('coverage',recorded<n(totals.totalSpins)?'通常・AT内訳は記録開始後の'+format(recorded)+'G分':'');
     const bars=root.querySelector('.novaHitBars');if(!bars)return;
-    const columns=[{kind:'CURRENT',games:view.current},...view.hits.slice().reverse()],fingerprint=JSON.stringify(columns);
+    const machineId=root.dataset?.machineCounter;
+    let page=machineId?machinePages.get(machineId):pages.get(root);
+    if(!page){page={anchor:null};if(machineId)machinePages.set(machineId,page);else pages.set(root,page);}
+    const hits=view.hits||[],count=hits.length;
+    const anchorIndex=page.anchor==null?-1:hits.findIndex(h=>h.seq===page.anchor);
+    if(page.anchor!=null&&anchorIndex<0)page.anchor=null;
+    const end=page.anchor==null?count:anchorIndex+1,begin=Math.max(0,end-limit),latest=page.anchor==null;
+    const move=(action,disabled,handler)=>{const button=root.querySelector('[data-hit-page="'+action+'"]');if(button){button.disabled=disabled;button.onclick=()=>{handler();render(root,view,totals);};}};
+    const at=index=>{page.anchor=hits[index-1]?.seq??null;};
+    move('latest',latest,()=>{page.anchor=null;});
+    move('newer',latest,()=>{if(end+limit>=count)page.anchor=null;else at(end+limit);});
+    move('older',begin===0,()=>at(begin));
+    move('oldest',begin===0,()=>at(Math.min(limit,count)));
+    set('page',count?`${begin+1}–${end} / ${format(count)}件`:'履歴なし');
+    const columns=[...(latest?[{kind:'CURRENT',games:view.current}]:[]),...hits.slice(begin,end).reverse()],fingerprint=JSON.stringify(columns);
     if(bars.dataset.values===fingerprint)return;
     bars.dataset.values=fingerprint;
     const nodes=columns.map((hit,i)=>{
@@ -89,12 +104,12 @@ globalThis.NovaDataCounter=(()=>{
       const cells=document.createElement('span');cells.className='novaHitCells';
       // A 0G hit still occupies one visual step; never change the recorded games.
       const steps=hit.kind==='CURRENT'?Math.ceil(n(hit.games)/100):Math.max(1,Math.ceil(n(hit.games)/100));
-      for(let tick=10;tick>=1;tick--){const cell=document.createElement('i');cell.className=steps>=tick?'lit':'';cells.append(cell);}
-      const mark=document.createElement('span');mark.className='novaHitMark';mark.textContent=hit.games>1000?'+':hit.kind==='CURRENT'?'今':hit.kind==='ZONE'?'特':hit.kind==='BIG'?'B':'AT';
+      for(let tick=8;tick>=1;tick--){const cell=document.createElement('i');cell.className=steps>=tick?'lit':'';cells.append(cell);}
+      const mark=document.createElement('span');mark.className='novaHitMark';mark.textContent=hit.games>800?'+':hit.kind==='CURRENT'?'今':hit.kind==='ZONE'?'特':hit.kind==='BIG'?'B':'AT';
       column.append(cells,mark);column.addEventListener('click',()=>set('detail',label));return column;
     });
     bars.replaceChildren(...nodes);bars.scrollLeft=0;
-    set('detail','左が最新 / 直近20件 / 列を押すとG数・ゾーン名を表示');
+    set('detail','左が新しい履歴 / 列を押すとG数・ゾーン名を表示');
   }
   return Object.freeze({limit,keys,snapshot,adopt,spin,hit,zone,transition:alignPhase,display,graph,render});
 })();

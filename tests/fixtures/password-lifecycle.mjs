@@ -119,11 +119,14 @@ if(process.env.QA_TOTALS_ASSERT==='1'){
   const session=started.body.session;
   const base=JSON.parse(new URL(started.body.iframeUrl).searchParams.get('machineDisplay'));
   assert.equal(base.totalSpins,5010+i*100);
+  assert.equal(base.dataHits.length,0,'full history must not grow the game URL');
+  assert.equal(started.body.machineDisplayBaseline.dataHits.length,i*40);
   const snapshot={playSessionId:session.sessionId,playSessionToken:session.token,playSessionStartStats:{totalSpins:0,bigCount:0,atFirstCount:0,totalFee:0,totalPaid:0},
-   stats:{totalSpins:100,bigCount:2,atFirstCount:1,totalFee:300,totalPaid:350},normalState:{sinceBonus:5},machineDisplayStats:{sinceBonus:5}};
+   stats:{totalSpins:100,bigCount:2,atFirstCount:1,totalFee:300,totalPaid:350,dataHitSeq:40,dataHits:Array.from({length:40},(_,j)=>({seq:j+1,spin:(j+1)*2,kind:'BIG',games:2,phase:'normal'}))},normalState:{sinceBonus:5},machineDisplayStats:{sinceBonus:5}};
   const state=await request('machines/one/state',snapshot,'POST',false);assert.equal(state.statusCode,200,JSON.stringify(state.body));
   const resumed=await request('sessions/start',{password:issued.body.issued.password});
   assert.equal(resumed.body.iframeUrl,started.body.iframeUrl,'resuming must not add active counters to baseline');
+  assert.deepEqual(resumed.body.machineDisplayBaseline,started.body.machineDisplayBaseline);
   const list=await request('machines',{},'GET');assert.equal(list.statusCode,200,JSON.stringify(list.body));
   assert.equal(list.body.find(m=>m.machineId==='one').machineTotalStats.totalSpins,5110+i*100);
   const end=i===1 ? await request('admin/machines/one/force-end') : await request('sessions/end',{...session,snapshot});

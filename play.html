@@ -30,7 +30,7 @@
 const $ = id => document.getElementById(id);
 let active = null;
 let slotOrigin = "";
-let resumeState=null, novaHandoff=false, pendingSnapshot=null;
+let resumeState=null, machineDisplayBaseline=null, novaHandoff=false, pendingSnapshot=null;
 let machineNames = new Map();
 let sessionWatchTimer = null, sessionWatchInFlight = false, sessionWatchRequested = false;
 let endingSession = false;
@@ -84,7 +84,7 @@ async function start(){
   const data = await res.json();
   if(!data.ok){ $('error').textContent = friendlyError(data.error); $('startBtn').disabled = false; $('startBtn').textContent = 'この台で開始'; return; }
   active = data.session;
-  resumeState=data.resumeState||null;
+  resumeState=data.resumeState||null;machineDisplayBaseline=data.machineDisplayBaseline||null;
   novaHandoff=new URL(data.iframeUrl,location.href).searchParams.get('resumeFromStore')==='1';
   $('machineLabel').textContent = machineName(active.machineId);
   $('playerLabel').textContent = active.playerName ? ` / ${active.playerName}` : '';
@@ -203,7 +203,7 @@ window.addEventListener('message', event=>{
   const msg = event.data || {};
   if(active && msg.sessionId===active.sessionId){
     if(msg.type==='nova-store-ready'){
-      event.source.postMessage({type:'nova-store-bootstrap',sessionId:active.sessionId,resumeState},slotOrigin);return;
+      event.source.postMessage({type:'nova-store-bootstrap',sessionId:active.sessionId,resumeState,machineDisplayBaseline},slotOrigin);return;
     }
     if(msg.type==='nova-store-end-ready'&&pendingSnapshot?.requestId===msg.requestId&&msg.snapshot?.playSessionId===active.sessionId){
       pendingSnapshot.resolve(msg.snapshot);return;

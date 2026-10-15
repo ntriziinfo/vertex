@@ -79,7 +79,7 @@ test('normal small-role counters persist across player deltas, checkpoints and r
   assert.equal(machineDisplayBaseline(machine).normalRoleSuikaCount,0);
 });
 
-test('bounded BIG AT and special-zone history spans player changes with cumulative game offsets',()=>{
+test('BIG AT and special-zone history spans player changes with cumulative game offsets',()=>{
  const machine={machineId:'nova-01',resetSerial:1};
  const first={machineId:machine.machineId,sessionId:'first',resetSerial:1,stats:{totalSpins:500,atFirstCount:1,dataNormalGames:400,dataAtGames:100,dataHitSeq:2,dataHits:[{seq:1,spin:350,kind:'BIG',zone:'',games:350},{seq:2,spin:400,kind:'AT',zone:'',games:50}]}};
  machine.lastEndedSession={sessionId:first.sessionId,record:first,machineTotal:completedMachineTotal(machine,first)};
@@ -92,6 +92,18 @@ test('bounded BIG AT and special-zone history spans player changes with cumulati
  assert.deepEqual(end.dataHits.map(h=>[h.kind,h.spin,h.games]),[['BIG',350,350],['AT',400,50],['ZONE',600,200],['ZONE',650,50]]);
  assert.equal(end.dataHitSeq,4);
  assert(end.slumpHistory.length<=40);assert(encodeURIComponent(JSON.stringify(end)).length<12000);
+ machine.resetSerial++;assert.equal(machineDisplayBaseline(machine).dataHits.length,0);
+});
+
+test('all recorded hits survive multiple players, persistence and reset isolation',()=>{
+ const machine={machineId:'nova-01',resetSerial:1};
+ for(let player=1;player<=3;player++){
+  const stats={totalSpins:8000,dataHitSeq:100,dataHits:Array.from({length:100},(_,i)=>({seq:i+1,spin:(i+1)*80,kind:'BIG',games:80,phase:'normal'}))};
+  const record={machineId:machine.machineId,resetSerial:1,sessionId:String(player),stats};
+  const total=completedMachineTotal(machine,record);
+  machine.lastEndedSession=JSON.parse(JSON.stringify({sessionId:String(player),record,machineTotal:total}));
+  const baseline=machineDisplayBaseline(machine);assert.equal(baseline.dataHits.length,100*player);assert.equal(baseline.dataHits[0].spin,80);assert.equal(baseline.dataHits.at(-1).spin,player*8000);
+ }
  machine.resetSerial++;assert.equal(machineDisplayBaseline(machine).dataHits.length,0);
 });
 

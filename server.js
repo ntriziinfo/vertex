@@ -367,7 +367,8 @@ function machineGameUrl(machine, adminOrigin, sessionId="", displayBaseline){
     target.searchParams.set("creditBaseline", "0");
     if(sessionId) target.searchParams.set("playSessionId", String(sessionId));
     if(machine.machineType==='nova')target.searchParams.set('resumeFromStore','1');
-    if(displayBaseline && machine.machineType==='nova')target.searchParams.set('machineDisplay',JSON.stringify(displayBaseline));
+    // Full hit history travels in the authenticated bootstrap, never in a growing URL.
+    if(displayBaseline && machine.machineType==='nova')target.searchParams.set('machineDisplay',JSON.stringify({...displayBaseline,dataHits:[]}));
     return target.toString();
   }catch(error){
     return "";
@@ -678,7 +679,7 @@ const server = http.createServer(async (req, res)=>{
           ok:true,
           resumed:true,
           session:{sessionId:existingSession.sessionId, token:existingSession.token, machineId:machine.machineId, playerName:existingSession.playerName},
-          resumeState:machineResume.forSession(machine,existingSession), iframeUrl:iframeUrlFor(existingSession.sessionId)
+          machineDisplayBaseline:displayBaseline,resumeState:machineResume.forSession(machine,existingSession), iframeUrl:iframeUrlFor(existingSession.sessionId)
         });
       }
       if(issued.status !== "issued") return sendJson(res, 403, {ok:false, error:"このパスワードは終了済みです"});
@@ -707,7 +708,7 @@ const server = http.createServer(async (req, res)=>{
       machine.currentPlayerName = session.playerName;
       saveState();
       broadcastMachines();
-      return sendJson(res, 200, {ok:true, session:{sessionId, token, machineId:machine.machineId, playerName:session.playerName}, resumeState:machineResume.forSession(machine,session), iframeUrl:iframeUrlFor(sessionId)});
+      return sendJson(res, 200, {ok:true, session:{sessionId, token, machineId:machine.machineId, playerName:session.playerName}, machineDisplayBaseline:displayBaseline,resumeState:machineResume.forSession(machine,session), iframeUrl:iframeUrlFor(sessionId)});
     }
 
     if(url.pathname === "/api/sessions/status" && req.method === "POST"){

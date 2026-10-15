@@ -60,7 +60,7 @@ function playerView(endStats={}, startStats={}, explicit={}){
   if(['normal','art'].includes(endStats.dataInterval?.phase)) stats.dataInterval={phase:endStats.dataInterval.phase,games:Math.max(0,num(endStats.dataInterval.games))};
   stats.dataHits=(Array.isArray(endStats.dataHits)?endStats.dataHits:[])
     .filter(hit=>num(hit.seq)>stat(baselineStats,'dataHitSeq')&&['BIG','AT','ZONE'].includes(hit.kind))
-    .slice(-20).map(hit=>({seq:num(hit.seq)-stat(baselineStats,'dataHitSeq'),spin:Math.max(0,num(hit.spin)-stat(baselineStats,'totalSpins')),kind:hit.kind,zone:String(hit.zone||''),games:Math.max(0,num(hit.games)),...(['normal','art'].includes(hit.phase)?{phase:hit.phase}:{})}));
+    .map(hit=>({seq:num(hit.seq)-stat(baselineStats,'dataHitSeq'),spin:Math.max(0,num(hit.spin)-stat(baselineStats,'totalSpins')),kind:hit.kind,zone:String(hit.zone||''),games:Math.max(0,num(hit.games)),...(['normal','art'].includes(hit.phase)?{phase:hit.phase}:{})}));
   const explicitMap = {
     totalSpins:"playerSpins",
     bigCount:"playerBigCount",
@@ -113,7 +113,6 @@ function appendPlayerView(aggregate, view){
     const spin=baseSpin+num(hit.spin),previous=aggregate.stats.dataHits.at(-1);
     aggregate.stats.dataHits.push({...hit,seq:baseHitSeq+num(hit.seq),spin,games:hit.phase?num(hit.games):previous?Math.max(0,spin-previous.spin):num(hit.games)});
   }
-  aggregate.stats.dataHits=aggregate.stats.dataHits.slice(-20);
   for(const key of STAT_KEYS) aggregate.stats[key] = stat(aggregate.stats, key) + stat(view.stats, key);
   if(view.stats.dataInterval) aggregate.stats.dataInterval={...view.stats.dataInterval};
   aggregate.stats.atFirstCountPartial ||= !!view.stats.atFirstCountPartial;

@@ -13,7 +13,8 @@ const {
 const SUPABASE_URL = String(process.env.SUPABASE_URL || "").replace(/\/$/, "");
 const SUPABASE_SERVICE_ROLE_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || "");
 const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || "");
-const MAX_BODY_BYTES = Math.max(16_384, Math.min(1_048_576, Number(process.env.VERTEX_MAX_BODY_BYTES || 262_144)));
+// Full recorded hit history must fit in state/end snapshots; keep the existing 1 MiB hard cap.
+const MAX_BODY_BYTES = Math.max(16_384, Math.min(1_048_576, Number(process.env.VERTEX_MAX_BODY_BYTES || 1_048_576)));
 const SESSION_TOKEN_REQUIRED = /^(1|true|yes)$/i.test(String(process.env.VERTEX_REQUIRE_SESSION_TOKEN || ""));
 const ADMIN_COOKIE = "vertex_admin_session";
 const ADMIN_COOKIE_MAX_AGE_SECONDS = 8 * 60 * 60;
