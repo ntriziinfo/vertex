@@ -159,12 +159,14 @@ async function getAllMachines(){
   // 旧管理DBの行は移管後も監査用に残すが、VERTEXでは店舗構成に登録した台だけを扱う。
   return MACHINE_DEFINITIONS.map(definition=>byId.get(definition.machineId) || emptyMachine(definition.machineId));
 }
-async function upsertMachine(machine){
+async function upsertMachine(machine, {revokeSuperSpeed = false} = {}){
+  const revokePermission = revokeSuperSpeed && machine.machineType === 'nova';
+  if(revokePermission) machine.capabilities = {...machine.capabilities, superSpeedAllowed:false};
   const row = {machine_id:String(machine.machineId), store_id:STORE_ID, display_name:machine.displayName || machineLabel(machine.machineId), machine_type:machine.machineType || "generic", game_url:machine.gameUrl || "", pool_id:machine.poolId || "", capabilities:machine.capabilities || {}, locked:!!machine.locked, reset_serial:Number(machine.resetSerial || 0), current_session_id:machine.currentSessionId || "", current_player_name:machine.currentPlayerName || "", last_snapshot:machine.lastSnapshot || null, last_ended_session:machine.lastEndedSession || null, updated_at_ms:Number(machine.updatedAt || 0), assigned_setting:Number(machine.assignedSetting || 1)};
   const options = {method:"POST", headers:{Prefer:"resolution=merge-duplicates,return=representation"}};
-  // Runtime permissions are admin-owned. Snapshot/session/reset writes must not
-  // overwrite an admin change made concurrently in the separate capabilities column.
-  delete row.capabilities;
+  // Only an explicit admin reset/setting change may revoke permission here.
+  // Ordinary snapshot/session writes must never restore stale permissions.
+  if(!revokePermission) delete row.capabilities;
   try{
     return await sb("machine_states?on_conflict=machine_id", {...options, body:JSON.stringify(row)});
   }catch(error){
@@ -181,7 +183,8 @@ async function upsertMachine(machine){
       last_snapshot:row.last_snapshot,
       last_ended_session:row.last_ended_session,
       updated_at_ms:row.updated_at_ms,
-      assigned_setting:row.assigned_setting
+      assigned_setting:row.assigned_setting,
+      ...(revokePermission ? {capabilities:row.capabilities} : {})
     };
     return sb("machine_states?on_conflict=machine_id", {...options, body:JSON.stringify(legacyRow)});
   }
@@ -703,7 +706,7 @@ export default async function handler(req, res){
       machine.lastSnapshot = machine.lastSnapshot || {machineId:machine.machineId, stats:{}, settings:{}, updatedAt:ms()};
       machine.lastSnapshot.settings = nextSettings;
       machine.lastSnapshot.updatedAt = ms();
-      await upsertMachine(machine);
+      await upsertMachine(machine, {revokeSuperSpeed:patch.setting !== undefined});
       const row = await insertCommand(machine.machineId, {type:"applySettings", settings:patch});
       return json(res, 200, {ok:true, setting, completeLimitPt, delivered:true, commandId:row.id, machine:publicMachine(machine, machineTotalFor(machine, []))});
     }
@@ -718,7 +721,7 @@ export default async function handler(req, res){
         : {setting:machine.assignedSetting || 1, completeLimitPt:19000};
       await retirePasswords(machine.machineId,'cancelled');
       machine.locked = false; machine.currentSessionId = ""; machine.currentPlayerName = ""; machine.lastEndedSession = null; machine.lastSnapshot = {machineId:machine.machineId, stats:null, settings:preservedSettings, updatedAt:ms()}; machine.resetSerial = Number(machine.resetSerial || 0) + 1;
-      await upsertMachine(machine);
+      await upsertMachine(machine, {revokeSuperSpeed:true});
       const row = await insertCommand(machine.machineId, {type:"reset", reason:"admin-reset"});
       return json(res, 200, {ok:true, delivered:true, commandId:row.id, machine:publicMachine(machine, machineTotalFor(machine, []))});
     }

@@ -14,7 +14,7 @@ test('local server reload keeps admin permission while refreshing static capabil
  assert.equal(c.machines.get('nova-01').assignedSetting,4);
 });
 
-test('admin-only permission persists independently of stale snapshots and resets; polling always returns it',()=>{
+test('admin reset/setting revokes permission; snapshots and limit-only changes cannot override it',()=>{
  const probe=String.raw`
  import assert from 'node:assert/strict';
  import {createRequire,syncBuiltinESMExports} from 'node:module';
@@ -54,8 +54,27 @@ test('admin-only permission persists independently of stale snapshots and resets
  await request('machines/nova-01/state','POST',{capabilities:{superSpeedAllowed:false},settings:{superSpeedAllowed:false},stats:{totalSpins:124}});
  assert.equal((await request(poll)).body.controls.superSpeedAllowed,true);
  assert.equal(calls.at(-1).capabilities,undefined,'ordinary snapshot writes cannot overwrite permissions');
- await request('admin/machines/nova-01/reset','POST',{});
- assert.equal((await request(poll)).body.controls.superSpeedAllowed,true);
+ const reset=await request('admin/machines/nova-01/reset','POST',{});
+ assert.equal(reset.statusCode,200);
+ assert.equal(reset.body.machine.capabilities.superSpeedAllowed,false);
+ assert.equal((await request(poll)).body.controls.superSpeedAllowed,false);
+ await request('machines/nova-01/state','POST',{capabilities:{superSpeedAllowed:true},settings:{superSpeedAllowed:true},stats:{totalSpins:1}});
+ assert.equal((await request(poll)).body.controls.superSpeedAllowed,false,'stale snapshots cannot reenable');
+ const settingPath='admin/machines/nova-01/setting';
+ await request(admin,'POST',{enabled:true});
+ assert.equal((await request(settingPath,'POST',{setting:7})).statusCode,400);
+ assert.equal((await request(poll)).body.controls.superSpeedAllowed,true,'invalid setting must not revoke');
+ assert.equal((await request(settingPath,'POST',{completeLimitPt:22000})).statusCode,200);
+ assert.equal((await request(poll)).body.controls.superSpeedAllowed,true,'limit-only change keeps permission');
+ for(const setting of [5,5]){
+   await request(admin,'POST',{enabled:true});
+   const changed=await request(settingPath,'POST',{setting});
+   assert.equal(changed.statusCode,200);
+   assert.equal(changed.body.machine.capabilities.superSpeedAllowed,false);
+   assert.equal((await request(poll)).body.controls.superSpeedAllowed,false,'setting application revokes, even same value');
+ }
+ await request(admin,'POST',{enabled:true});
+ assert.equal((await request(poll)).body.controls.superSpeedAllowed,true,'admin can enable again');
  await request(admin,'POST',{enabled:false});
  assert.equal((await request(poll)).body.controls.superSpeedAllowed,false);
  console.log('permission lifecycle OK');

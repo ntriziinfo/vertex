@@ -143,6 +143,7 @@ if(process.env.QA_SPEED_ASSERT==='1'){
  now=Date.parse('2026-10-17T15:01:00Z');await used(session);
  assert.equal((await history('2026-10-18')).body.rows.length,1,'JST midnight starts a new usage day');
  assert.equal((await request('admin/machines/one/reset')).statusCode,200);
+ assert.equal(machines.get('one').capabilities.superSpeedAllowed,false,'reset revokes the current permission');
  assert.equal((await used(session)).statusCode,409);
  assert.equal((await history('2026-10-17')).body.rows.length,1,'reset preserves audit');
  const next=await create('one','Next',false);

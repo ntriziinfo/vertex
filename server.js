@@ -875,6 +875,7 @@ const server = http.createServer(async (req, res)=>{
       machine.lastEndedSession = null;
       machine.lastSnapshot = {machineId:machine.machineId, stats:null, settings:preservedSettings, updatedAt:Date.now()};
       machine.resetSerial = (Number(machine.resetSerial) || 0) + 1;
+      if(machine.machineType === 'nova') machine.capabilities = {...machine.capabilities, superSpeedAllowed:false};
       const delivered = sendCommand(machine.machineId, {type:"reset", reason:"admin-reset", id:makeId("cmd")});
       saveState();
       broadcastMachines();
@@ -971,6 +972,7 @@ const server = http.createServer(async (req, res)=>{
       machine.lastSnapshot = machine.lastSnapshot || {machineId:machine.machineId, stats:{}, settings:{}, updatedAt:Date.now()};
       machine.lastSnapshot.settings = settings;
       machine.lastSnapshot.updatedAt = Date.now();
+      if(machine.machineType === 'nova' && patch.setting !== undefined) machine.capabilities = {...machine.capabilities, superSpeedAllowed:false};
       const delivered = sendCommand(machine.machineId, {type:"applySettings", settings:patch, id:makeId("cmd")});
       saveState();
       broadcastMachines();
