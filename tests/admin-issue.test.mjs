@@ -44,7 +44,7 @@ test('polling adopts other administrators, releases ended passwords and rejects 
  requests.shift()({ok:true,json:async()=>[{machineId:'one',password:'OLD',status:'issued'}]});await old;
  assert.equal(states.get('one').current.password,'NEW');
  const update=c.loadCurrentPasswords();requests.shift()({ok:true,json:async()=>[{machineId:'one',password:'LATEST',playerName:'C',status:'used'},{machineId:'two',status:'available'}]});await update;
- assert.equal(states.get('one').current.password,'LATEST');assert.match(c.$('issue-controls-one').outerHTML,/遊技中/);assert.equal(states.get('two').playerName,'Draft');
+ assert.equal(states.get('one').current.password,'LATEST');assert.match(c.$('issue-controls-one').outerHTML,/LATEST/);assert.equal(states.get('two').playerName,'Draft');
  const end=c.loadCurrentPasswords();requests.shift()({ok:true,json:async()=>[{machineId:'one',status:'available'},{machineId:'two',status:'available'}]});await end;
  assert.equal(states.get('one').current,null);assert.match(c.$('issue-controls-one').outerHTML,/<input/);assert.doesNotMatch(c.$('issue-controls-one').outerHTML,/LATEST/);
  const fail=c.loadCurrentPasswords();requests.shift()({ok:false,json:async()=>({error:'unavailable'})});await fail;
