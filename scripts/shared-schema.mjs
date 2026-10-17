@@ -5,7 +5,8 @@ import {STORE_SCHEMAS} from "../supabase-scope.mjs";
 export function sharedSchemaSql(storeId) {
   const schema = STORE_SCHEMAS[storeId];
   if (!schema) throw new Error("Unknown store ID");
-  const template = fs.readFileSync(new URL("../supabase_schema.sql", import.meta.url), "utf8");
+  const template = fs.readFileSync(new URL("../supabase_schema.sql", import.meta.url), "utf8")
+    + '\n' + fs.readFileSync(new URL('../migrations/20261017-super-speed.sql',import.meta.url),'utf8');
   // Keep the PostgreSQL PUBLIC role in REVOKE statements. Only schema qualifiers
   // and function search paths are changed; all RPCs stay within their store.
   const ddl = template.replace(/\bpublic\./g, `${schema}.`)

@@ -60,11 +60,19 @@
     <div id="passwordList" class="passwordList"></div>
   </section>
 
+  <section class="panel" id="speedActivityPanel" hidden>
+    <div class="sectionHead"><h2>超ハイスピード利用記録</h2><div class="row"><label class="field"><span class="muted">日付（日本時間）</span><input type="date" id="speedActivityDate" onchange="speedActivityToday=false;loadSpeedActivity()"></label><button class="ghost" onclick="showTodaySpeedActivity()">今日</button><button class="ghost" onclick="loadSpeedActivity()">更新</button></div></div>
+    <p class="muted">「使用済み」は実際に超AUTOで回転したお客様です。「ON発行」は許可のみで、使用は未確認です。終了・台リセット後も残ります。</p>
+    <div id="speedActivityStatus" class="muted" role="status"></div><div id="speedActivityList" class="results"></div>
+  </section>
   <section class="panel">
     <h2>終了履歴</h2>
     <div id="results" class="results"></div>
   </section>
 </main>
+<dialog id="issueSpeedDialog" style="background:#1b1f28;color:#fff;border:1px solid #d5b954;border-radius:12px;padding:24px;max-width:min(440px,92vw)">
+  <form method="dialog"><h2 style="margin-top:0">超ハイスピードをONにしますか？</h2><p id="issueSpeedCustomer"></p><p class="muted">今回のお客様の使用許可を設定して、パスワードを発行します。</p><div class="row"><button value="on">ONにして発行</button><button value="off" class="ghost" autofocus>OFFで発行</button><button value="cancel" class="ghost">戻る</button></div></form>
+</dialog>
 <link rel="stylesheet" href="/nova-data-counter.css?v=20261015-mode-history">
 <script src="/nova-data-counter.js?v=20261015-mode-history"></script>
 <script src="/machine-data.js?v=20261015-mode-history"></script>
@@ -362,10 +370,17 @@ async function issue(id){
   rememberPasswordDraft(id);
   const playerName=(passwordIssues.get(id)?.playerName||'').trim();
   if(!playerName){setPasswordIssue(id,{failed:true,message:'お客様名を入力してください。'});$('player-name-'+id)?.focus();return;}
+  const machine=machineRows().find(row=>String(row.machineId)===String(id));
+  let superSpeedAllowed;
+  if(machine?.machineType==='nova'){
+    setPasswordIssue(id,{busy:true,failed:false,message:'超ハイスピードを選択中…'});
+    superSpeedAllowed=await chooseIssueSpeed(machine,playerName);
+    if(superSpeedAllowed===null){setPasswordIssue(id,{busy:false,message:''});return;}
+  }
   passwordCurrentRequest++;
   setPasswordIssue(id,{busy:true,failed:false,message:'発行中…'});
   try{
-    const res=await fetch('/api/admin/issue-password',{method:'POST',headers:{'Content-Type':'application/json',...adminHeaders()},body:JSON.stringify({machineId:id,playerName}),signal:AbortSignal.timeout(20000)});
+    const res=await fetch('/api/admin/issue-password',{method:'POST',headers:{'Content-Type':'application/json',...adminHeaders()},body:JSON.stringify({machineId:id,playerName,...(typeof superSpeedAllowed==='boolean'?{superSpeedAllowed}:{})}),signal:AbortSignal.timeout(20000)});
     const data=await res.json();
     if(!res.ok||!data.ok)throw Error(data.error||'発行に失敗しました。');
     const password=String(data.issued?.password||'').trim();
@@ -377,6 +392,33 @@ async function issue(id){
     setPasswordIssue(id,{loaded:false,busy:false,failed:true,message:'発行状態を再確認します。 '+error.message});
   }
   void loadCurrentPasswords();
+  if(machine?.machineType==='nova'){void loadMachines().catch(()=>{});void loadSpeedActivity();}
+}
+function chooseIssueSpeed(machine,playerName){
+  const dialog=$('issueSpeedDialog');
+  if(dialog.open)return Promise.resolve(null);
+  $('issueSpeedCustomer').textContent=machineLabel(machine)+' / '+playerName+' 様';
+  dialog.returnValue='cancel';dialog.showModal();
+  return new Promise(resolve=>dialog.addEventListener('close',()=>resolve(dialog.returnValue==='on'?true:dialog.returnValue==='off'?false:null),{once:true}));
+}
+function todayJst(){return new Date(Date.now()+9*3600000).toISOString().slice(0,10);}
+let speedActivityRequest=0,speedActivityToday=true;
+function showTodaySpeedActivity(){ speedActivityToday=true;$('speedActivityDate').value=todayJst();void loadSpeedActivity(); }
+async function loadSpeedActivity(){
+  if(!adminSecret||!machineRows().some(row=>row.machineType==='nova'))return;
+  $('speedActivityPanel').hidden=false;
+  const input=$('speedActivityDate');if(speedActivityToday||!input.value)input.value=todayJst();
+  const date=input.value,request=++speedActivityRequest;
+  $('speedActivityStatus').textContent='確認中…';
+  try{
+    const res=await fetch('/api/admin/super-speed-activity?date='+encodeURIComponent(date),{headers:adminHeaders(),cache:'no-store',signal:AbortSignal.timeout(15000)});
+    const data=await res.json();
+    if(request!==speedActivityRequest||!adminSecret)return;
+    if(!res.ok||!data.ok)throw Error(data.error||'利用記録を取得できませんでした');
+    const rows=data.rows||[],time=ms=>ms?new Date(ms).toLocaleTimeString('ja-JP',{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit'}):'—';
+    $('speedActivityStatus').textContent=date+' / 使用済み '+rows.filter(row=>row.usedAt).length+'件・ON発行のみ '+rows.filter(row=>!row.usedAt).length+'件';
+    $('speedActivityList').innerHTML=rows.map(row=>`<div class="item"><b>${escapeHtml(machineLabelById(row.machineId))}</b><span>${escapeHtml(row.playerName)} 様</span><b class="${row.usedAt?'ok':'muted'}">${row.usedAt?'使用済み':'ON発行'}</b><span>${row.usedAt?'初回使用 '+time(row.usedAt):'発行 '+time(row.allowedAt)}</span></div>`).join('')||'<p class="muted">この日の記録はありません。</p>';
+  }catch(error){if(request===speedActivityRequest){$('speedActivityStatus').textContent='更新できませんでした。再度更新してください。';$('speedActivityList').replaceChildren();}}
 }
 async function setSuperSpeed(id,enabled,button){
   button.disabled=true;
@@ -654,11 +696,13 @@ async function enterAdmin(password){
   sessionStorage.setItem(ADMIN_STORAGE_KEY, value);
   document.body.classList.remove('locked');
   await Promise.allSettled([loadMachines(), loadResults(),loadCurrentPasswords()]);
+  void loadSpeedActivity();
 }
 function logoutAdmin(){
   fetch('/api/admin/logout', {method:'POST'}).catch(()=>{});
   adminSecret = '';
   passwordCurrentRequest++;passwordIssues.clear();
+  speedActivityRequest++;$('speedActivityList').replaceChildren();$('speedActivityPanel').hidden=true;
   $('machines').replaceChildren();$('passwordList').replaceChildren();
   sessionStorage.removeItem(ADMIN_STORAGE_KEY);
   document.body.classList.add('locked');
@@ -676,6 +720,7 @@ async function refreshAll(){
   finally{machineRefreshInFlight=false;}
 }
 setInterval(refreshAll, 5000);
+setInterval(()=>{if(!document.hidden)void loadSpeedActivity();},30000);
 setInterval(()=>{if(!document.hidden)void loadCurrentPasswords();},5000);
 window.addEventListener('focus',()=>{void loadCurrentPasswords();void refreshAll();});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){void loadCurrentPasswords();void refreshAll();}});

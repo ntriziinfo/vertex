@@ -5,6 +5,7 @@ import machineTotals from "../machine-totals.cjs";
 import machineConfig from "../machine-config.cjs";
 import adminSettings from "../admin-settings.cjs";
 import passwordIssuance from "../password-issuance.cjs";
+import speedActivity from "../super-speed-activity.cjs";
 import sheetsSettlementPolicy from "../sheets-settlement.cjs";
 import {scopeHeaders} from "../supabase-scope.mjs";
 
@@ -323,7 +324,7 @@ async function currentPasswordList(){
 async function saveIssued(issued){
   return sb("issued_passwords?on_conflict=password", {method:"POST", headers:{Prefer:"resolution=merge-duplicates,return=representation"}, body:JSON.stringify({password:issued.password, machine_id:String(issued.machineId), player_name:issued.playerName || "", status:issued.status, issued_at_ms:issued.issuedAt || 0, used_at_ms:issued.usedAt || 0, session_id:issued.sessionId || ""})});
 }
-async function createIssued(machineId, playerName){
+async function createIssued(machineId, playerName, superSpeedAllowed){
   const [machine,previous]=await Promise.all([getMachine(machineId),latestIssued(machineId)]);
   const existing=await currentIssued(machine,previous);
   if(existing){
@@ -334,7 +335,12 @@ async function createIssued(machineId, playerName){
     const issued={password:passwordIssuance.candidate(SUPABASE_KEY,STORE_ID,machine,previous,attempt), machineId, playerName, status:"issued", issuedAt:Math.max(ms(),(previous?.issuedAt||0)+1), usedAt:0, sessionId:""};
     try{
       // Insert only: concurrent issuers must never overwrite an existing code.
-      await sb("issued_passwords", {method:"POST", body:JSON.stringify({password:issued.password, machine_id:machineId, player_name:playerName, status:"issued", issued_at_ms:issued.issuedAt, used_at_ms:0, session_id:""})});
+      const row={password:issued.password, machine_id:machineId, player_name:playerName, status:"issued", issued_at_ms:issued.issuedAt, used_at_ms:0, session_id:""};
+      if(typeof superSpeedAllowed==='boolean'){
+        row.super_speed_allowed=superSpeedAllowed;
+        const event=superSpeedAllowed?speedActivity.event(issued.password,machineId,playerName,'allowed',issued.issuedAt):null;
+        await sb('rpc/issue_password_with_speed',{method:'POST',body:JSON.stringify({p_issued:row,p_event:event})});
+      }else await sb('issued_passwords',{method:'POST',body:JSON.stringify(row)});
     }catch(error){
       if(error.code !== '23505')throw error;
       const winner=await currentIssued(await getMachine(machineId),await latestIssued(machineId));
@@ -544,8 +550,31 @@ export default async function handler(req, res){
       if(!validMachineId(body.machineId)) return json(res, 400, {ok:false, error:"invalid machine"});
       const playerName = String(body.playerName || "").trim();
       if(!playerName) return json(res, 400, {ok:false, error:"playerName required"});
-      const issued = await createIssued(String(body.machineId), playerName);
+      if(body.superSpeedAllowed!==undefined&&(typeof body.superSpeedAllowed!=='boolean'||machineDefinition(body.machineId)?.machineType!=='nova'))return json(res,400,{ok:false,error:'invalid superSpeedAllowed'});
+      const issued = await createIssued(String(body.machineId), playerName, body.superSpeedAllowed);
       return json(res, 200, {ok:true, issued});
+    }
+    if(pathname === '/api/admin/super-speed-activity' && req.method === 'GET'){
+      if(!adminOk(req))return json(res,401,{ok:false,error:'admin password required'});
+      const date=String(req.query.date||speedActivity.dateJst());
+      if(!speedActivity.validDate(date))return json(res,400,{ok:false,error:'invalid date'});
+      const events=[];
+      for(let offset=0;;offset+=1000){
+        const rows=await sb('super_speed_activity?activity_date=eq.'+date+'&select=*&order=occurred_at_ms.asc,id.asc&limit=1000&offset='+offset);
+        events.push(...rows.filter(row=>machineDefinition(row.machine_id)?.machineType==='nova'));
+        if(rows.length<1000)break;
+      }
+      return json(res,200,{ok:true,date,rows:speedActivity.summarize(events)});
+    }
+    if(pathname === '/api/sessions/super-speed-used' && req.method === 'POST'){
+      const body=await readBody(req),session=await getSession(String(body.sessionId||''));
+      if(!session||session.token!==String(body.token||''))return json(res,403,{ok:false,error:'invalid session'});
+      const machine=await getMachine(session.machineId);
+      if(session.status!=='active'||machine.currentSessionId!==session.sessionId||machine.resetSerial!==session.resetSerialAtStart)return json(res,409,{ok:false,error:'session is not active'});
+      if(machine.machineType!=='nova'||machine.capabilities?.superSpeedAllowed!==true)return json(res,403,{ok:false,error:'super speed is not allowed'});
+      const event=speedActivity.event(session.password,session.machineId,session.playerName,'used',ms(),session.sessionId);
+      await sb('super_speed_activity?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=ignore-duplicates,return=minimal'},body:JSON.stringify(event)});
+      return json(res,200,{ok:true,date:event.activity_date});
     }
     if(pathname === '/api/admin/passwords/current' && req.method === 'GET'){
       if(!adminOk(req))return json(res,401,{ok:false,error:'admin password required'});

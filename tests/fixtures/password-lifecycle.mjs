@@ -5,12 +5,13 @@ const require=createRequire(import.meta.url),https=require('node:https');
 const policy=require('../../password-issuance.cjs');
 const machines=new Map(['one','two'].map(id=>[id,{machine_id:id,current_session_id:'',current_player_name:'',reset_serial:0}]));
 const passwords=new Map(),sessions=new Map(),results=[];
+const speedEvents=new Map();
 const sheetRecords=[];
 const collision=policy.candidate('qa-key','qa-store',{machineId:'one'},null,0);
 passwords.set(collision,{password:collision,machine_id:'unrelated',player_name:'Existing',status:'issued',issued_at_ms:1});
 let requests=0;
 function matches(row,query){
- for(const key of ['password','machine_id','session_id','status']){
+ for(const key of ['password','machine_id','session_id','status','activity_date']){
   const filter=query.get(key);if(!filter)continue;
   if(filter.startsWith('eq.')&&String(row[key]??'')!==filter.slice(3))return false;
   if(filter.startsWith('in.')&&!filter.slice(4,-1).split(',').includes(String(row[key])))return false;
@@ -28,6 +29,18 @@ function answer(url,options={},body){
    assert.equal(sessions.get(record.sessionId)?.result_record?.sessionId,record.sessionId);
   }
   sheetRecords.push(record);return {status:200,data:{ok:true}};
+ }
+ if(table==='issue_password_with_speed'){
+   const {p_issued:row,p_event:event}=JSON.parse(body);
+   if(passwords.has(row.password))return {status:409,data:{code:'23505'}};
+   passwords.set(row.password,{...row});
+   const machine=machines.get(row.machine_id);machine.capabilities={...machine.capabilities,superSpeedAllowed:row.super_speed_allowed};
+   if(event)speedEvents.set(event.id,event);
+   return {status:200,data:null};
+ }
+ if(table==='super_speed_activity'){
+   if(method==='POST'){const row=JSON.parse(body);if(!speedEvents.has(row.id))speedEvents.set(row.id,row);}
+   return {status:200,data:structuredClone([...speedEvents.values()].filter(row=>matches(row,q)).slice(Number(q.get('offset')||0),Number(q.get('offset')||0)+Number(q.get('limit')||1000)))};
  }
  const map={machine_states:machines,issued_passwords:passwords,sessions}[table];
  if(map){
@@ -62,7 +75,8 @@ syncBuiltinESMExports();
 globalThis.fetch=async(url,options={})=>{const out=answer(String(url),options,options.body);return new Response(JSON.stringify(out.data),{status:out.status});};
 const {default:gateway}=await import('../../api/gateway.mjs');
 async function request(path,body={},method='POST',admin=true){
- const req={method,query:{path},body,headers:{host:'qa.test',...(admin?{'x-admin-password':'qa'}:{})}};
+ const url=new URL('https://qa.test/'+path);
+ const req={method,query:{path:url.pathname.slice(1),...Object.fromEntries(url.searchParams)},body,headers:{host:'qa.test',...(admin?{'x-admin-password':'qa'}:{})}};
  const res={headers:{},setHeader(k,v){this.headers[k.toLowerCase()]=v;},getHeader(k){return this.headers[k.toLowerCase()];},end(body){this.body=JSON.parse(body);}};
  await gateway(req,res);return res;
 }
@@ -102,6 +116,39 @@ if(process.env.QA_RESUME_ASSERT==='1'){
  const issued=await issue('one','Reset'),started=await request('sessions/start',{password:issued.body.issued.password});
  assert.equal(started.body.resumeState.state,null);
  console.log('Cross-player state, same-player baseline, stale snapshots, normal/forced end and explicit reset verified.');
+ process.exit(0);
+}
+if(process.env.QA_SPEED_ASSERT==='1'){
+ let now=Date.parse('2026-10-17T14:59:00Z');Date.now=()=>now;
+ const create=(id,name,enabled)=>request('admin/issue-password',{machineId:id,playerName:name,superSpeedAllowed:enabled});
+ assert.equal((await create('one','Invalid','true')).statusCode,400);
+ const [a,b,other]=await Promise.all([create('one','Alice',true),create('one','Loser',false),create('two','Bob',false)]);
+ assert.equal(a.statusCode,200);assert.equal(b.body.issued.password,a.body.issued.password);
+ assert.equal(a.body.issued.superSpeedAllowed,true);assert.equal(b.body.issued.playerName,'Alice');
+ assert.equal(machines.get('one').capabilities.superSpeedAllowed,true);
+ assert.equal(machines.get('two').capabilities.superSpeedAllowed,false);
+ const session=await begin(a.body.issued.password),off=await begin(other.body.issued.password);
+ const used=s=>request('sessions/super-speed-used',s,'POST',false);
+ assert.equal((await used({...session,token:'bad'})).statusCode,403);
+ assert.equal((await used(off)).statusCode,403);
+ const history=date=>request('admin/super-speed-activity?date='+date,{},'GET');
+ assert.equal((await request('admin/super-speed-activity',{},'GET',false)).statusCode,401);
+ assert.equal((await history('2026-02-30')).statusCode,400);
+ assert.equal((await history('2026-10-17')).body.rows[0].usedAt,0);
+ assert.equal((await used(session)).statusCode,200);
+ now+=10000;await used(session);
+ let rows=(await history('2026-10-17')).body.rows;
+ assert.equal(rows.length,1);assert.equal(rows[0].playerName,'Alice');assert.equal(rows[0].usedAt,now-10000);
+ assert.equal(speedEvents.size,2,'one allowed and one actual-use event per day');
+ now=Date.parse('2026-10-17T15:01:00Z');await used(session);
+ assert.equal((await history('2026-10-18')).body.rows.length,1,'JST midnight starts a new usage day');
+ assert.equal((await request('admin/machines/one/reset')).statusCode,200);
+ assert.equal((await used(session)).statusCode,409);
+ assert.equal((await history('2026-10-17')).body.rows.length,1,'reset preserves audit');
+ const next=await create('one','Next',false);
+ assert.equal(next.body.issued.superSpeedAllowed,false);assert.equal(machines.get('one').capabilities.superSpeedAllowed,false);
+ assert.equal((await history('2026-10-17')).body.rows[0].playerName,'Alice');
+ console.log('Atomic issuance, competing admins, authenticated use, deduplication, JST rollover, reset and OFF handover verified.');
  process.exit(0);
 }
 if(process.env.QA_TOTALS_ASSERT==='1'){

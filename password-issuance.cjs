@@ -1,7 +1,7 @@
 const crypto=require('node:crypto');
 const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 function fromRow(row){
-  return row?{password:row.password,machineId:String(row.machine_id),playerName:row.player_name||'',status:row.status,issuedAt:Number(row.issued_at_ms)||0,usedAt:Number(row.used_at_ms)||0,sessionId:row.session_id||''}:null;
+  return row?{password:row.password,machineId:String(row.machine_id),playerName:row.player_name||'',status:row.status,issuedAt:Number(row.issued_at_ms)||0,usedAt:Number(row.used_at_ms)||0,sessionId:row.session_id||'',superSpeedAllowed:typeof row.super_speed_allowed==='boolean'?row.super_speed_allowed:null}:null;
 }
 function latest(rows){
   return [...rows].sort((a,b)=>(b.issuedAt-a.issuedAt)||String(b.password).localeCompare(String(a.password)))[0]||null;

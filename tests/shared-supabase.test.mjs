@@ -37,9 +37,11 @@ test("schema setup keeps every table, sequence and jackpot RPC in its own namesp
     const sql = sharedSchemaSql(store);
     assert.ok(sql.includes(`CREATE SCHEMA ${schema};`));
     assert.doesNotMatch(sql, /\bpublic\./);
-    assert.equal((sql.match(/create table if not exists /g) || []).length, 7);
-    assert.equal((sql.match(/enable row level security/g) || []).length, 7);
-    assert.equal((sql.match(new RegExp(`set search_path = ${schema}`, "g")) || []).length, 3);
+    assert.equal((sql.match(/create table if not exists /g) || []).length, 8);
+    assert.equal((sql.match(/enable row level security/g) || []).length, 8);
+    assert.equal((sql.match(new RegExp(`set search_path = ${schema}`, "g")) || []).length, 4);
+    assert.ok(sql.includes(`${schema}.super_speed_activity`));
+    assert.ok(sql.includes(`${schema}.issue_password_with_speed`));
     assert.match(sql, /from public, anon, authenticated;/);
     assert.ok(sql.includes(`REVOKE ALL ON ALL FUNCTIONS IN SCHEMA ${schema} FROM PUBLIC, anon, authenticated;`));
     assert.ok(sql.includes(`GRANT ALL ON ALL SEQUENCES IN SCHEMA ${schema} TO service_role;`));

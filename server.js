@@ -5,6 +5,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const passwordIssuance = require('./password-issuance.cjs');
+const speedActivity = require('./super-speed-activity.cjs');
 const {sheetsSettlement} = require('./sheets-settlement.cjs');
 const { URL } = require("url");
 const {machineTotalFor,completedMachineTotal,machineDisplayBaseline} = require("./machine-totals.cjs");
@@ -65,6 +66,7 @@ let state = {
   storeName:STORE_NAME,
   machines:{},
   issuedPasswords:{},
+  superSpeedActivity:{},
   sessions:{},
   commands:[],
   jackpotPools:{},
@@ -624,6 +626,7 @@ const server = http.createServer(async (req, res)=>{
       if(!machine) return sendJson(res, 400, {ok:false, error:"invalid machine"});
       const playerName = String(body.playerName || "").trim();
       if(!playerName) return sendJson(res, 400, {ok:false, error:"playerName required"});
+      if(body.superSpeedAllowed!==undefined&&(typeof body.superSpeedAllowed!=='boolean'||machine.machineType!=='nova'))return sendJson(res,400,{ok:false,error:'invalid superSpeedAllowed'});
       const existing=passwordIssuance.current(machine,Object.values(state.issuedPasswords));
       if(existing)return sendJson(res,existing.password?200:409,existing.password?{ok:true,issued:existing}:{ok:false,error:'遊技中です。終了後に発行してください。'});
       let password;
@@ -643,10 +646,34 @@ const server = http.createServer(async (req, res)=>{
         sessionId:""
       };
       state.issuedPasswords[password] = issued;
+      if(typeof body.superSpeedAllowed==='boolean'){
+        issued.superSpeedAllowed=body.superSpeedAllowed;
+        machine.capabilities={...machine.capabilities,superSpeedAllowed:body.superSpeedAllowed};
+        if(body.superSpeedAllowed){
+          const event=speedActivity.event(password,machine.machineId,playerName,'allowed',issued.issuedAt);
+          state.superSpeedActivity[event.id]=event;
+        }
+      }
       saveState();
       return sendJson(res, 200, {ok:true, issued});
     }
 
+    if(url.pathname === '/api/admin/super-speed-activity' && req.method === 'GET'){
+      if(!adminOk(req))return sendJson(res,401,{ok:false,error:'admin password required'});
+      const date=url.searchParams.get('date')||speedActivity.dateJst();
+      if(!speedActivity.validDate(date))return sendJson(res,400,{ok:false,error:'invalid date'});
+      return sendJson(res,200,{ok:true,date,rows:speedActivity.summarize(Object.values(state.superSpeedActivity).filter(row=>row.activity_date===date))});
+    }
+    if(url.pathname === '/api/sessions/super-speed-used' && req.method === 'POST'){
+      const body=await readBody(req),session=state.sessions[String(body.sessionId||'')];
+      if(!session||session.token!==String(body.token||''))return sendJson(res,403,{ok:false,error:'invalid session'});
+      const machine=machines.get(session.machineId);
+      if(session.status!=='active'||machine?.currentSessionId!==session.sessionId||Number(machine.resetSerial||0)!==Number(session.resetSerialAtStart||0))return sendJson(res,409,{ok:false,error:'session is not active'});
+      if(machine.machineType!=='nova'||machine.capabilities?.superSpeedAllowed!==true)return sendJson(res,403,{ok:false,error:'super speed is not allowed'});
+      const event=speedActivity.event(session.password,session.machineId,session.playerName,'used',Date.now(),session.sessionId);
+      if(!state.superSpeedActivity[event.id]){state.superSpeedActivity[event.id]=event;saveState();}
+      return sendJson(res,200,{ok:true,date:event.activity_date});
+    }
     if(url.pathname === '/api/admin/passwords/current' && req.method === 'GET'){
       if(!adminOk(req))return sendJson(res,401,{ok:false,error:'admin password required'});
       return sendJson(res,200,[...machines.values()].map(machine=>passwordIssuance.current(machine,Object.values(state.issuedPasswords))||{machineId:machine.machineId,status:'available',password:'',playerName:''}));

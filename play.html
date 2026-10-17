@@ -197,11 +197,26 @@ async function endSession(options={}){
     if(active)wakeSessionWatch();
   }
 }
+const speedUsageRecorded=new Set(),speedUsagePending=new Set(),speedUsageRetry=new Map();
+async function recordSuperSpeedUsage(){
+  if(!active||endingSession)return;
+  const session=active,day=new Date(Date.now()+9*3600000).toISOString().slice(0,10),key=session.sessionId+':'+day;
+  if(speedUsageRecorded.has(key)||speedUsagePending.has(key)||Date.now()<(speedUsageRetry.get(key)||0))return;
+  speedUsagePending.add(key);
+  try{
+    const res=await fetch('/api/sessions/super-speed-used',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:session.sessionId,token:session.token}),signal:AbortSignal.timeout(8000),keepalive:true});
+    const data=await res.json();
+    if(!res.ok||!data.ok)throw Error('usage not saved');
+    speedUsageRecorded.add(key);
+  }catch(error){speedUsageRetry.set(key,Date.now()+10000);}
+  finally{speedUsagePending.delete(key);}
+}
 window.addEventListener('message', event=>{
   if(event.source !== $('slot').contentWindow) return;
   if(slotOrigin && event.origin !== slotOrigin) return;
   const msg = event.data || {};
   if(active && msg.sessionId===active.sessionId){
+    if(msg.type==='nova-super-speed-used'){void recordSuperSpeedUsage();return;}
     if(msg.type==='nova-store-ready'){
       event.source.postMessage({type:'nova-store-bootstrap',sessionId:active.sessionId,resumeState,machineDisplayBaseline},slotOrigin);return;
     }
