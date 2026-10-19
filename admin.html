@@ -18,7 +18,7 @@
   .compactIdentity{display:flex;align-items:center;flex-wrap:wrap;gap:5px 8px;min-width:0}.compactPlayer{max-width:100%;padding:3px 6px;border-radius:5px;background:#422435;color:#ffbdcd;font-size:12px;font-weight:600;overflow-wrap:anywhere}.compactChevron{flex-shrink:0}
 </style>
 <style>
-  .machineSummary{width:100%;height:auto;padding:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;border-radius:4px;min-width:0}.machineSummary:focus-visible{outline:2px solid #c3b2ff;outline-offset:5px}.compactTitle{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:18px;font-weight:800;margin-bottom:3px}.compactChevron{color:#bba0ff;font-size:20px;transition:transform .15s}.machines[data-view="compact"]{align-items:start}.machines[data-view="compact"] .machineTitle{display:none}.machines[data-view="compact"] .machine[data-expanded="true"]{grid-column:span 2;border-color:#9980c7}.machines[data-view="compact"] .machine[data-expanded="true"] .machineDetails{display:grid;border-top:1px solid #3d344e;padding-top:12px;margin-top:3px}.machine[data-expanded="true"] .compactChevron{transform:rotate(180deg)}@media(max-width:460px){.machines[data-view="compact"] .machine[data-expanded="true"]{grid-column:span 1}}
+  .machineSummary{width:100%;height:auto;padding:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;border-radius:4px;min-width:0}.machineSummary:focus-visible{outline:2px solid #c3b2ff;outline-offset:5px}.compactTitle{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:18px;font-weight:800;margin-bottom:3px}.compactChevron{color:#bba0ff;font-size:20px;transition:transform .15s}.machines[data-view="compact"]{align-items:start}.machines[data-view="compact"] .machineTitle{display:none}.machines[data-view="compact"] .machine[data-expanded="true"]{border-color:#9980c7}.machines[data-view="compact"] .machine[data-expanded="true"] .machineDetails{display:grid;border-top:1px solid #3d344e;padding-top:12px;margin-top:3px}.machines[data-view="compact"] .machineDetails > :not(.passwordIssue){display:none}.machine[data-expanded="true"] .compactChevron{transform:rotate(180deg)}
 </style>
 </head>
 <body class="locked">
@@ -167,11 +167,11 @@ function renderAdminSlumpGraphs(){
     const toggle=card.querySelector('.machineSummary');
     toggle.setAttribute('aria-expanded',String(expanded));
     const player=toggle.querySelector('.compactPlayer')?.textContent;
-    toggle.setAttribute('aria-label',machineLabelById(id)+(player?'・'+player:'')+'の詳細を'+(expanded?'閉じる':'開く'));
+    toggle.setAttribute('aria-label',machineLabelById(id)+(player?'・'+player:'')+'のパスワード欄を'+(expanded?'閉じる':'開く'));
   });
   NovaStoreData.setGraphView(adminDataView==='hits'?'hits':'line',machineRows());
   for(const m of machineRows()){
-    if(adminDataView==='compact'&&!expandedMachineDetails.has(String(m.machineId)))continue;
+    if(adminDataView==='compact')continue;
     const c = document.querySelector('canvas[data-machine="' + m.machineId + '"]');
     if(c) drawSlump(c, historyFor(m));
   }
