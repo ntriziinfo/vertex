@@ -94,6 +94,10 @@ const status=async(session)=>request('sessions/status',{sessionId:session.sessio
 if(process.env.QA_STALE_SESSION_ASSERT==='1'){
  for(const action of ['end','force-end','reset']){
   const issued=await issue('one','QA'),session=await begin(issued.body.issued.password);
+  const beforeRecovery=structuredClone(machines.get('one')),beforeResults=results.length,beforeSheets=sheetRecords.length;
+  const activeRecovery=await request('admin/machines/one/force-end',{recoverOnly:true});
+  assert.equal(activeRecovery.statusCode,409);assert.deepEqual(machines.get('one'),beforeRecovery);
+  assert.equal(results.length,beforeResults);assert.equal(sheetRecords.length,beforeSheets);
   const snapshot={playSessionId:session.sessionId,endPreparedAt:Date.now(),capturedAt:10,stats:{totalSpins:100,totalFee:300,totalPaid:420},state:{flow:{mode:'AT',atRemainingPt:250}}};
   machines.get('one').last_snapshot=structuredClone(snapshot);
   let resume,entered;
@@ -115,7 +119,7 @@ if(process.env.QA_STALE_SESSION_ASSERT==='1'){
   await request('sessions/end',{...session,snapshot});
   const saved=structuredClone(machines.get('one')),count=results.length,sheetsCount=sheetRecords.length;
   Object.assign(machines.get('one'),{current_session_id:session.sessionId,current_player_name:'Recovery',locked:true});
-  const repeated=await request(endpoint,session);
+  const repeated=await request(endpoint,{...session,recoverOnly:true});
   assert.equal(repeated.statusCode,200,JSON.stringify(repeated.body));
   assert.equal(repeated.body.alreadyEnded,true);assert.equal(repeated.body.released,true);
   assert.deepEqual(machines.get('one'),saved,'repair must keep the existing totals, snapshots, setting and checkpoint');

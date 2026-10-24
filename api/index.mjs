@@ -754,6 +754,10 @@ export default async function handler(req, res){
       if(!adminOk(req)) return json(res, 401, {ok:false, error:"admin password required"});
       let machine = await getMachine(decodeURIComponent(m[1]));
       const session = machine.currentSessionId ? await getSession(machine.currentSessionId) : null;
+      const body=await readBody(req);
+      if(body.recoverOnly && (!session||!['ended','cancelled'].includes(session.status))){
+        return json(res,409,{ok:false,error:'終了済みの記録を確認できません。利用状態は変更していません。'});
+      }
       if(session && session.status !== "active"){
         const released=await releaseClosedSession(session);
         if(!released)return json(res,409,{ok:false,error:'台の状態が変更されました。更新して再確認してください。'});

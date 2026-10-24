@@ -319,8 +319,22 @@ function passwordIssueMarkup(machine){
     <legend>${current?'発行済みパスワード':'パスワード発行'}</legend>
     ${current?`<div class="issuedCustomer">${escapeHtml(current.playerName)} 様</div><b class="code" id="issue-code-${id}">${state.loaded?escapeHtml(current.password||'パスワード取得不可'):''}</b>`:
     `<div class="row"><label class="field"><span class="muted">お客様名</span><input class="passwordName" id="player-name-${id}" value="${escapeHtml(state.playerName||'')}" maxlength="100" placeholder="お客様名" autocomplete="off" oninput="rememberPasswordDraft('${id}')"></label><button type="button" onclick="issue('${id}')">発行</button></div>`}
-    <div class="issueStatus ${state.failed||state.loaded&&current&&!current.password?'bad':'muted'}" id="issue-status-${id}" role="status" aria-live="polite">${escapeHtml(state.message||(!state.loaded?'発行状態を確認中…':current&&!current.password?'利用中の記録に対応するパスワードが見つかりません。終了済みなら「強制終了」で終了状態を再確認できます。':''))}</div>
+    <div class="issueStatus ${state.failed||state.loaded&&current&&!current.password?'bad':'muted'}" id="issue-status-${id}" role="status" aria-live="polite">${escapeHtml(state.message||(!state.loaded?'発行状態を確認中…':current&&!current.password?'利用中の記録に対応するパスワードが見つかりません。終了済みの場合は下のボタンで再確認できます。':''))}</div>
+    ${state.loaded&&current&&!current.password?`<button type="button" onclick="recoverEndedMachine('${id}')">終了状態を再確認</button>`:''}
   </fieldset>`;
+}
+async function recoverEndedMachine(id){
+  if(machineOperations.get(String(id))?.busy)return;
+  setMachineOperation(id,true,'終了状態を確認中…');
+  try{
+    // Recovery never forces an active session to end or creates another settlement.
+    const res=await fetch('/api/admin/machines/'+encodeURIComponent(id)+'/force-end',{method:'POST',headers:{'Content-Type':'application/json',...adminHeaders()},body:JSON.stringify({recoverOnly:true}),signal:AbortSignal.timeout(15000)});
+    const data=await res.json();
+    if(!res.ok||!data.released)throw Error(data.error||'終了状態を確認できませんでした。');
+    clearPasswordIssue(id);
+    setMachineOperation(id,false,'終了済みの記録を確認し、空き台に戻しました。');
+    await Promise.allSettled([loadMachines(),loadCurrentPasswords()]);
+  }catch(error){setMachineOperation(id,false,error.message);}
 }
 async function loadCurrentPasswords(){
   if(!adminSecret||passwordCurrentLoading)return;

@@ -810,6 +810,10 @@ const server = http.createServer(async (req, res)=>{
       const machine = machineFor(decodeURIComponent(forceEndMatch[1]));
       if(!machine) return sendJson(res, 404, {ok:false, error:"machine not found"});
       const session = machine.currentSessionId ? state.sessions[machine.currentSessionId] : null;
+      const body=await readBody(req);
+      if(body.recoverOnly && (!session||!['ended','cancelled'].includes(session.status))){
+        return sendJson(res,409,{ok:false,error:'終了済みの記録を確認できません。利用状態は変更していません。'});
+      }
       if(session && session.status !== "active"){
         const released=releaseLocalClosedSession(session);
         if(!released)return sendJson(res,409,{ok:false,error:'台の状態が変更されました。更新して再確認してください。'});

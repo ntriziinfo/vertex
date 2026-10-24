@@ -81,6 +81,18 @@ test('standalone ended-session recovery preserves data and only retires the matc
  assert.equal(machine.currentSessionId,'new');assert.equal(machine.locked,true);
 });
 
+test('password recovery UI requests closed-session-only recovery and keeps the current state on rejection',async()=>{
+ const calls=[],messages=[];let cleared=0,refreshed=0,released=false;
+ const c=vm.createContext({AbortSignal,machineOperations:new Map(),adminHeaders:()=>({'X-Admin-Password':'qa'}),setMachineOperation:(...args)=>messages.push(args),
+  clearPasswordIssue:()=>cleared++,loadMachines:async()=>refreshed++,loadCurrentPasswords:async()=>refreshed++,
+  fetch:async(url,options)=>{calls.push({url,body:JSON.parse(options.body)});return {ok:released,json:async()=>released?{ok:true,released:true}:{error:'終了済みの記録を確認できません。'}};}});
+ vm.runInContext(fn('recoverEndedMachine'),c);
+ await c.recoverEndedMachine('one');assert.equal(cleared,0);assert.equal(refreshed,0);
+ assert.match(messages.at(-1)[2],/終了済みの記録を確認できません/);
+ released=true;await c.recoverEndedMachine('one');assert.equal(cleared,1);assert.equal(refreshed,2);
+ assert(calls.every(call=>call.body.recoverOnly===true));
+});
+
 test('real gateway carries all-player machine totals while preserving individual settlement',()=>{
  const result=spawnSync(process.execPath,['tests/fixtures/password-lifecycle.mjs'],{encoding:'utf8',timeout:30000,env:{...process.env,QA_TOTALS_ASSERT:'1',ADMIN_PASSWORD:'qa',SUPABASE_URL:'https://qa.invalid',SUPABASE_SERVICE_ROLE_KEY:'qa-key',GOOGLE_SHEETS_WEBHOOK_URL:'',VERTEX_ALLOWED_ORIGINS:'',VERTEX_STORE_ID:'qa-store',VERTEX_DB_SCHEMA:'public',VERTEX_MACHINES_JSON:JSON.stringify(['one','two'].map(machineId=>({machineId,machineType:'nova',gameUrl:'https://game.invalid'})))}});
  assert.equal(result.status,0,result.stderr||result.stdout);
