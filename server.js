@@ -495,6 +495,7 @@ function resultPayload(session, machine, body){
     machineName:machine.displayName || machineLabel(machine.machineId),
     machineType:machine.machineType || "generic",
     playerName:session.playerName || body.playerName || "",
+    ...machineResume.creditFields(machine,session,delta.playerProfit),
     sessionId:session.sessionId, resetSerial:Number(session.resetSerialAtStart ?? machine.resetSerial) || 0,
     setting:settings.setting || "",
     totalSpins:stats.totalSpins || 0,
@@ -738,7 +739,7 @@ const server = http.createServer(async (req, res)=>{
         startedAt:Date.now(),
         endedAt:0,
         resetSerialAtStart:machine.resetSerial || 0,
-        startSnapshot:{...machine.lastSnapshot,machineDisplayBaseline:displayBaseline}
+        startSnapshot:{...machine.lastSnapshot,machineDisplayBaseline:displayBaseline,playerCreditCarry:machineResume.creditCarryFor(machine,issued.playerName)}
       };
       issued.status = "used";
       issued.usedAt = Date.now();

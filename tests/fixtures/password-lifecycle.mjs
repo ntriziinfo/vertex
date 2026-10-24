@@ -91,6 +91,33 @@ const issue=(machineId,playerName)=>request('admin/issue-password',{machineId,pl
 const current=async()=>{const res=await request('admin/passwords/current',{},'GET');assert.equal(res.statusCode,200);return res.body;};
 const begin=async(password)=>{const res=await request('sessions/start',{password});assert.equal(res.statusCode,200,JSON.stringify(res.body));return res.body.session;};
 const status=async(session)=>request('sessions/status',{sessionId:session.sessionId,token:session.token},'POST',false);
+if(process.env.QA_CREDIT_ASSERT==='1'){
+ const cases=[['Alice',500,0,500],['Alice',-100,500,400],['Bob',200,0,200],['Alice',50,0,50],['Alice',-200,50,-150]];
+ for(const [name,delta,carry,total] of cases){
+  const issued=await issue('one',name);assert.equal(issued.statusCode,200,JSON.stringify(issued.body));
+  const started=await request('sessions/start',{password:issued.body.issued.password});
+  assert.equal(started.statusCode,200,JSON.stringify(started.body));
+  assert.equal(started.body.resumeState.creditCarry,carry);
+  const session=started.body.session,base=structuredClone(started.body.resumeState.state?.stats||{totalSpins:0,totalFee:0,totalPaid:0});
+  const stats={totalSpins:base.totalSpins+100,totalFee:base.totalFee+300,totalPaid:base.totalPaid+300+delta};
+  const snapshot={playSessionId:session.sessionId,playSessionStartStats:base,stats,adminCommandLastId:152,
+    normalState:{flow:{phase:'art',remaining:456,stock:2}},runtimeState:{session:{active:true,phase:'a_type_bonus'}},capturedAt:Date.now()};
+  const state=await request('machines/one/state',snapshot,'POST',false);assert.equal(state.statusCode,200);
+  const reentry=await request('sessions/start',{password:issued.body.issued.password});
+  assert.equal(reentry.body.resumeState.creditCarry,carry);assert.equal(reentry.body.resumeState.baseline.totalFee,base.totalFee);
+  assert.equal(reentry.body.resumeState.state.normalState.flow.remaining,456);
+  assert.equal(reentry.body.resumeState.lastCommandId,152);
+  const end=await request('sessions/end',{...session,snapshot});assert.equal(end.statusCode,200);
+  assert.equal(end.body.record.playerProfit,delta);assert.equal(end.body.record.playerCreditTotal,total);
+  assert.equal(sheetRecords.at(-1).playerProfit,delta>0?Math.floor(delta*.9):delta);
+  const count=sheetRecords.length;await request('sessions/end',session);assert.equal(sheetRecords.length,count);
+ }
+ await request('admin/machines/one/reset');
+ const issued=await issue('one','Alice'),next=await request('sessions/start',{password:issued.body.issued.password});
+ assert.equal(next.body.resumeState.creditCarry,0);assert.equal(next.body.resumeState.state.stats,undefined);
+ console.log('Customer changes, consecutive signed carry, resume, reset, cabinet state and per-session billing verified.');
+ process.exit(0);
+}
 if(process.env.QA_STALE_SESSION_ASSERT==='1'){
  for(const action of ['end','force-end','reset']){
   const issued=await issue('one','QA'),session=await begin(issued.body.issued.password);
@@ -174,7 +201,7 @@ if(process.env.QA_RESUME_ASSERT==='1'){
  }
  await request('admin/machines/one/reset');
  const issued=await issue('one','Reset'),started=await request('sessions/start',{password:issued.body.issued.password});
- assert.equal(started.body.resumeState.state,null);
+ assert.equal(started.body.resumeState.state.stats,undefined);
  console.log('Cross-player state, same-player baseline, stale snapshots, normal/forced end and explicit reset verified.');
  process.exit(0);
 }

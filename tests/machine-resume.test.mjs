@@ -33,5 +33,6 @@ test('new player gets cabinet state without previous credentials; returning play
  assert.doesNotMatch(JSON.stringify(next),/secret|private|"old"/);
  assert.deepEqual(resume.forSession(machine,{sessionId:'old'}).baseline,saved.playSessionStartStats);
  assert.equal(resume.forSession({machineType:'jackspot'},{}),null);
- assert.equal(resume.forSession({...machine,lastSnapshot:{stats:null}},{sessionId:'new',startSnapshot:{stats:null}}).state,null);
+ const reset=resume.forSession({...machine,lastSnapshot:{stats:null}},{sessionId:'new',startSnapshot:{stats:null,settings:{setting:5}},startedAt:2000});
+ assert.equal(reset.state.stats,undefined);assert.equal(reset.state.settings.setting,5);assert.equal(reset.state.savedAt,2000);
 });
