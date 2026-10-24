@@ -9,9 +9,9 @@ const speedEvents=new Map();
 const sheetRecords=[];
 const collision=policy.candidate('qa-key','qa-store',{machineId:'one'},null,0);
 passwords.set(collision,{password:collision,machine_id:'unrelated',player_name:'Existing',status:'issued',issued_at_ms:1});
-let requests=0;
+let requests=0, holdSnapshotWrite=null, beforeReleaseWrite=null;
 function matches(row,query){
- for(const key of ['password','machine_id','session_id','status','activity_date']){
+ for(const key of ['password','machine_id','session_id','status','activity_date','current_session_id','reset_serial']){
   const filter=query.get(key);if(!filter)continue;
   if(filter.startsWith('eq.')&&String(row[key]??'')!==filter.slice(3))return false;
   if(filter.startsWith('in.')&&!filter.slice(4,-1).split(',').includes(String(row[key])))return false;
@@ -69,7 +69,14 @@ function answer(url,options={},body){
 }
 https.request=(url,options,callback)=>{
  const req=new EventEmitter();let body='';req.write=chunk=>body+=chunk;
- req.end=()=>setTimeout(()=>{const data=answer(String(url),options,body),res=new EventEmitter();res.statusCode=data.status;callback(res);res.emit('data',JSON.stringify(data.data));res.emit('end');},2);return req;
+ req.end=()=>setTimeout(async()=>{
+  if(new URL(url).pathname.endsWith('/machine_states')&&options.method!=='GET'&&body){
+   const row=JSON.parse(body);
+   if(holdSnapshotWrite&&row.last_snapshot?.qaDelayed){const hold=holdSnapshotWrite;holdSnapshotWrite=null;await hold();}
+   if(beforeReleaseWrite&&row.current_session_id===''){const before=beforeReleaseWrite;beforeReleaseWrite=null;before();}
+  }
+  const data=answer(String(url),options,body),res=new EventEmitter();res.statusCode=data.status;callback(res);res.emit('data',JSON.stringify(data.data));res.emit('end');
+ },2);return req;
 };
 syncBuiltinESMExports();
 globalThis.fetch=async(url,options={})=>{const out=answer(String(url),options,options.body);return new Response(JSON.stringify(out.data),{status:out.status});};
@@ -84,6 +91,55 @@ const issue=(machineId,playerName)=>request('admin/issue-password',{machineId,pl
 const current=async()=>{const res=await request('admin/passwords/current',{},'GET');assert.equal(res.statusCode,200);return res.body;};
 const begin=async(password)=>{const res=await request('sessions/start',{password});assert.equal(res.statusCode,200,JSON.stringify(res.body));return res.body.session;};
 const status=async(session)=>request('sessions/status',{sessionId:session.sessionId,token:session.token},'POST',false);
+if(process.env.QA_STALE_SESSION_ASSERT==='1'){
+ for(const action of ['end','force-end','reset']){
+  const issued=await issue('one','QA'),session=await begin(issued.body.issued.password);
+  const snapshot={playSessionId:session.sessionId,endPreparedAt:Date.now(),capturedAt:10,stats:{totalSpins:100,totalFee:300,totalPaid:420},state:{flow:{mode:'AT',atRemainingPt:250}}};
+  machines.get('one').last_snapshot=structuredClone(snapshot);
+  let resume,entered;
+  const gate=new Promise(resolve=>resume=resolve),waiting=new Promise(resolve=>entered=resolve);
+  holdSnapshotWrite=()=>{entered();return gate;};
+  const pending=request('machines/one/state',{...snapshot,qaDelayed:true,capturedAt:11,stats:{...snapshot.stats,totalSpins:101}},'POST',false);
+  await waiting;
+  const ended=action==='end'?await request('sessions/end',{...session,snapshot}):await request('admin/machines/one/'+action);
+  assert.equal(ended.statusCode,200,JSON.stringify(ended.body));
+  const saved=structuredClone(machines.get('one'));
+  resume();const late=await pending;
+  assert.equal(late.body.ignored,true,'state already in flight must be ignored after '+action);
+  assert.deepEqual(machines.get('one'),saved,'late state must not resurrect occupancy or overwrite totals');
+  assert.equal((await current()).find(row=>row.machineId==='one').status,'available');
+ }
+ for(const endpoint of ['sessions/end','admin/machines/one/force-end']){
+  const issued=await issue('one','Recovery'),session=await begin(issued.body.issued.password);
+  const snapshot={playSessionId:session.sessionId,stats:{totalSpins:120,totalFee:360,totalPaid:490},state:{flow:{mode:'AT',atRemainingPt:300}}};
+  await request('sessions/end',{...session,snapshot});
+  const saved=structuredClone(machines.get('one')),count=results.length,sheetsCount=sheetRecords.length;
+  Object.assign(machines.get('one'),{current_session_id:session.sessionId,current_player_name:'Recovery',locked:true});
+  const repeated=await request(endpoint,session);
+  assert.equal(repeated.statusCode,200,JSON.stringify(repeated.body));
+  assert.equal(repeated.body.alreadyEnded,true);assert.equal(repeated.body.released,true);
+  assert.deepEqual(machines.get('one'),saved,'repair must keep the existing totals, snapshots, setting and checkpoint');
+  assert.equal(results.length,count);assert.equal(sheetRecords.length,sheetsCount,'repair must not export a second settlement');
+  assert.equal((await current()).find(row=>row.machineId==='one').status,'available');
+  // Also repair a session whose final machine checkpoint was never committed.
+  Object.assign(machines.get('one'),{current_session_id:session.sessionId,current_player_name:'Recovery',locked:true,last_ended_session:null});
+  const checkpointRetry=await request(endpoint,session);
+  assert.equal(checkpointRetry.body.released,true);
+  assert.deepEqual(machines.get('one').last_snapshot,saved.last_snapshot);
+  assert.deepEqual(machines.get('one').last_ended_session.machineTotal.stats,saved.last_ended_session.machineTotal.stats);
+  assert.equal(results.length,count);assert.equal(sheetRecords.length,sheetsCount);
+  Object.assign(machines.get('one'),saved);
+  // A concurrent replacement must not be unlocked by the old end retry.
+  Object.assign(machines.get('one'),{current_session_id:session.sessionId,locked:true});
+  let replacement;
+  beforeReleaseWrite=()=>{Object.assign(machines.get('one'),{current_session_id:'new-session',current_player_name:'New',reset_serial:saved.reset_serial+1});replacement=structuredClone(machines.get('one'));};
+  await request(endpoint,session);
+  assert.deepEqual(machines.get('one'),replacement);
+  Object.assign(machines.get('one'),saved);
+ }
+ console.log('Delayed state after end/force-end/reset, ended-session repair, preserved totals and concurrent replacement verified.');
+ process.exit(0);
+}
 async function rejectsStaleState(session){
  const before=structuredClone(machines.get(session.machineId));
  const response=await request(`machines/${session.machineId}/state`,{playSessionId:session.sessionId,playSessionToken:session.token,stats:{totalSpins:99999,totalPaid:999999}},'POST',false);

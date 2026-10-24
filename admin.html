@@ -309,7 +309,7 @@ async function loadResults(){
 function compactPasswordMarkup(id){
   const state=passwordIssues.get(id);
   if(!state?.loaded)return '<span class="compactPasswordNote">'+(state?.failed?'更新待ち':'確認中…')+'</span>';
-  if(state.current)return escapeHtml(state.current.password||'確認中…');
+  if(state.current)return state.current.password?escapeHtml(state.current.password):'<span class="compactPasswordNote">要確認</span>';
   return '<span class="compactPasswordNote">'+(state.busy?'発行中…':'未発行')+'</span>';
 }
 function passwordIssueMarkup(machine){
@@ -317,9 +317,9 @@ function passwordIssueMarkup(machine){
   const disabled=state.busy||!state.loaded||machineOperations.get(String(id))?.busy;
   return `<fieldset class="passwordIssue${current?' isIssued':''}" id="issue-controls-${id}" ${disabled?'disabled':''}>
     <legend>${current?'発行済みパスワード':'パスワード発行'}</legend>
-    ${current?`<div class="issuedCustomer">${escapeHtml(current.playerName)} 様</div><b class="code" id="issue-code-${id}">${state.loaded?escapeHtml(current.password||'確認中'):''}</b>`:
+    ${current?`<div class="issuedCustomer">${escapeHtml(current.playerName)} 様</div><b class="code" id="issue-code-${id}">${state.loaded?escapeHtml(current.password||'パスワード取得不可'):''}</b>`:
     `<div class="row"><label class="field"><span class="muted">お客様名</span><input class="passwordName" id="player-name-${id}" value="${escapeHtml(state.playerName||'')}" maxlength="100" placeholder="お客様名" autocomplete="off" oninput="rememberPasswordDraft('${id}')"></label><button type="button" onclick="issue('${id}')">発行</button></div>`}
-    <div class="issueStatus ${state.failed?'bad':'muted'}" id="issue-status-${id}" role="status" aria-live="polite">${escapeHtml(state.message||(!state.loaded?'発行状態を確認中…':''))}</div>
+    <div class="issueStatus ${state.failed||state.loaded&&current&&!current.password?'bad':'muted'}" id="issue-status-${id}" role="status" aria-live="polite">${escapeHtml(state.message||(!state.loaded?'発行状態を確認中…':current&&!current.password?'利用中の記録に対応するパスワードが見つかりません。終了済みなら「強制終了」で終了状態を再確認できます。':''))}</div>
   </fieldset>`;
 }
 async function loadCurrentPasswords(){
@@ -337,6 +337,11 @@ async function loadCurrentPasswords(){
       const current=row.status==='available'?null:row;
       if(!state.loaded||state.failed||JSON.stringify(state.current||null)!==JSON.stringify(current)){
         setPasswordIssue(row.machineId,{loaded:true,failed:false,current,message:'',...(state.current&&!current?{playerName:''}:{})});
+      }
+    }
+    for(const machine of liveMachines()){
+      if(!rows.some(row=>row.machineId===machine.machineId)&&!passwordIssues.get(machine.machineId)?.busy){
+        setPasswordIssue(machine.machineId,{loaded:false,failed:true,message:'この台の発行状態を取得できません。自動で再確認します。'});
       }
     }
   }catch(error){

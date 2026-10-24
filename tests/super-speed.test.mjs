@@ -27,7 +27,7 @@ test('admin reset/setting revokes permission; snapshots and limit-only changes c
    req.end=()=>queueMicrotask(()=>{
      const resource=new URL(url).pathname.split('/').at(-1);let data=[];
      if(resource==='machine_states'){
-       if(options.method==='POST'){
+       if(options.method==='POST'||options.method==='PATCH'){
          const patch=JSON.parse(body);calls.push(patch);row={...row,...patch};
        }
        data=[row];

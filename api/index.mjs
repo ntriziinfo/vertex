@@ -367,6 +367,27 @@ async function getSession(id){
 async function saveSession(session){
   return sb("sessions?on_conflict=session_id", {method:"POST", headers:{Prefer:"resolution=merge-duplicates,return=representation"}, body:JSON.stringify({session_id:session.sessionId, token:session.token || "", password:session.password || "", machine_id:String(session.machineId), player_name:session.playerName || "", status:session.status, started_at_ms:session.startedAt || 0, ended_at_ms:session.endedAt || 0, reset_serial_at_start:session.resetSerialAtStart || 0, start_snapshot:session.startSnapshot || null, result_record:session.resultRecord || null, sheets:session.sheets || null})});
 }
+async function releaseClosedSession(session){
+  if(!['ended','cancelled'].includes(session.status))return false;
+  const machine=await getMachine(session.machineId);
+  if(machine.currentSessionId!==session.sessionId || machine.resetSerial!==session.resetSerialAtStart)return false;
+  const patch={locked:false,current_session_id:'',current_player_name:''};
+  if(session.status==='ended'&&session.resultRecord&&machine.lastEndedSession?.sessionId!==session.sessionId){
+    // The previous end may have saved its result before the final seat write failed.
+    // Rebuild its checkpoint from existing records; never bill or append a result again.
+    machine.lastEndedSession={sessionId:session.sessionId,playerName:session.playerName,endedAt:session.endedAt,record:session.resultRecord,sheets:session.sheets};
+    await hydrateMachineTotal(machine);
+    patch.last_ended_session=machine.lastEndedSession;
+  }
+  const rows=await sb('machine_states?machine_id=eq.'+encodeURIComponent(machine.machineId)+'&current_session_id=eq.'+encodeURIComponent(session.sessionId)+'&reset_serial=eq.'+machine.resetSerial,{
+    method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(patch)
+  });
+  if(!rows.length)return false;
+  await sb('issued_passwords?machine_id=eq.'+encodeURIComponent(machine.machineId)+'&session_id=eq.'+encodeURIComponent(session.sessionId)+'&status=in.(issued,used)',{
+    method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:session.status})
+  });
+  return true;
+}
 async function insertCommand(machineId, command){
   const rows = await sb("machine_commands", {method:"POST", headers:{Prefer:"return=representation"}, body:JSON.stringify({machine_id:String(machineId), command, created_at_ms:ms()})});
   return rows[0];
@@ -618,7 +639,7 @@ export default async function handler(req, res){
       const body = await readBody(req);
       const session = await getSession(String(body.sessionId || ""));
       if(!session || session.token !== String(body.token || "")) return json(res, 403, {ok:false, error:"invalid session"});
-      if(session.status === "ended") return json(res, 200, {ok:true, alreadyEnded:true, record:session.resultRecord || null});
+      if(session.status === "ended") return json(res, 200, {ok:true, alreadyEnded:true, released:await releaseClosedSession(session), record:session.resultRecord || null});
       const machine = await getMachine(session.machineId);
       const snapshot = snapshotForSession(session, machine, body.snapshot);
       if(body.snapshot && snapshot === body.snapshot){
@@ -659,11 +680,14 @@ export default async function handler(req, res){
       if(String(machine.lastSnapshot?.playSessionId)===incomingSessionId && Number(body.capturedAt||0)<Number(machine.lastSnapshot?.capturedAt||0))return json(res,200,{ok:true,ignored:true});
       const completion=adminSettings.completionSettings(machine.lastSnapshot?.settings,machine.machineType);
       machine.lastSnapshot = {...body, settings:{...body.settings,...completion},machineId, online:true, updatedAt:ms()};
-      const definition = machineDefinition(machineId);
-      machine.displayName = definition ? definition.displayName : body.name || machine.displayName || machineId;
       machine.updatedAt = ms();
-      if(body.settings && body.settings.setting) machine.assignedSetting = Number(body.settings.setting) || machine.assignedSetting;
-      await upsertMachine(machine);
+      // A state request may pass authentication, then arrive after end/reset or a
+      // new customer. Compare ownership at the write itself and update snapshot
+      // fields only: a delayed heartbeat must never restore occupied/ended data.
+      const saved=await sb('machine_states?machine_id=eq.'+encodeURIComponent(machineId)+'&current_session_id=eq.'+encodeURIComponent(incomingSessionId)+'&reset_serial=eq.'+machine.resetSerial,{
+        method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({last_snapshot:machine.lastSnapshot,updated_at_ms:machine.updatedAt})
+      });
+      if(!saved.length)return json(res,200,{ok:true,ignored:true,reason:'stale play session'});
       return json(res, 200, {ok:true});
     }
     m = pathname.match(/^\/api\/machines\/([^/]+)\/commands\/poll$/);
@@ -730,7 +754,11 @@ export default async function handler(req, res){
       if(!adminOk(req)) return json(res, 401, {ok:false, error:"admin password required"});
       let machine = await getMachine(decodeURIComponent(m[1]));
       const session = machine.currentSessionId ? await getSession(machine.currentSessionId) : null;
-      if(session && session.status !== "active") return json(res, 200, {ok:true, alreadyEnded:true, record:session.resultRecord || null, sheets:session.sheets || null});
+      if(session && session.status !== "active"){
+        const released=await releaseClosedSession(session);
+        if(!released)return json(res,409,{ok:false,error:'台の状態が変更されました。更新して再確認してください。'});
+        return json(res,200,{ok:true,alreadyEnded:true,released,record:session.resultRecord||null,sheets:session.sheets||null});
+      }
       if(session && session.status === "active"){
         if(machine.machineType==='nova'&&!(machine.lastSnapshot?.endPreparedAt&&machine.lastSnapshot.playSessionId===session.sessionId)){
           await insertCommand(machine.machineId,{type:'prepareEnd',sessionId:session.sessionId});

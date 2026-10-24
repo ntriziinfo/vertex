@@ -108,7 +108,7 @@ const probe = String.raw`
   }
   const healthRes = response(); await health({}, healthRes); assert.equal(healthRes.statusCode, 200);
   assert.ok(calls.some(c => c.path === 'sessions'));
-  assert.ok(calls.some(c => c.path === 'machine_states' && c.method === 'POST'));
+  assert.ok(calls.some(c => c.path === 'machine_states' && c.method === 'PATCH'));
   assert.ok(calls.some(c => c.path === 'rpc/jackpot_pool_set'));
   process.stdout.write(JSON.stringify({requests:calls.length}));
 `;

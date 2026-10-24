@@ -266,6 +266,20 @@ function sseSend(res, event, data){
   res.write(`data: ${JSON.stringify(data)}\n\n`);
 }
 
+function releaseLocalClosedSession(session){
+  const machine=machineFor(session.machineId);
+  if(!['ended','cancelled'].includes(session.status)||!machine||machine.currentSessionId!==session.sessionId||Number(machine.resetSerial||0)!==Number(session.resetSerialAtStart||0))return false;
+  if(session.status==='ended'&&session.resultRecord&&machine.lastEndedSession?.sessionId!==session.sessionId){
+    const total=machineTotalFor({...machine,currentSessionId:'',lastSnapshot:null,lastEndedSession:null},readResultRecords(Number.MAX_SAFE_INTEGER));
+    machine.lastEndedSession={sessionId:session.sessionId,playerName:session.playerName,endedAt:session.endedAt,record:session.resultRecord,sheets:session.sheets,machineTotal:{...total,resetSerial:machine.resetSerial,sessionId:session.sessionId}};
+  }
+  for(const issued of Object.values(state.issuedPasswords||{})){
+    if(issued.machineId===machine.machineId&&issued.sessionId===session.sessionId&&['issued','used'].includes(issued.status))issued.status=session.status;
+  }
+  machine.locked=false;machine.currentSessionId='';machine.currentPlayerName='';
+  saveState();broadcastMachines();
+  return true;
+}
 function publicMachine(machine, machineTotal, jackpotPool=null){
   const snapshot = machine.lastSnapshot || null;
   const stats = snapshot && snapshot.stats ? snapshot.stats : null;
@@ -752,7 +766,7 @@ const server = http.createServer(async (req, res)=>{
       const body = await readBody(req);
       const session = state.sessions[String(body.sessionId || "")];
       if(!session || session.token !== String(body.token || "")) return sendJson(res, 403, {ok:false, error:"invalid session"});
-      if(session.status === "ended") return sendJson(res, 200, {ok:true, alreadyEnded:true, record:session.resultRecord || null});
+      if(session.status === "ended") return sendJson(res, 200, {ok:true, alreadyEnded:true, released:releaseLocalClosedSession(session), record:session.resultRecord || null});
       if(session.status !== 'active')return sendJson(res,409,{ok:false,error:'session is not active'});
       const machine = machineFor(session.machineId);
       if(!machine) return sendJson(res, 400, {ok:false, error:"machine not found"});
@@ -796,7 +810,11 @@ const server = http.createServer(async (req, res)=>{
       const machine = machineFor(decodeURIComponent(forceEndMatch[1]));
       if(!machine) return sendJson(res, 404, {ok:false, error:"machine not found"});
       const session = machine.currentSessionId ? state.sessions[machine.currentSessionId] : null;
-      if(session && session.status !== "active") return sendJson(res, 200, {ok:true, alreadyEnded:true, record:session.resultRecord || null, sheets:session.sheets || null});
+      if(session && session.status !== "active"){
+        const released=releaseLocalClosedSession(session);
+        if(!released)return sendJson(res,409,{ok:false,error:'台の状態が変更されました。更新して再確認してください。'});
+        return sendJson(res,200,{ok:true,alreadyEnded:true,released,record:session.resultRecord||null,sheets:session.sheets||null});
+      }
       if(session && session.status === "active"){
         if(machine.machineType==='nova'&&!(machine.lastSnapshot?.endPreparedAt&&machine.lastSnapshot.playSessionId===session.sessionId)){
           sendCommand(machine.machineId,{type:'prepareEnd',sessionId:session.sessionId});

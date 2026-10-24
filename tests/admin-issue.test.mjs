@@ -49,10 +49,36 @@ test('polling adopts other administrators, releases ended passwords and rejects 
  assert.equal(states.get('one').current,null);assert.match(c.$('issue-controls-one').outerHTML,/<input/);assert.doesNotMatch(c.$('issue-controls-one').outerHTML,/LATEST/);
  const fail=c.loadCurrentPasswords();requests.shift()({ok:false,json:async()=>({error:'unavailable'})});await fail;
  assert.equal(states.get('one').loaded,false);assert.match(c.$('issue-controls-one').outerHTML,/disabled/);
+ const missing=c.loadCurrentPasswords();requests.shift()({ok:true,json:async()=>[{machineId:'one',status:'busy',password:'',playerName:'Ended customer'}]});await missing;
+ assert.doesNotMatch(c.compactPasswordMarkup('one'),/確認中/);
+ assert.match(c.$('issue-controls-one').outerHTML,/パスワード取得不可/);assert.doesNotMatch(c.$('issue-controls-one').outerHTML,/<input/);
+ assert.match(c.$('issue-controls-one').outerHTML,/対応するパスワードが見つかりません/);
+ assert.equal(states.get('two').loaded,false);assert.equal(states.get('two').failed,true);assert.match(c.compactPasswordMarkup('two'),/更新待ち/);
+ const recovered=c.loadCurrentPasswords();requests.shift()({ok:true,json:async()=>[{machineId:'one',status:'available'},{machineId:'two',status:'issued',password:'LATEST'}]});await recovered;
+ assert.equal(states.get('one').current,null);assert.match(c.$('issue-controls-one').outerHTML,/<input/);
+ assert.equal(states.get('two').failed,false);assert.match(c.compactPasswordMarkup('two'),/LATEST/);
 });
 test('server password lifecycle and simultaneous administrators',()=>{
  const result=spawnSync(process.execPath,['tests/fixtures/password-lifecycle.mjs'],{encoding:'utf8',env:{...process.env,ADMIN_PASSWORD:'qa',SUPABASE_URL:'https://qa.invalid',SUPABASE_SERVICE_ROLE_KEY:'qa-key',GOOGLE_SHEETS_WEBHOOK_URL:'',VERTEX_ALLOWED_ORIGINS:'',VERTEX_STORE_ID:'qa-store',VERTEX_DB_SCHEMA:'public',VERTEX_MACHINES_JSON:JSON.stringify(['one','two'].map(machineId=>({machineId,machineType:'nova',gameUrl:'https://game.invalid'})))}});
  assert.equal(result.status,0,result.stderr||result.stdout);
+});
+
+test('late snapshots cannot revive ended sessions and retrying an ended session releases its seat without billing again',()=>{
+ const result=spawnSync(process.execPath,['tests/fixtures/password-lifecycle.mjs'],{encoding:'utf8',timeout:30000,env:{...process.env,QA_STALE_SESSION_ASSERT:'1',ADMIN_PASSWORD:'qa',SUPABASE_URL:'https://qa.invalid',SUPABASE_SERVICE_ROLE_KEY:'qa-key',GOOGLE_SHEETS_WEBHOOK_URL:'https://sheets.invalid',VERTEX_ALLOWED_ORIGINS:'',VERTEX_STORE_ID:'qa-store',VERTEX_DB_SCHEMA:'public',VERTEX_MACHINES_JSON:JSON.stringify(['one','two'].map(machineId=>({machineId,machineType:'nova',gameUrl:'https://game.invalid'})))}});
+ assert.equal(result.status,0,result.stderr||result.stdout);
+});
+
+test('standalone ended-session recovery preserves data and only retires the matching password',()=>{
+ const code=fs.readFileSync('server.js','utf8').match(/function releaseLocalClosedSession\([^]*?\n}/)[0];
+ const machine={machineId:'one',currentSessionId:'old',currentPlayerName:'QA',locked:true,resetSerial:1,lastSnapshot:{stats:{totalSpins:200}},lastEndedSession:{sessionId:'old',record:{playerProfit:50}}};
+ const saved=structuredClone(machine),state={issuedPasswords:{old:{machineId:'one',sessionId:'old',status:'used'},other:{machineId:'two',sessionId:'current',status:'used'}}};
+ const c=vm.createContext({machineFor:()=>machine,state,saveState(){},broadcastMachines(){}});vm.runInContext(code,c);
+ assert.equal(c.releaseLocalClosedSession({machineId:'one',sessionId:'old',status:'ended',resetSerialAtStart:1}),true);
+ assert.deepEqual(machine,{...saved,currentSessionId:'',currentPlayerName:'',locked:false});
+ assert.equal(state.issuedPasswords.old.status,'ended');assert.equal(state.issuedPasswords.other.status,'used');
+ machine.currentSessionId='new';machine.locked=true;
+ assert.equal(c.releaseLocalClosedSession({machineId:'one',sessionId:'old',status:'ended',resetSerialAtStart:1}),false);
+ assert.equal(machine.currentSessionId,'new');assert.equal(machine.locked,true);
 });
 
 test('real gateway carries all-player machine totals while preserving individual settlement',()=>{
