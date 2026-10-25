@@ -179,15 +179,16 @@ function renderMachines(){
   const focusedField = focused?.id || '';
   const selection = focused?.tagName === 'INPUT' ? [focused.selectionStart,focused.selectionEnd] : null;
   const floorMachines = liveMachines();
-  const floorProfit = floorMachines.reduce((sum, machine) => sum + statsProfit(totalViewForMachine(machine).stats), 0);
+  const customerMachines = floorMachines.filter(machine=>!machine.capabilities?.privateCustomerPilot);
+  const floorProfit = customerMachines.reduce((sum, machine) => sum + statsProfit(totalViewForMachine(machine).stats), 0);
   const floorProfitEl = $('floorCurrentProfit');
   if(floorProfitEl){
     floorProfitEl.textContent = floorMachines.every(m=>m.machineTotalStats) ? signed(floorProfit) + ' pt' : '—';
     floorProfitEl.classList.toggle('positive', floorProfit > 0);
     floorProfitEl.classList.toggle('negative', floorProfit < 0);
   }
-  const floorAverageRtp = floorMachines.length
-    ? floorMachines.reduce((sum, machine) => sum + machineSettingRtp(machine), 0) / floorMachines.length
+  const floorAverageRtp = customerMachines.length
+    ? customerMachines.reduce((sum, machine) => sum + machineSettingRtp(machine), 0) / customerMachines.length
     : 0;
   const floorAverageRtpEl = $('floorAverageRtp');
   if(floorAverageRtpEl) floorAverageRtpEl.textContent = `${floorAverageRtp.toFixed(1)}%`;
