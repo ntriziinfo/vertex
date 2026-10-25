@@ -176,7 +176,7 @@ function configuredRuntimeProblems(env=process.env, definitions=MACHINE_DEFINITI
   }
   if(storeId === "store-debug"){
     const novaMachines = (definitions || []).filter(machine=>String(machine.machineType || "").toLowerCase() === "nova");
-    if(novaMachines.length !== (env.CUSTOMER_LOGIN_PILOT==='1'?13:12)) problems.push("DEBUG_NOVA_MACHINE_COUNT");
+    if(novaMachines.length !== (env.CUSTOMER_LOGIN_PILOT==='1'||env.CUSTOMER_PILOT_DISPLAY==='1'?13:12)) problems.push("DEBUG_NOVA_MACHINE_COUNT");
   }
   return [...new Set(problems)];
 }
@@ -518,7 +518,7 @@ export default async function gateway(req, res){
         configSource:CONFIG_SOURCE,
         gitCommitSha:String(process.env.VERCEL_GIT_COMMIT_SHA || ""),
         readyProblems:configuredRuntimeProblems(),
-        machineCount:MACHINE_DEFINITIONS.filter(m=>adminRequestOk(req)||!m.capabilities?.privateCustomerPilot).length,
+        machineCount:MACHINE_DEFINITIONS.length,
         stores:STORE_DIRECTORY
       }));
     }
@@ -545,14 +545,17 @@ export default async function gateway(req, res){
       return sendJson(res,req,410,{ok:false,error:'monitor discontinued'});
     }
 
+    if(pathname==='/api/admin/customer-pilot/access'&&req.method==='GET'){
+      return sendJson(res,req,customerPilotEnabled()?200:404,{ok:customerPilotEnabled()});
+    }
     if(pathname==='/api/admin/customer-pilot'&&req.method==='GET'){
       if(!customerPilotEnabled())return sendJson(res,req,404,{ok:false,error:'not found'});
       res.statusCode=200;setSecurityHeaders(res,req);res.setHeader('Content-Type','text/html; charset=utf-8');res.setHeader('Cache-Control','no-store');
       return res.end(await readFile(new URL('../play.html',import.meta.url),'utf8'));
     }
     const body = await readLimitedBody(req);
-    if(pathname==='/api/sessions/start'&&body.requestedMachineId==='nova-13'&&(!customerPilotEnabled()||!adminRequestOk(req))){
-      return sendJson(res,req,403,{ok:false,error:'管理者専用の試験台です'});
+    if(pathname==='/api/sessions/start'&&body.requestedMachineId==='nova-13'&&!customerPilotEnabled()){
+      return sendJson(res,req,403,{ok:false,error:'この台の顧客認証は利用できません'});
     }
 
     if(pathname === "/api/sessions/status" && req.method === "POST"){
@@ -634,7 +637,7 @@ export default async function gateway(req, res){
       return sendCaptured(res, req, upstream, value=>{
         const rows = Array.isArray(value) ? value : [];
         if(adminRequestOk(req)) return rows.map(row=>stripSecretsDeep(row));
-        return rows.filter(row=>row.machineId!=='nova-13'||STORE_ID!=='store-debug').map(sanitizePublicMachine);
+        return rows.map(sanitizePublicMachine);
       });
     }
 

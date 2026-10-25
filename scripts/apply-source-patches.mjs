@@ -11,9 +11,6 @@ function load(relative){
 }
 
 function replacement(target, before, after, label){
-  if(label === 'treat non-2xx Sheets responses as failures'){
-    after=after.replace('async function sendToSheets(record){', 'async function sendToSheets(record){\n  if(STORE_ID===\"store-debug\" && record.machineId===\"nova-13\") return {ok:false,skipped:true,reason:\"private authentication test machine\"};');
-  }
   if(target.text.includes(after)) return;
   if(!target.text.includes(before)) throw new Error(`${target.relative}: patch context not found for ${label}`);
   if(checkOnly) throw new Error(`${target.relative}: security patch not applied: ${label}`);

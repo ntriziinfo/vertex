@@ -485,7 +485,6 @@ function sessionDelta(session, snapshot){
 }
 
 async function sendToSheets(record){
-  if(STORE_ID==="store-debug" && record.machineId==="nova-13") return {ok:false,skipped:true,reason:"private authentication test machine"};
   if(!SHEETS_WEBHOOK_URL) return {ok:false, skipped:true, reason:"GOOGLE_SHEETS_WEBHOOK_URL is not set"};
   try{
     const result = await postJson(SHEETS_WEBHOOK_URL, sheetsSettlementPolicy.sheetsSettlement(record));

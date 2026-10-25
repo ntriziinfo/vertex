@@ -58,9 +58,9 @@ async function loadBranding(){
     if(customerLogin){
       const label=document.createElement('label');label.className='field';label.innerHTML='<span>ユーザーID</span><input id="userId" maxlength="32" autocomplete="username" autocapitalize="none" spellcheck="false" style="text-transform:none">';
       $('password').closest('label').before(label);
-      const register=document.createElement('button');register.type='button';register.textContent='試験用IDを登録・更新（管理者専用）';
+      const register=document.createElement('button');register.type='button';register.textContent='顧客IDを登録・更新（管理者専用）';
       register.onclick=async()=>{register.disabled=true;try{const r=await fetch('/api/admin/customer-pilot/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:$('userId').value,password:$('password').value,status:'有効'})});const d=await r.json();$('error').textContent=d.ok?'登録しました。この台で開始を押してください。':d.error;}catch(e){$('error').textContent='登録できませんでした';}finally{register.disabled=false;}};
-      $('startBtn').after(register);
+      if(location.pathname==='/api/admin/customer-pilot')$('startBtn').after(register);
       $('password').type='password';$('password').maxLength=128;$('password').autocomplete='current-password';$('password').style.textTransform='none';
     }
     brandingReady=true;$('startBtn').disabled=false;
