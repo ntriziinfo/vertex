@@ -38,6 +38,35 @@ let endingSession = false;
 const params = new URLSearchParams(location.search);
 const entryMachineId = params.get('machine') || '';
 function machineName(machineId){ return machineNames.get(String(machineId)) || String(machineId || ''); }
+function enableLastPasswordCharacter(input){
+  const wrapper=document.createElement('span');
+  wrapper.style.cssText='position:relative;display:block;overflow:hidden;border-radius:6px';
+  input.before(wrapper);wrapper.append(input);
+  input.style.cssText+=';width:100%;text-align:left;padding:0 12px;font-family:monospace;color:transparent;-webkit-text-fill-color:transparent;caret-color:white';
+  const mirror=document.createElement('span');mirror.setAttribute('aria-hidden','true');
+  mirror.style.cssText='position:absolute;left:13px;right:13px;top:0;height:48px;display:flex;align-items:center;overflow:hidden;pointer-events:none;font:22px monospace;letter-spacing:.08em;color:white';
+  const text=document.createElement('span');text.style.whiteSpace='pre';mirror.append(text);wrapper.append(mirror);
+  let timer, visible=-1;
+  function draw(){
+    text.textContent=Array.from(input.value).map((c,i)=>i===visible?c:'•').join('');
+    text.style.transform=`translateX(${-input.scrollLeft}px)`;
+  }
+  function hide(){clearTimeout(timer);visible=-1;draw();}
+  input.addEventListener('input',event=>{
+    hide();
+    // Pasted/autofilled passwords stay masked; reveal only one typed character.
+    if(event.inputType==='insertText'&&event.data&&Array.from(event.data).length===1&&!event.isComposing){
+      visible=Array.from(input.value.slice(0,input.selectionStart)).length-1;
+      draw();timer=setTimeout(hide,800);
+    }
+    requestAnimationFrame(draw);
+  });
+  input.addEventListener('blur',hide);
+  input.addEventListener('scroll',draw);
+  input.addEventListener('change',hide);
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)hide();});
+  draw();
+}
 // Same-origin admin tabs can wake the game without waiting for its next poll.
 // Only the notification crosses origins; the game still fetches its server queue.
 try{
@@ -62,6 +91,7 @@ async function loadBranding(){
       register.onclick=async()=>{register.disabled=true;try{const r=await fetch('/api/admin/customer-pilot/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:$('userId').value,password:$('password').value,status:'有効'})});const d=await r.json();$('error').textContent=d.ok?'登録しました。この台で開始を押してください。':d.error;}catch(e){$('error').textContent='登録できませんでした';}finally{register.disabled=false;}};
       if(location.pathname==='/api/admin/customer-pilot')$('startBtn').after(register);
       $('password').type='password';$('password').maxLength=128;$('password').autocomplete='current-password';$('password').style.textTransform='none';
+      enableLastPasswordCharacter($('password'));
     }
     brandingReady=true;$('startBtn').disabled=false;
     const machines = await machinesResponse.json();
@@ -98,6 +128,7 @@ async function start(){
   if(!data.ok){ $('error').textContent = friendlyError(data.error); $('startBtn').disabled = false; $('startBtn').textContent = 'この台で開始'; return; }
   active = data.session;
   $('password').value='';
+  $('password').dispatchEvent(new Event('change'));
   resumeState=data.resumeState||null;machineDisplayBaseline=data.machineDisplayBaseline||null;
   novaHandoff=new URL(data.iframeUrl,location.href).searchParams.get('resumeFromStore')==='1';
   $('machineLabel').textContent = machineName(active.machineId);
