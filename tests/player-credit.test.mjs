@@ -25,7 +25,7 @@ test('resume metadata preserves per-entry carry and command boundary without lea
   assert.equal(resume.forSession({...machine,lastSnapshot:null},session).creditCarry,-100);
 });
 test('gateway consecutive entries preserve only display credit and export each session delta once',()=>{
-  const result=spawnSync(process.execPath,['tests/fixtures/password-lifecycle.mjs'],{encoding:'utf8',timeout:30000,env:{...process.env,
+  const result=spawnSync(process.execPath,['tests/fixtures/password-lifecycle.mjs'],{encoding:'utf8',timeout:30000,env:{...process.env,CUSTOMER_LOGIN_PILOT:'0',
     QA_CREDIT_ASSERT:'1',ADMIN_PASSWORD:'qa',SUPABASE_URL:'https://qa.invalid',SUPABASE_SERVICE_ROLE_KEY:'qa-key',
     GOOGLE_SHEETS_WEBHOOK_URL:'https://sheets.invalid',VERTEX_ALLOWED_ORIGINS:'',VERTEX_STORE_ID:'store-debug',VERTEX_DB_SCHEMA:'public',VERTEX_ALLOW_DEBUG_MACHINE_OVERRIDE:'1',
     VERTEX_MACHINES_JSON:JSON.stringify(['one','two'].map(machineId=>({machineId,machineType:'nova',gameUrl:'https://game.invalid'})))}});

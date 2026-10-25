@@ -117,7 +117,7 @@ for (const [store, schema] of [...Object.entries(STORE_SCHEMAS), ["store-jag-one
   test(`all API reads, writes, health checks and RPCs select ${schema}`, () => {
     const result = spawnSync(process.execPath, ["--input-type=module", "-e", probe], {
       cwd: new URL("../", import.meta.url), encoding: "utf8", timeout: 15000,
-      env: {...process.env, VERTEX_STORE_ID:store, VERTEX_DB_SCHEMA:schema,
+      env: {...process.env, CUSTOMER_LOGIN_PILOT:'0', VERTEX_STORE_ID:store, VERTEX_DB_SCHEMA:schema,
         VERTEX_ALLOW_DEBUG_MACHINE_OVERRIDE:"1", VERTEX_REQUIRE_SESSION_TOKEN:"0",
         VERTEX_MACHINES_JSON:JSON.stringify(Array.from({length:store === "store-debug" ? 12 : 1}, (_, i) => ({
           machineId:i === 0 ? "same-id" : `nova-${i}`, machineType:"nova", gameUrl:"https://game.invalid/play",
