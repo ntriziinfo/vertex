@@ -1,4 +1,5 @@
 import machineResume from "../machine-resume.cjs";
+import {enabled as customerLoginEnabled,createCustomerAuth} from '../customer-auth.mjs';
 import * as https from "node:https";
 import * as crypto from "node:crypto";
 import machineTotals from "../machine-totals.cjs";
@@ -484,6 +485,7 @@ function sessionDelta(session, snapshot){
 }
 
 async function sendToSheets(record){
+  if(STORE_ID==="store-debug" && record.machineId==="nova-13") return {ok:false,skipped:true,reason:"private authentication test machine"};
   if(!SHEETS_WEBHOOK_URL) return {ok:false, skipped:true, reason:"GOOGLE_SHEETS_WEBHOOK_URL is not set"};
   try{
     const result = await postJson(SHEETS_WEBHOOK_URL, sheetsSettlementPolicy.sheetsSettlement(record));
@@ -500,6 +502,32 @@ function resultPayload(session, machine, body){
   return {type:"slot-session-ended", storeId:STORE_ID, storeName:STORE_NAME, endedAt:new Date(endedAtMs).toISOString(), endedAtMs, machineId:machine.machineId, machineName:machine.displayName || machineLabel(machine.machineId), machineType:machine.machineType || "generic", playerName:session.playerName || body.playerName || "", ...machineResume.creditFields(machine,session,delta.playerProfit), sessionId:session.sessionId, resetSerial:Number(session.resetSerialAtStart ?? machine.resetSerial) || 0, setting:settings.setting || machine.assignedSetting || "", totalSpins:stats.totalSpins || 0, bigCount:stats.bigCount || 0, regCount:stats.midCount || 0, grapeCount:stats.grapeCount || 0, totalFee:stats.totalFee || 0, totalPaid:stats.totalPaid || 0, profit:Number(stats.profit ?? ((stats.totalPaid || 0) - (stats.totalFee || 0))) || 0, playerSpins:delta.playerSpins, playerBigCount:delta.playerBigCount, playerRegCount:delta.playerRegCount, playerGrapeCount:delta.playerGrapeCount, playerTotalFee:delta.playerTotalFee, playerTotalPaid:delta.playerTotalPaid, playerProfit:delta.playerProfit, billingBasis:"playerProfit", playerBaselineSource:delta.baselineSource, startStats:delta.startStats, currentResultText:snapshot.state ? snapshot.state.resultText || "" : "", stats, settings, normalState:snapshot.normalState || {}, session:snapshot.session || {}};
 }
 
+function customerAuth(origin){
+  const rpc=async(name,args)=>sb('rpc/'+name,{method:'POST',body:JSON.stringify(args)});
+  return createCustomerAuth({repo:{
+    find:async id=>(await sb('customer_accounts?user_id=eq.'+encodeURIComponent(id)+'&select=*&limit=1'))[0],
+    save:async account=>sb('customer_accounts?on_conflict=user_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({...account,updated_at:new Date().toISOString()})}),
+    consume:(key,limit)=>rpc('customer_login_attempt',{p_key:key,p_limit:limit}),
+    async claim({userId,machineId,passwordHash}){
+      const before=await hydrateMachineTotal(await getMachine(machineId));
+      if(!before.gameUrl)throw Object.assign(new Error('ゲームURLが未設定です'),{statusCode:503});
+      const baseline=machineDisplayBaseline(before);
+      const result=await rpc('customer_claim',{
+        p_user_id:userId,p_password_hash:passwordHash,p_machine_id:machineId,
+        p_session_id:makeId('sess'),p_token:crypto.randomBytes(32).toString('hex'),
+        p_reset:before.resetSerial,p_snapshot:before.lastSnapshot,
+        p_start_snapshot:{...before.lastSnapshot,machineDisplayBaseline:baseline,playerCreditCarry:machineResume.creditCarryFor(before,userId)},p_now:ms()
+      });
+      if(!result.ok){
+        const messages={'credentials':'ユーザーIDまたはパスワードを確認してください','other-seat':'別の台で遊技中です。先にその台で終了してください','busy':'この台は他のお客様が利用中です','legacy-reservation':'従来の発行番号が残っています。店舗側で終了を確認してください','changed':'台の状態が更新されました。もう一度お試しください','machine':'この台は利用できません'};
+        throw Object.assign(new Error(messages[result.error]||'開始できません'),{statusCode:result.error==='credentials'?403:409});
+      }
+      const session=sessionFromRow(result.session),machine=machineFromRow(result.machine);
+      const displayBaseline=session.startSnapshot.machineDisplayBaseline;
+      return {ok:true,resumed:result.resumed,session:{sessionId:session.sessionId,token:session.token,machineId,playerName:session.playerName},machineDisplayBaseline:displayBaseline,resumeState:machineResume.forSession(machine,session),iframeUrl:machineGameUrl(machine,origin,session.sessionId,displayBaseline)};
+    }
+  }});
+}
 export default async function handler(req, res){
   try{
     if(!req.__vertexGatewayAuthorized) return json(res, 404, {ok:false, error:"not found"});
@@ -507,7 +535,7 @@ export default async function handler(req, res){
     const rawPath = Array.isArray(req.query.path) ? req.query.path.join("/") : String(req.query.path || "");
     const pathname = "/api/" + rawPath;
     if(pathname === "/api/health") return json(res, 200, {ok:true, storeId:STORE_ID, storeName:STORE_NAME, supabaseUrlSet:!!SUPABASE_URL, supabaseKeySet:!!SUPABASE_KEY});
-    if(pathname === "/api/config" && req.method === "GET") return json(res, 200, {ok:true, storeId:STORE_ID, storeName:STORE_NAME, stores:STORE_DIRECTORY, machineCount:MACHINE_DEFINITIONS.length});
+    if(pathname === "/api/config" && req.method === "GET") return json(res, 200, {ok:true, storeId:STORE_ID, storeName:STORE_NAME, stores:STORE_DIRECTORY, machineCount:MACHINE_DEFINITIONS.length,customerLoginEnabled:customerLoginEnabled()});
     if(pathname === "/api/admin/verify" && req.method === "GET"){
       return adminOk(req)
         ? json(res, 200, {ok:true})
@@ -516,6 +544,14 @@ export default async function handler(req, res){
     if(!requireSupabase(res)) return;
     const forwardedProtocol = String(req.headers["x-forwarded-proto"] || "https").split(",")[0].trim();
     const origin = forwardedProtocol + "://" + req.headers.host;
+    if(pathname==='/api/admin/customer-pilot/register'&&req.method==='POST'){
+      return json(res,200,await customerAuth(origin).sync(await readBody(req),process.env.CUSTOMER_SYNC_SECRET));
+    }
+    if(pathname==='/api/customers/sync'&&req.method==='POST')return json(res,200,await customerAuth(origin).sync(await readBody(req),req.headers['x-customer-sync-secret']));
+    if(customerLoginEnabled()&&pathname==='/api/admin/issue-password'&&(await readBody(req)).machineId==='nova-13')return json(res,409,{ok:false,error:'この店舗は顧客IDで入場します'});
+    if(customerLoginEnabled()&&pathname==='/api/sessions/start'&&req.method==='POST'&&(await readBody(req)).requestedMachineId==='nova-13'){
+      return json(res,200,await customerAuth(origin).start(await readBody(req),String(req.headers['x-vercel-forwarded-for']||req.socket?.remoteAddress||'unknown').split(',')[0]));
+    }
     if(pathname === "/api/jackpot/pool" && req.method === "GET"){
       const machineId = String(req.query.machineId || "").trim();
       const definition = jackpotMachineDefinition(machineId);

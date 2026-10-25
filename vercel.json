@@ -11,7 +11,8 @@
   ],
   "functions": {
     "api/gateway.mjs": {
-      "maxDuration": 30
+      "maxDuration": 30,
+      "includeFiles": "play.html"
     },
     "api/health.mjs": {
       "maxDuration": 10

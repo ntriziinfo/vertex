@@ -307,12 +307,14 @@ async function loadResults(){
   $('results').innerHTML = rows.map(r => `<div class="item"><b>${escapeHtml(r.machineName || machineLabelById(r.machineId))}</b><span>${escapeHtml(r.playerName)}</span><span>${r.sheets && r.sheets.ok ? '<span class="ok">Sheets</span>' : '<span class="muted">local</span>'}</span><span>${new Date(r.endedAt).toLocaleString('ja-JP')}</span></div>`).join('') || '<div class="muted">まだありません</div>';
 }
 function compactPasswordMarkup(id){
+  if(id==='nova-13')return '認証試験';
   const state=passwordIssues.get(id);
   if(!state?.loaded)return '<span class="compactPasswordNote">'+(state?.failed?'更新待ち':'確認中…')+'</span>';
   if(state.current)return state.current.password?escapeHtml(state.current.password):'<span class="compactPasswordNote">要確認</span>';
   return '<span class="compactPasswordNote">'+(state.busy?'発行中…':'未発行')+'</span>';
 }
 function passwordIssueMarkup(machine){
+  if(machine.machineId==='nova-13')return '<fieldset class="passwordIssue" id="issue-controls-nova-13"><legend>非公開・認証試験専用</legend><p>試験データは精算スプレッドシートへ送信しません。</p><a href="/api/admin/customer-pilot?machine=nova-13" target="_blank" rel="noopener">13番台でID・パスワード認証を試す</a></fieldset>';
   const id=machine.machineId, state=passwordIssues.get(id)||{},current=state.current;
   const disabled=state.busy||!state.loaded||machineOperations.get(String(id))?.busy;
   return `<fieldset class="passwordIssue${current?' isIssued':''}" id="issue-controls-${id}" ${disabled?'disabled':''}>

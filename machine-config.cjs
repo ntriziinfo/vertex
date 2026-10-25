@@ -167,6 +167,11 @@ function loadMachineDefinitions(){
 
 const machineDefinitionResult = loadMachineDefinitions();
 const MACHINE_DEFINITIONS = machineDefinitionResult.value;
+if(STORE_ID==='store-debug'&&process.env.CUSTOMER_LOGIN_PILOT==='1'){
+  const base=MACHINE_DEFINITIONS.find(m=>m.machineId==='nova-12');
+  if(!base)throw new Error('Pilot requires debug NOVA preset');
+  MACHINE_DEFINITIONS.push({...base,machineId:'nova-13',displayName:'Nova 13番台（非公開・認証試験）',capabilities:{...base.capabilities,privateCustomerPilot:true}});
+}
 const CONFIG_SOURCE = machineDefinitionResult.source;
 const MACHINE_DEFINITION_BY_ID = new Map(MACHINE_DEFINITIONS.map(machine=>[machine.machineId, machine]));
 

@@ -15,7 +15,7 @@
     <h1><span id="storeName">VERTEX</span> <span id="entryMachineTitle"></span></h1>
     <p class="muted" id="entryHelp">管理画面で発行されたパスワードを入力してください。</p>
     <label class="field"><span>パスワード</span><input id="password" maxlength="12" autocomplete="one-time-code"></label>
-    <button id="startBtn">この台で開始</button>
+    <button id="startBtn" disabled>この台で開始</button>
     <p id="error" class="bad"></p>
   </div>
 </div>
@@ -30,6 +30,7 @@
 const $ = id => document.getElementById(id);
 let active = null;
 let slotOrigin = "";
+let customerLogin=false,brandingReady=false;
 let resumeState=null, machineDisplayBaseline=null, novaHandoff=false, pendingSnapshot=null;
 let machineNames = new Map();
 let sessionWatchTimer = null, sessionWatchInFlight = false, sessionWatchRequested = false;
@@ -52,13 +53,24 @@ async function loadBranding(){
   try{
     const [configResponse, machinesResponse] = await Promise.all([fetch('/api/config'), fetch('/api/machines')]);
     const config = await configResponse.json();
+    if(!configResponse.ok)throw Error('config');
+    customerLogin=config.storeId==='store-debug'&&config.customerLoginEnabled===true&&entryMachineId==='nova-13';
+    if(customerLogin){
+      const label=document.createElement('label');label.className='field';label.innerHTML='<span>ユーザーID</span><input id="userId" maxlength="32" autocomplete="username" autocapitalize="none" spellcheck="false" style="text-transform:none">';
+      $('password').closest('label').before(label);
+      const register=document.createElement('button');register.type='button';register.textContent='試験用IDを登録・更新（管理者専用）';
+      register.onclick=async()=>{register.disabled=true;try{const r=await fetch('/api/admin/customer-pilot/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:$('userId').value,password:$('password').value,status:'有効'})});const d=await r.json();$('error').textContent=d.ok?'登録しました。この台で開始を押してください。':d.error;}catch(e){$('error').textContent='登録できませんでした';}finally{register.disabled=false;}};
+      $('startBtn').after(register);
+      $('password').type='password';$('password').maxLength=128;$('password').autocomplete='current-password';$('password').style.textTransform='none';
+    }
+    brandingReady=true;$('startBtn').disabled=false;
     const machines = await machinesResponse.json();
     if(config.storeName){ $('storeName').textContent = config.storeName; document.title = `${config.storeName} プレイ入口`; }
     machineNames = new Map((Array.isArray(machines) ? machines : []).map(machine=>[String(machine.machineId), machine.displayName || machine.machineId]));
-  }catch(error){}
+  }catch(error){$('error').textContent='店舗情報を取得できません。ページを再読み込みしてください。';}
   if(entryMachineId){
     $('entryMachineTitle').textContent = machineName(entryMachineId);
-    $('entryHelp').textContent = machineName(entryMachineId) + '用のパスワードを入力してください。';
+    $('entryHelp').textContent = customerLogin?'登録済みのユーザーIDとパスワードで入場できます。':machineName(entryMachineId) + '用のパスワードを入力してください。';
   }else{
     $('entryMachineTitle').textContent = '';
   }
@@ -73,17 +85,19 @@ function friendlyError(error){
   return map[error] || error || "開始できません";
 }
 async function start(){
+  if(!brandingReady)return;
   if($('startBtn').disabled || active) return;
   $('error').textContent = '';
   $('startBtn').disabled = true;
   $('startBtn').textContent = '確認中...';
-  const password = $('password').value.trim().toUpperCase();
+  const password = customerLogin?$('password').value:$('password').value.trim().toUpperCase();
   if(!password){ $('error').textContent = 'パスワードを入力してください'; $('startBtn').disabled = false; $('startBtn').textContent = 'この台で開始'; return; }
   try{
-  const res = await fetch('/api/sessions/start', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password, requestedMachineId:entryMachineId}),signal:AbortSignal.timeout(12000)});
+  const res = await fetch('/api/sessions/start', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password, requestedMachineId:entryMachineId,...(customerLogin?{userId:$('userId').value.trim()}: {})}),signal:AbortSignal.timeout(12000)});
   const data = await res.json();
   if(!data.ok){ $('error').textContent = friendlyError(data.error); $('startBtn').disabled = false; $('startBtn').textContent = 'この台で開始'; return; }
   active = data.session;
+  $('password').value='';
   resumeState=data.resumeState||null;machineDisplayBaseline=data.machineDisplayBaseline||null;
   novaHandoff=new URL(data.iframeUrl,location.href).searchParams.get('resumeFromStore')==='1';
   $('machineLabel').textContent = machineName(active.machineId);
@@ -163,7 +177,7 @@ function requestSlotSnapshot(){
 }
 async function endSession(options={}){
   if(!active || endingSession) return;
-  if(!options.skipConfirm && !confirm('終了してデータを送信します。終了後はこのパスワードでは続きから遊べません。')) return;
+  if(!options.skipConfirm && !confirm(customerLogin?'終了してデータを送信し、台を空席に戻します。再度遊ぶ場合は台選びからログインしてください。':'終了してデータを送信します。終了後はこのパスワードでは続きから遊べません。')) return;
   endingSession=true;
   clearTimeout(sessionWatchTimer);sessionWatchTimer=null;
   $('endBtn').disabled = true;
