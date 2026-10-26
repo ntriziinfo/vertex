@@ -544,7 +544,7 @@ export default async function handler(req, res){
     const forwardedProtocol = String(req.headers["x-forwarded-proto"] || "https").split(",")[0].trim();
     const origin = forwardedProtocol + "://" + req.headers.host;
     if(pathname==='/api/admin/customer-pilot/register'&&req.method==='POST'){
-      return json(res,200,await customerAuth(origin).sync(await readBody(req),process.env.CUSTOMER_SYNC_SECRET));
+      return json(res,409,{ok:false,error:'アカウントの登録・更新は顧客管理スプレッドシートから行ってください'});
     }
     if(pathname==='/api/customers/sync'&&req.method==='POST')return json(res,200,await customerAuth(origin).sync(await readBody(req),req.headers['x-customer-sync-secret']));
     if(customerLoginEnabled()&&pathname==='/api/admin/issue-password')return json(res,409,{ok:false,error:'この店舗は顧客IDで入場します'});

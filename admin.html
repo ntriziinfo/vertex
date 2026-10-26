@@ -316,7 +316,7 @@ function compactPasswordMarkup(id){
   return '<span class="compactPasswordNote">'+(state.busy?'発行中…':'未発行')+'</span>';
 }
 function passwordIssueMarkup(machine){
-  if(customerLoginEnabled)return `<fieldset class="passwordIssue" id="issue-controls-${machine.machineId}"><legend>顧客ID認証</legend><a href="/api/admin/customer-pilot?machine=${encodeURIComponent(machine.machineId)}" target="_blank" rel="noopener">顧客IDを登録・管理</a><p><a href="https://nebula-control.vercel.app/play.html?machine=${encodeURIComponent(machine.machineId)}" target="_blank" rel="noopener">この台の顧客用入口</a></p></fieldset>`;
+  if(customerLoginEnabled)return `<fieldset class="passwordIssue" id="issue-controls-${machine.machineId}"><legend>顧客ID認証</legend><a href="/api/admin/customer-pilot?machine=${encodeURIComponent(machine.machineId)}" target="_blank" rel="noopener">管理者用の遊技入口</a><p><a href="https://nebula-control.vercel.app/play.html?machine=${encodeURIComponent(machine.machineId)}" target="_blank" rel="noopener">この台の顧客用入口</a></p></fieldset>`;
   const id=machine.machineId, state=passwordIssues.get(id)||{},current=state.current;
   const disabled=state.busy||!state.loaded||machineOperations.get(String(id))?.busy;
   return `<fieldset class="passwordIssue${current?' isIssued':''}" id="issue-controls-${id}" ${disabled?'disabled':''}>
