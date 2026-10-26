@@ -28,10 +28,12 @@ test('live machine 13 exports settlement with the same positive-profit gap',asyn
  vm.runInContext(source.match(/async function sendToSheets\(record\)\{[^]*?\n}/)[0],ctx);
  const result=await ctx.sendToSheets({storeId:'store-debug',machineId:'nova-13',machineType:'nova',playerProfit:1000});assert.equal(result.ok,true);assert.equal(sent[0].playerProfit,900);
 });
-test('credentials are hashed; customer login cannot start existing customer machines',async()=>{
+test('credentials are hashed; customer login covers all 13 NOVA seats and rejects other machines',async()=>{
  const hash=await hashPassword('Test-pass123');assert.equal(await verifyPassword('Test-pass123',hash),true);assert.equal(await verifyPassword('WRONG-pass123',hash),false);
  let claims=0;const auth=createCustomerAuth({env:{VERTEX_STORE_ID:'store-debug',CUSTOMER_LOGIN_PILOT:'1'},repo:{consume:async()=>true,find:async()=>({password_hash:hash,enabled:true}),claim:async()=>{claims++;return {ok:true};}}});
- await assert.rejects(auth.start({userId:'testuser',password:'Test-pass123',requestedMachineId:'nova-01'}));assert.equal(claims,0);
+ for(const requestedMachineId of ['nova-00','nova-14','vertex-01','nova-1',''])await assert.rejects(auth.start({userId:'testuser',password:'Test-pass123',requestedMachineId}));assert.equal(claims,0);
+ for(let i=1;i<=13;i++)assert.equal((await auth.start({userId:'testuser',password:'Test-pass123',requestedMachineId:'nova-'+String(i).padStart(2,'0')})).ok,true);
+ assert.equal(claims,13);
  assert.equal((await auth.start({userId:'testuser',password:'Test-pass123',requestedMachineId:'nova-13'})).ok,true);
 });
 test('customer registration remains admin-only before accessing storage',async()=>{

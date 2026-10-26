@@ -1,5 +1,5 @@
 import machineResume from "../machine-resume.cjs";
-import {enabled as customerLoginEnabled,createCustomerAuth} from '../customer-auth.mjs';
+import {enabled as customerLoginEnabled,createCustomerAuth,customerMachine} from '../customer-auth.mjs';
 import * as https from "node:https";
 import * as crypto from "node:crypto";
 import machineTotals from "../machine-totals.cjs";
@@ -547,8 +547,8 @@ export default async function handler(req, res){
       return json(res,200,await customerAuth(origin).sync(await readBody(req),process.env.CUSTOMER_SYNC_SECRET));
     }
     if(pathname==='/api/customers/sync'&&req.method==='POST')return json(res,200,await customerAuth(origin).sync(await readBody(req),req.headers['x-customer-sync-secret']));
-    if(customerLoginEnabled()&&pathname==='/api/admin/issue-password'&&(await readBody(req)).machineId==='nova-13')return json(res,409,{ok:false,error:'この店舗は顧客IDで入場します'});
-    if(customerLoginEnabled()&&pathname==='/api/sessions/start'&&req.method==='POST'&&(await readBody(req)).requestedMachineId==='nova-13'){
+    if(customerLoginEnabled()&&pathname==='/api/admin/issue-password')return json(res,409,{ok:false,error:'この店舗は顧客IDで入場します'});
+    if(customerLoginEnabled()&&pathname==='/api/sessions/start'&&req.method==='POST'){
       return json(res,200,await customerAuth(origin).start(await readBody(req),String(req.headers['x-vercel-forwarded-for']||req.socket?.remoteAddress||'unknown').split(',')[0]));
     }
     if(pathname === "/api/jackpot/pool" && req.method === "GET"){

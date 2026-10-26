@@ -51,8 +51,8 @@ function atFirstRate(stats){
 }
 function render(){
   if(machines.some(m=>m.machineId==='nova-13')){
-    document.querySelector('.hero p:last-child').textContent='NOVAの空き状況と台データをチェック。1〜12番台は発行パスワード、13番台は登録済みユーザーID・パスワードで開始できます。';
-    document.querySelector('.footnote').textContent='表示データは管理リセット以降の累計です。空き状況は30秒ごとに更新されます。13番台は登録済みユーザーID・パスワードで入場・再入場できます。1〜12番台は従来の台専用パスワードをご利用ください。';
+    document.querySelector('.hero p:last-child').textContent='NOVAの空き状況と台データをチェック。全台、登録済みユーザーID・パスワードで開始できます。';
+    document.querySelector('.footnote').textContent='表示データは管理リセット以降の累計です。空き状況は30秒ごとに更新されます。全台、登録済みユーザーID・パスワードで入場・再入場できます。';
   }
   $('total').textContent = machines.length;
   $('available').textContent = fresh ? machines.filter(m=>!m.locked).length : '—';

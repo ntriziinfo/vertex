@@ -82,6 +82,7 @@ let adminDataView = 'line';
 const expandedMachineDetails = new Set();
 const machineOperations = new Map();
 const machineDrafts = new Map();
+let customerLoginEnabled=false;
 const passwordIssues = new Map();
 let passwordCurrentRequest = 0;
 let passwordCurrentLoading = false;
@@ -308,14 +309,14 @@ async function loadResults(){
   $('results').innerHTML = rows.map(r => `<div class="item"><b>${escapeHtml(r.machineName || machineLabelById(r.machineId))}</b><span>${escapeHtml(r.playerName)}</span><span>${r.sheets && r.sheets.ok ? '<span class="ok">Sheets</span>' : '<span class="muted">local</span>'}</span><span>${new Date(r.endedAt).toLocaleString('ja-JP')}</span></div>`).join('') || '<div class="muted">まだありません</div>';
 }
 function compactPasswordMarkup(id){
-  if(id==='nova-13')return '顧客ID認証';
+  if(customerLoginEnabled)return '顧客ID認証';
   const state=passwordIssues.get(id);
   if(!state?.loaded)return '<span class="compactPasswordNote">'+(state?.failed?'更新待ち':'確認中…')+'</span>';
   if(state.current)return state.current.password?escapeHtml(state.current.password):'<span class="compactPasswordNote">要確認</span>';
   return '<span class="compactPasswordNote">'+(state.busy?'発行中…':'未発行')+'</span>';
 }
 function passwordIssueMarkup(machine){
-  if(machine.machineId==='nova-13')return '<fieldset class="passwordIssue" id="issue-controls-nova-13"><legend>顧客ID認証</legend><a href="/api/admin/customer-pilot?machine=nova-13" target="_blank" rel="noopener">顧客IDを登録・管理</a><p><a href="https://nebula-control.vercel.app/play.html?machine=nova-13" target="_blank" rel="noopener">13番台の顧客用入口</a></p></fieldset>';
+  if(customerLoginEnabled)return `<fieldset class="passwordIssue" id="issue-controls-${machine.machineId}"><legend>顧客ID認証</legend><a href="/api/admin/customer-pilot?machine=${encodeURIComponent(machine.machineId)}" target="_blank" rel="noopener">顧客IDを登録・管理</a><p><a href="https://nebula-control.vercel.app/play.html?machine=${encodeURIComponent(machine.machineId)}" target="_blank" rel="noopener">この台の顧客用入口</a></p></fieldset>`;
   const id=machine.machineId, state=passwordIssues.get(id)||{},current=state.current;
   const disabled=state.busy||!state.loaded||machineOperations.get(String(id))?.busy;
   return `<fieldset class="passwordIssue${current?' isIssued':''}" id="issue-controls-${id}" ${disabled?'disabled':''}>
@@ -340,7 +341,7 @@ async function recoverEndedMachine(id){
   }catch(error){setMachineOperation(id,false,error.message);}
 }
 async function loadCurrentPasswords(){
-  if(!adminSecret||passwordCurrentLoading)return;
+  if(customerLoginEnabled||!adminSecret||passwordCurrentLoading)return;
   passwordCurrentLoading=true;
   const request=++passwordCurrentRequest;
   try{
@@ -660,6 +661,9 @@ async function loadVertexConfig(){
     const res = await fetch('/api/config', {cache:'no-store'});
     const config = await res.json();
     if(!res.ok || !config.storeName) return;
+    customerLoginEnabled=config.storeId==='store-debug'&&config.customerLoginEnabled===true;
+    $('passwordList').closest('section').hidden=customerLoginEnabled;
+    renderMachines();
     const adminTitle = /管理画面$/.test(config.storeName) ? config.storeName : `${config.storeName} 管理画面`;
     document.querySelectorAll('.adminTitle').forEach(element=>{ element.textContent = adminTitle; });
     document.title = adminTitle;

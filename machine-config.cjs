@@ -172,6 +172,7 @@ if(STORE_ID==='store-debug'&&(process.env.CUSTOMER_LOGIN_PILOT==='1'||process.en
   if(!base)throw new Error('Pilot requires debug NOVA preset');
   MACHINE_DEFINITIONS.push({...base,machineId:'nova-13',displayName:'Nova 13番台',capabilities:{...base.capabilities,customerLogin:true}});
 }
+if(STORE_ID==='store-debug'&&process.env.CUSTOMER_LOGIN_PILOT==='1')for(const machine of MACHINE_DEFINITIONS)machine.capabilities={...machine.capabilities,customerLogin:true};
 const CONFIG_SOURCE = machineDefinitionResult.source;
 const MACHINE_DEFINITION_BY_ID = new Map(MACHINE_DEFINITIONS.map(machine=>[machine.machineId, machine]));
 
