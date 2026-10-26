@@ -39,7 +39,7 @@ test('standalone server also adjusts only the outbound Sheets payload',async()=>
 
 for(const storeId of ['store-debug','store-nebula','store-jag-one','store-las-vegas']){
  test(`Sheets end-to-end export isolation: ${storeId}`,()=>{
-  const result=spawnSync(process.execPath,['tests/fixtures/password-lifecycle.mjs'],{encoding:'utf8',timeout:30000,env:{...process.env,QA_SHEETS_ASSERT:'1',ADMIN_PASSWORD:'qa',SUPABASE_URL:'https://qa.invalid',SUPABASE_SERVICE_ROLE_KEY:'qa-key',GOOGLE_SHEETS_WEBHOOK_URL:'https://sheets.invalid/exec',VERTEX_ALLOWED_ORIGINS:'',VERTEX_STORE_ID:storeId,VERTEX_DB_SCHEMA:storeId==='store-nebula'?'vertex_nebula':'public',VERTEX_ALLOW_DEBUG_MACHINE_OVERRIDE:'',VERTEX_MACHINES_JSON:JSON.stringify(['one','two'].map(machineId=>({machineId,machineType:'nova',gameUrl:'https://game.invalid'})))}});
+  const result=spawnSync(process.execPath,['tests/fixtures/password-lifecycle.mjs'],{encoding:'utf8',timeout:30000,env:{...process.env,CUSTOMER_LOGIN_PILOT:'0',CUSTOMER_PILOT_DISPLAY:'0',QA_SHEETS_ASSERT:'1',ADMIN_PASSWORD:'qa',SUPABASE_URL:'https://qa.invalid',SUPABASE_SERVICE_ROLE_KEY:'qa-key',GOOGLE_SHEETS_WEBHOOK_URL:'https://sheets.invalid/exec',VERTEX_ALLOWED_ORIGINS:'',VERTEX_STORE_ID:storeId,VERTEX_DB_SCHEMA:storeId==='store-nebula'?'vertex_nebula':'public',VERTEX_ALLOW_DEBUG_MACHINE_OVERRIDE:'',VERTEX_MACHINES_JSON:JSON.stringify(['one','two'].map(machineId=>({machineId,machineType:'nova',gameUrl:'https://game.invalid'})))}});
   assert.equal(result.status,0,result.stderr||result.stdout);
  });
 }
