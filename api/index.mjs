@@ -501,6 +501,15 @@ function resultPayload(session, machine, body){
   return {type:"slot-session-ended", storeId:STORE_ID, storeName:STORE_NAME, endedAt:new Date(endedAtMs).toISOString(), endedAtMs, machineId:machine.machineId, machineName:machine.displayName || machineLabel(machine.machineId), machineType:machine.machineType || "generic", playerName:session.playerName || body.playerName || "", ...machineResume.creditFields(machine,session,delta.playerProfit), sessionId:session.sessionId, resetSerial:Number(session.resetSerialAtStart ?? machine.resetSerial) || 0, setting:settings.setting || machine.assignedSetting || "", totalSpins:stats.totalSpins || 0, bigCount:stats.bigCount || 0, regCount:stats.midCount || 0, grapeCount:stats.grapeCount || 0, totalFee:stats.totalFee || 0, totalPaid:stats.totalPaid || 0, profit:Number(stats.profit ?? ((stats.totalPaid || 0) - (stats.totalFee || 0))) || 0, playerSpins:delta.playerSpins, playerBigCount:delta.playerBigCount, playerRegCount:delta.playerRegCount, playerGrapeCount:delta.playerGrapeCount, playerTotalFee:delta.playerTotalFee, playerTotalPaid:delta.playerTotalPaid, playerProfit:delta.playerProfit, billingBasis:"playerProfit", playerBaselineSource:delta.baselineSource, startStats:delta.startStats, currentResultText:snapshot.state ? snapshot.state.resultText || "" : "", stats, settings, normalState:snapshot.normalState || {}, session:snapshot.session || {}};
 }
 
+async function customerSettlementRecord(record){
+  if(!customerLoginEnabled()||record.storeId!=='store-debug')return record;
+  const links=await sb('customer_sessions?session_id=eq.'+encodeURIComponent(record.sessionId)+'&select=user_id&limit=1');
+  if(!links[0]?.user_id)return record;
+  const id=links[0].user_id;
+  const accounts=await sb('customer_accounts?user_id=eq.'+encodeURIComponent(id)+'&select=display_name&limit=1');
+  // Keep session identity/credit carry on the stable ID; only settlement uses the name.
+  return {...record,customerUserId:id,playerName:String(accounts[0]?.display_name||'').trim()||id};
+}
 function customerAuth(origin){
   const rpc=async(name,args)=>sb('rpc/'+name,{method:'POST',body:JSON.stringify(args)});
   return createCustomerAuth({repo:{
@@ -682,7 +691,7 @@ export default async function handler(req, res){
         machine.lastSnapshot = snapshot;
       }
       await hydrateMachineTotal(machine);
-      const record = {...resultPayload(session, machine, {...body, snapshot}), forced:!!body.forced};
+      const record = await customerSettlementRecord({...resultPayload(session, machine, {...body, snapshot}), forced:!!body.forced});
       const machineTotal=completedMachineTotal(machine,record);
       await appendResult(record);
       const sheets = await sendToSheets(record);
@@ -810,7 +819,7 @@ export default async function handler(req, res){
           }
         }
         await hydrateMachineTotal(machine);
-        const record = {...resultPayload(session, machine, {snapshot:snapshotForSession(session, machine)}), forced:true, forcedBy:"admin"};
+        const record = await customerSettlementRecord({...resultPayload(session, machine, {snapshot:snapshotForSession(session, machine)}), forced:true, forcedBy:"admin"});
         const machineTotal=completedMachineTotal(machine,record);
         await appendResult(record);
         // Revoke play before waiting for the external settlement service.
@@ -832,7 +841,7 @@ export default async function handler(req, res){
       }
       if(!machine.lastSnapshot) return json(res, 400, {ok:false, error:"終了できるデータがありません"});
       const forcedSession = {sessionId:makeId("forced"), token:"", password:"", machineId:machine.machineId, playerName:machine.currentPlayerName || "強制終了", status:"active", startedAt:0, endedAt:0, startSnapshot:machine.lastSnapshot || null};
-      const record = {...resultPayload(forcedSession, machine, {}), forced:true, forcedBy:"admin"};
+      const record = await customerSettlementRecord({...resultPayload(forcedSession, machine, {}), forced:true, forcedBy:"admin"});
       await appendResult(record);
       const sheets = await sendToSheets(record);
       machine.locked = false; machine.currentSessionId = ""; machine.currentPlayerName = ""; machine.lastEndedSession = {sessionId:forcedSession.sessionId, playerName:forcedSession.playerName, endedAt:ms(), record, sheets, forced:true};

@@ -34,7 +34,9 @@ export function createCustomerAuth({env=process.env,repo}){
       const existing=await repo.find(id);
       if(!existing&&!body.password)throw fail(400,'初回登録にはパスワードが必要です');
       const hash=body.password?await hashPassword(body.password):existing.password_hash;
-      await repo.save({user_id:id,password_hash:hash,enabled:body.status==='有効'});
+      const displayName=body.displayName===undefined?String(existing?.display_name||''):String(body.displayName||'').trim();
+      if(displayName.length>100)throw fail(400,'名前は100文字以内にしてください');
+      await repo.save({user_id:id,password_hash:hash,enabled:body.status==='有効',display_name:displayName});
       return {ok:true,userId:id};
     },
     async start(body,ip='unknown'){
