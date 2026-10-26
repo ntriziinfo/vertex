@@ -16,6 +16,7 @@
   .floorMetric{flex-wrap:wrap}.floorMetric span{white-space:nowrap}
   .adminDataSwitch{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:12px 0 16px}.adminDataSwitch>span{color:#9aa4b5;font-size:13px;margin-right:4px}.adminDataSwitch button{height:36px;min-width:68px;background:#141321;border:1px solid #494253;color:#bcb5cd}.adminDataSwitch button[aria-pressed="true"]{background:#3d3155;border-color:#bba0ff;color:#fff}.adminDataSwitch button:focus-visible{outline:2px solid #c3b2ff;outline-offset:2px}.machine{align-content:start}.machineDetails{display:grid;gap:9px;min-width:0;align-content:start}.machineSummary{display:none}.machines[data-view="compact"]{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.machines[data-view="compact"] .machineDetails,.machines[data-view="compact"] .pill{display:none}.machines[data-view="compact"] .machineSummary{display:grid;gap:8px}.compactMetric{display:flex;align-items:baseline;justify-content:space-between;gap:8px;min-width:0}.compactMetric>span{font-size:12px;color:#9aa4b5;white-space:nowrap}.compactProfit{font-size:24px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.compactPassword{font-size:22px;letter-spacing:.06em;color:#ffe07c;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.compactPasswordNote{color:#9aa4b5;font-size:13px;font-weight:400;letter-spacing:0}@media(max-width:1100px){.machines[data-view="compact"]{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:800px){.machines[data-view="compact"]{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:460px){.machines[data-view="compact"]{grid-template-columns:1fr}}
   .compactIdentity{display:flex;align-items:center;flex-wrap:wrap;gap:5px 8px;min-width:0}.compactSetting{padding:3px 7px;border:1px solid #80614b;border-radius:5px;background:#34291e;color:#ffe07c;font-size:13px;font-weight:800;white-space:nowrap}.compactPlayer{max-width:100%;padding:3px 6px;border-radius:5px;background:#422435;color:#ffbdcd;font-size:12px;font-weight:600;overflow-wrap:anywhere}.compactChevron{flex-shrink:0}
+.floorControlRow.hasCustomerRegistration{grid-template-columns:minmax(280px,1.15fr) auto minmax(460px,2fr)}.customerRegistration{display:flex;align-items:center;justify-content:center;align-self:center;min-height:44px;padding:0 18px;border-radius:6px;background:#f0c85a;color:#1b1300;font-weight:800;text-decoration:none;white-space:nowrap}.customerRegistration[hidden]{display:none}.customerRegistration:focus-visible{outline:3px solid #fff;outline-offset:3px}@media(max-width:1180px){.floorControlRow.hasCustomerRegistration{grid-template-columns:1fr}.customerRegistration{justify-self:start}}
 </style>
 <style>
   .machineSummary{width:100%;height:auto;padding:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;border-radius:4px;min-width:0}.machineSummary:focus-visible{outline:2px solid #c3b2ff;outline-offset:5px}.compactTitle{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:18px;font-weight:800;margin-bottom:3px}.compactChevron{color:#bba0ff;font-size:20px;transition:transform .15s}.machines[data-view="compact"]{align-items:start}.machines[data-view="compact"] .machineTitle{display:none}.machines[data-view="compact"] .machine[data-expanded="true"]{border-color:#9980c7}.machines[data-view="compact"] .machine[data-expanded="true"] .machineDetails{display:grid;border-top:1px solid #3d344e;padding-top:12px;margin-top:3px}.machines[data-view="compact"] .machineDetails > :not(.passwordIssue){display:none}.machine[data-expanded="true"] .compactChevron{transform:rotate(180deg)}
@@ -41,6 +42,7 @@
         <div class="floorMetric"><span>全台合計差枚</span><b id="floorCurrentProfit">+0 pt</b></div>
         <div class="floorMetric"><span>全台平均機械割</span><b id="floorAverageRtp" class="rtp">90.0%</b></div>
       </div>
+      <a id="customerRegistrationLink" class="customerRegistration" href="https://docs.google.com/spreadsheets/d/1LSJyfqOJE5EeG9CmRGIM2jMrSKizsKfPa3fwc2iMrzU/edit?gid=1278137184#gid=1278137184" target="_blank" rel="noopener noreferrer" hidden>ユーザー登録</a>
       <div class="bulkControls">
         <div id="completeStoreControls">
           <div class="row"><label class="field completeField"><span>店舗共通 コンプリート発動枚数（pt）</span><input id="bulkCompleteLimit" type="number" min="1" max="999999" step="1" required placeholder="変更する枚数" oninput="bulkCompleteDirty=true"></label><button class="bulkAction" type="button" onclick="applyBulkCompleteLimit()">全対象台に反映</button></div>
@@ -316,7 +318,7 @@ function compactPasswordMarkup(id){
   return '<span class="compactPasswordNote">'+(state.busy?'発行中…':'未発行')+'</span>';
 }
 function passwordIssueMarkup(machine){
-  if(customerLoginEnabled)return `<fieldset class="passwordIssue" id="issue-controls-${machine.machineId}"><legend>顧客ID認証</legend><a href="/api/admin/customer-pilot?machine=${encodeURIComponent(machine.machineId)}" target="_blank" rel="noopener">管理者用の遊技入口</a><p><a href="https://nebula-control.vercel.app/play.html?machine=${encodeURIComponent(machine.machineId)}" target="_blank" rel="noopener">この台の顧客用入口</a></p></fieldset>`;
+  if(customerLoginEnabled)return '';
   const id=machine.machineId, state=passwordIssues.get(id)||{},current=state.current;
   const disabled=state.busy||!state.loaded||machineOperations.get(String(id))?.busy;
   return `<fieldset class="passwordIssue${current?' isIssued':''}" id="issue-controls-${id}" ${disabled?'disabled':''}>
@@ -663,6 +665,8 @@ async function loadVertexConfig(){
     if(!res.ok || !config.storeName) return;
     customerLoginEnabled=config.storeId==='store-debug'&&config.customerLoginEnabled===true;
     $('passwordList').closest('section').hidden=customerLoginEnabled;
+    $('customerRegistrationLink').hidden=!customerLoginEnabled;
+    $('customerRegistrationLink').closest('.floorControlRow').classList.toggle('hasCustomerRegistration',customerLoginEnabled);
     renderMachines();
     const adminTitle = /管理画面$/.test(config.storeName) ? config.storeName : `${config.storeName} 管理画面`;
     document.querySelectorAll('.adminTitle').forEach(element=>{ element.textContent = adminTitle; });
