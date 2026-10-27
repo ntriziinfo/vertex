@@ -43,3 +43,5 @@
 .novaStoreData.withRates .novaDataHits div{display:grid;grid-template-columns:24px minmax(20px,1fr) minmax(62px,auto);gap:3px;align-items:center}
 .novaStoreData.withRates .novaDataHits b{font-size:16px;text-align:right}
 .novaHitRate{font:600 12px/1.5 ui-monospace,monospace;color:#e6e3ed;text-align:right;white-space:nowrap}
+
+.novaStoreData.withRates .novaDataNumber > span{text-align:center}
