@@ -109,7 +109,7 @@ if(process.env.QA_CREDIT_ASSERT==='1'){
   assert.equal(reentry.body.resumeState.lastCommandId,152);
   const end=await request('sessions/end',{...session,snapshot});assert.equal(end.statusCode,200);
   assert.equal(end.body.record.playerProfit,delta);assert.equal(end.body.record.playerCreditTotal,total);
-  assert.equal(sheetRecords.at(-1).playerProfit,delta>0?Math.floor(delta*.9):delta);
+  assert.equal(sheetRecords.at(-1).playerProfit,delta);
   const count=sheetRecords.length;await request('sessions/end',session);assert.equal(sheetRecords.length,count);
  }
  await request('admin/machines/one/reset');
