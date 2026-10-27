@@ -131,7 +131,7 @@ function machineFromRow(row){
     machineType:definition.machineType || row.machine_type || "generic",
     gameUrl:definition.gameUrl || row.game_url || "",
     poolId:definition.poolId || row.pool_id || "",
-    capabilities:{...(definition.capabilities || row.capabilities || {}),superSpeedAllowed:row.capabilities?.superSpeedAllowed === true},
+    capabilities:{...(definition.capabilities || row.capabilities || {}),superSpeedAutoStart:row.capabilities?.superSpeedAutoStart===true,superSpeedAllowed:row.capabilities?.superSpeedAllowed === true && (!row.capabilities?.superSpeedExpiresAt || Number(row.capabilities.superSpeedExpiresAt)>ms())},
     online:Date.now() - Number(row.updated_at_ms || 0) < 90000,
     locked:!!row.locked,
     resetSerial:Number(row.reset_serial || 0),
@@ -521,6 +521,10 @@ function customerAuth(origin){
     find:async id=>(await sb('customer_accounts?user_id=eq.'+encodeURIComponent(id)+'&select=*&limit=1'))[0],
     save:async account=>sb('customer_accounts?on_conflict=user_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({...account,updated_at:new Date().toISOString()})}),
     consume:(key,limit)=>rpc('customer_login_attempt',{p_key:key,p_limit:limit}),
+    async speedAccess(userId){
+      const day=new Date(ms()+6*3600000).toISOString().slice(0,10);
+      const rows=await sb('customer_speed_days?user_id=eq.'+encodeURIComponent(userId)+'&business_date=eq.'+day+'&select=user_id&limit=1');return rows.length>0;
+    },
     async claim({userId,machineId,passwordHash,superSpeedAllowed}){
       const before=await hydrateMachineTotal(await getMachine(machineId));
       if(!before.gameUrl)throw Object.assign(new Error('ゲームURLが未設定です'),{statusCode:503});
@@ -748,7 +752,7 @@ export default async function handler(req, res){
         getMachine(machineId),
         sb("machine_commands?machine_id=eq." + encodeURIComponent(machineId) + "&id=gt." + encodeURIComponent(String(since)) + "&select=*&order=id.asc&limit=25")
       ]);
-      return json(res, 200, {ok:true, controls:{superSpeedAllowed:machine.machineType==='nova' && machine.capabilities.superSpeedAllowed===true,...adminSettings.completionSettings(machine.lastSnapshot?.settings,machine.machineType)}, commands:rows.map(row=>({id:Number(row.id), machineId:String(row.machine_id), command:row.command || {}, createdAtMs:Number(row.created_at_ms || 0)}))});
+      return json(res, 200, {ok:true, controls:{superSpeedAutoStart:machine.capabilities.superSpeedAutoStart===true,superSpeedAllowed:machine.machineType==='nova' && machine.capabilities.superSpeedAllowed===true,...adminSettings.completionSettings(machine.lastSnapshot?.settings,machine.machineType)}, commands:rows.map(row=>({id:Number(row.id), machineId:String(row.machine_id), command:row.command || {}, createdAtMs:Number(row.created_at_ms || 0)}))});
     }
     m = pathname.match(/^\/api\/admin\/machines\/([^/]+)\/super-speed$/);
     if(m && req.method === "POST"){
@@ -758,6 +762,16 @@ export default async function handler(req, res){
       const body=await readBody(req);
       if(typeof body.enabled!=='boolean')return json(res,400,{ok:false,error:"enabled must be boolean"});
       const capabilities={...definition.capabilities,superSpeedAllowed:body.enabled};
+      if(body.enabled && customerLoginEnabled()){
+        const machine=await getMachine(id);
+        const links=machine.currentSessionId?await sb('customer_sessions?session_id=eq.'+encodeURIComponent(machine.currentSessionId)+'&select=user_id&limit=1'):[];
+        if(links[0]?.user_id){
+          const day=new Date(ms()+6*3600000).toISOString().slice(0,10);
+          await sb('customer_speed_days?on_conflict=user_id,business_date',{method:'POST',headers:{Prefer:'resolution=ignore-duplicates,return=minimal'},body:JSON.stringify({user_id:links[0].user_id,business_date:day,granted_at_ms:ms()})});
+          capabilities.superSpeedAutoStart=true;
+          capabilities.superSpeedExpiresAt=Date.parse(day+'T03:00:00+09:00')+86400000;
+        }
+      }
       await sb('machine_states?on_conflict=machine_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates'},body:JSON.stringify({machine_id:id,store_id:STORE_ID,capabilities})});
       return json(res,200,{ok:true,superSpeedAllowed:body.enabled});
     }

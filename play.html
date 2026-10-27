@@ -135,7 +135,12 @@ async function start(){
   const password = customerLogin?$('password').value:$('password').value.trim().toUpperCase();
   if(!password){ $('error').textContent = 'パスワードを入力してください'; $('startBtn').disabled = false; $('startBtn').textContent = 'この台で開始'; return; }
   try{
-  const superSpeedAllowed=customerLogin?await chooseCustomerSpeed():undefined;
+  let superSpeedAllowed;
+  if(customerLogin){
+    const check=await fetch('/api/sessions/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password,userId:$('userId').value.trim(),requestedMachineId:entryMachineId,checkSpeedOnly:true}),signal:AbortSignal.timeout(12000)});
+    const rights=await check.json();if(!check.ok||!rights.ok)throw new Error(rights.error||'認証できませんでした');
+    superSpeedAllowed=rights.superSpeedAllowed===true?false:await chooseCustomerSpeed();
+  }
   if(superSpeedAllowed===null){$('startBtn').disabled=false;$('startBtn').textContent='この台で開始';return;}
   const res = await fetch('/api/sessions/start', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password, requestedMachineId:entryMachineId,...(customerLogin?{userId:$('userId').value.trim(),superSpeedAllowed}: {})}),signal:AbortSignal.timeout(12000)});
   const data = await res.json();
@@ -154,7 +159,7 @@ async function start(){
   $('ended').hidden = true;
   wakeSessionWatch();
   }catch(error){
-    $('error').textContent = '通信できませんでした。同じパスワードでもう一度お試しください。';
+    $('error').textContent = error.name==='Error'?friendlyError(error.message):'通信できませんでした。同じパスワードでもう一度お試しください。';
   }
   $('startBtn').disabled = false;
   $('startBtn').textContent = 'この台で開始';

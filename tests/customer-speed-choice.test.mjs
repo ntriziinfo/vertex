@@ -16,3 +16,10 @@ test('ID login usage events from different sessions do not collide',()=>{
  const b=activity.event('','nova-02','b','used',1793070000000,'session-b');
  assert.notEqual(a.id,b.id);assert.equal(a.id,activity.event('','nova-01','a','used',1793070000000,'session-a').id);
 });
+
+test('daily speed lookup requires valid login and never claims a seat',async()=>{
+ const hash=await hashPassword('abcd');let reads=0,claims=0;const auth=createCustomerAuth({env:{VERTEX_STORE_ID:'store-debug',CUSTOMER_LOGIN_PILOT:'1'},repo:{consume:async()=>true,find:async()=>({password_hash:hash,enabled:true}),speedAccess:async id=>{assert.equal(id,'testuser');reads++;return true;},claim:async()=>{claims++;}}});
+ const body={userId:'testuser',password:'abcd',requestedMachineId:'nova-01',checkSpeedOnly:true};
+ assert.equal((await auth.start(body)).superSpeedAllowed,true);assert.equal(claims,0);
+ await assert.rejects(auth.start({...body,password:'wrong'}));assert.equal(reads,1);
+});
