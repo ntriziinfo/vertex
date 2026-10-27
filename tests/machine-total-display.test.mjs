@@ -43,7 +43,7 @@ test('both customer renderers use cumulative games for counters and probabilitie
     vm.runInContext(s.slice(0,s.indexOf(boundary)),c);
     vm.runInContext(file==='machines.html'?'render([input]);':'machines=[input]; fresh=true; render();',c);
     const html=element('grid').innerHTML;
-    assert.match(html,/総回転数/);assert.match(html,/12,873/);assert.match(html,/\+5,432/);
+    if(file==='machines.html'){assert.match(html,/総回転数/);assert.match(html,/12,873/);}else{assert.match(html,/data-counter="total"/);assert.doesNotMatch(html,/<dt>総回転数<\/dt>|<dt>差枚<\/dt>/);assert.match(html,/最高/);assert.match(html,/最低/);assert.match(html,/\+6,000 pt/);assert.match(html,/-2,000 pt/);}assert.match(html,/\+5,432/);
     assert.match(html,/1\/429\.1/);assert.match(html,/1\/643\.6/);
     assert.doesNotMatch(html,/-219|>73</);
   }
