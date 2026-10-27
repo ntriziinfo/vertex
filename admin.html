@@ -214,9 +214,9 @@ function renderMachines(){
       <div class="machineDetails" id="machine-details-${m.machineId}">
       ${m.machineType!=='nova' ? `<div class="muted">${escapeHtml(machineTypeLabel(m))}${m.poolId ? ' / プール: ' + escapeHtml(m.poolId) : ''}</div>` : ''}
       ${m.capabilities && m.capabilities.jackpot ? `<div class="stat"><span>5台共有JACKPOT</span><b>${fmt(m.jackpotPool && m.jackpotPool.currentPt)}pt</b></div>` : ''}
-      
+
       ${NovaStoreData.markup(m)}
-      
+
       <div class="adminGraphWrap">
         <div class="graphHeading"><span>差枚グラフ / pt</span><b class="graphCurrent ${profit>=0?'positive':'negative'}"><small>現在差枚</small>${s ? signed(profit) + ' pt' : '—'}</b></div>
         <div class="graph-scroll"><div class="graph-track"><canvas class="adminSlumpGraph" data-machine="${m.machineId}" role="img"></canvas></div></div><div class="graph-axis-note">左が過去・右が最新 / 全履歴を幅に合わせて表示</div>
