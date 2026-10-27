@@ -101,5 +101,5 @@ test('real gateway carries all-player machine totals while preserving individual
 test('ID authentication hides issue inputs on every NOVA card',()=>{
  const c=vm.createContext({customerLoginEnabled:true,encodeURIComponent});
  for(const name of ['compactPasswordMarkup','passwordIssueMarkup'])vm.runInContext(fn(name),c);
- for(let i=1;i<=13;i++){const machineId='nova-'+String(i).padStart(2,'0');assert.equal(c.compactPasswordMarkup(machineId),'顧客ID認証');const html=c.passwordIssueMarkup({machineId});assert.equal(html,'');assert.doesNotMatch(html,/<input|onclick="issue/);}
+ for(let i=1;i<=12;i++){const machineId='nova-'+String(i).padStart(2,'0');assert.equal(c.compactPasswordMarkup(machineId),'顧客ID認証');const html=c.passwordIssueMarkup({machineId});assert.equal(html,'');assert.doesNotMatch(html,/<input|onclick="issue/);}
 });

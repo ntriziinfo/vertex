@@ -43,6 +43,7 @@ const esc = value => String(value ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<
 const num = value => Number.isFinite(Number(value)) ? Number(value) : 0;
 const fmt = value => num(value).toLocaleString('ja-JP');
 const signed = value => (num(value) >= 0 ? '+' : '') + fmt(value);
+let customerLoginEnabled = false;
 let machines = [], filter = 'all', fresh = false, loading = false, lastUpdate = 0;
 function draw(canvas, history){ VertexSlumpGraph.draw(canvas,history); }
 function graphs(){NovaStoreData.renderAll(machines);document.querySelectorAll('canvas[data-id]').forEach(canvas=>{const machine=machines.find(m=>m.machineId===canvas.dataset.id);if(machine)draw(canvas,machine.machineTotalSlumpHistory);});}
@@ -51,7 +52,7 @@ function atFirstRate(stats){
   return !stats.atFirstCountPartial && games>0 && hits>0 ? '1/'+(games/hits).toFixed(1) : '—';
 }
 function render(){
-  if(machines.some(m=>m.machineId==='nova-13')){
+  if(customerLoginEnabled){
     document.querySelector('.hero p:last-child').textContent='NOVAの空き状況と台データをチェック。全台、登録済みユーザーID・パスワードで開始できます。';
     document.querySelector('.footnote').textContent='表示データは管理リセット以降の累計です。空き状況は30秒ごとに更新されます。全台、登録済みユーザーID・パスワードで入場・再入場できます。';
   }
@@ -74,9 +75,9 @@ async function load(){
     const responses=await Promise.all(['/api/config','/api/machines'].map(url=>fetch(url,{cache:'no-store',signal:AbortSignal.timeout(12000)})));
     if(responses.some(r=>!r.ok))throw Error('fetch');
     const [config,rows]=await Promise.all(responses.map(r=>r.json()));
-    const pilot=config.storeId==='store-debug'&&config.machineCount===13;
-    const expected=pilot?13:12;
-    const idPattern=config.storeId==='store-debug'?(pilot?/^nova-(0[1-9]|1[0-3])$/:/^nova-(0[1-9]|1[0-2])$/):config.storeId==='store-nebula'?/^nebula-nova-(0[1-9]|1[0-2])$/:null;
+    customerLoginEnabled=config.storeId==='store-debug'&&config.customerLoginEnabled===true;
+    const expected=12;
+    const idPattern=config.storeId==='store-debug'?/^nova-(0[1-9]|1[0-2])$/:config.storeId==='store-nebula'?/^nebula-nova-(0[1-9]|1[0-2])$/:null;
     if(!idPattern||!Array.isArray(rows)||rows.length!==expected||new Set(rows.map(m=>m.machineId)).size!==expected||rows.some(m=>m.storeId!==config.storeId||!idPattern.test(m.machineId)||m.machineType!=='nova'))throw Error('store');
     machines=rows.sort((a,b)=>a.machineId.localeCompare(b.machineId));fresh=true;lastUpdate=Date.now();
     $('notice').hidden=true;$('updated').textContent=new Date(lastUpdate).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})+' 更新';render();

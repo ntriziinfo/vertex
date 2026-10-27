@@ -83,7 +83,7 @@ async function loadBranding(){
     const [configResponse, machinesResponse] = await Promise.all([fetch('/api/config'), fetch('/api/machines')]);
     const config = await configResponse.json();
     if(!configResponse.ok)throw Error('config');
-    customerLogin=config.storeId==='store-debug'&&config.customerLoginEnabled===true&&/^nova-(0[1-9]|1[0-3])$/.test(entryMachineId);
+    customerLogin=config.storeId==='store-debug'&&config.customerLoginEnabled===true&&/^nova-(0[1-9]|1[0-2])$/.test(entryMachineId);
     if(customerLogin){
       const label=document.createElement('label');label.className='field';label.innerHTML='<span>ユーザーID</span><input id="userId" maxlength="32" autocomplete="username" autocapitalize="none" spellcheck="false" style="text-transform:none">';
       $('password').closest('label').before(label);

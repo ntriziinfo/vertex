@@ -2,7 +2,7 @@ import {randomBytes, scrypt as rawScrypt, timingSafeEqual, createHash} from 'nod
 import {promisify} from 'node:util';
 const scrypt=promisify(rawScrypt);
 export const enabled=(env=process.env)=>env.VERTEX_STORE_ID==='store-debug'&&env.CUSTOMER_LOGIN_PILOT==='1';
-export const customerMachine=id=>/^nova-(0[1-9]|1[0-3])$/.test(String(id||''));
+export const customerMachine=id=>/^nova-(0[1-9]|1[0-2])$/.test(String(id||''));
 const fail=(statusCode,message)=>Object.assign(new Error(message),{statusCode});
 export function userId(value){
   if(typeof value!=='string'||!/^[-_a-zA-Z0-9]{3,32}$/.test(value))throw fail(400,'ユーザーIDは半角英数字・ハイフン・_の3〜32文字です');

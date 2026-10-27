@@ -176,7 +176,7 @@ function configuredRuntimeProblems(env=process.env, definitions=MACHINE_DEFINITI
   }
   if(storeId === "store-debug"){
     const novaMachines = (definitions || []).filter(machine=>String(machine.machineType || "").toLowerCase() === "nova");
-    if(novaMachines.length !== (env.CUSTOMER_LOGIN_PILOT==='1'||env.CUSTOMER_PILOT_DISPLAY==='1'?13:12)) problems.push("DEBUG_NOVA_MACHINE_COUNT");
+    if(novaMachines.length !== 12) problems.push("DEBUG_NOVA_MACHINE_COUNT");
   }
   return [...new Set(problems)];
 }
@@ -554,7 +554,7 @@ export default async function gateway(req, res){
       return res.end(await readFile(new URL('../play.html',import.meta.url),'utf8'));
     }
     const body = await readLimitedBody(req);
-    if(pathname==='/api/sessions/start'&&body.requestedMachineId==='nova-13'&&!customerPilotEnabled()){
+    if(pathname==='/api/sessions/start'&&body.requestedMachineId==='nova-13'){
       return sendJson(res,req,403,{ok:false,error:'この台の顧客認証は利用できません'});
     }
 
