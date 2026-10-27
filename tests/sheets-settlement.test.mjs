@@ -6,15 +6,15 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 const {sheetsSettlement}=createRequire(import.meta.url)('../sheets-settlement.cjs');
 
-test('NEBULA exports 90% of positive player profit, floors fractional points and preserves raw counters',()=>{
+test('NEBULA exports full positive player profit without deduction and preserves raw counters',()=>{
  for(const storeId of ['store-debug','store-nebula']){
-  for(const [raw,net] of [[1000,900],[101,90],[10,9],[1,0],[0,0],[-1,-1],[-1000,-1000]]){
+  for(const [raw,net] of [[1000,1000],[101,101],[10,10],[1,1],[0,0],[-1,-1],[-1000,-1000]]){
    const record=Object.freeze({storeId,machineType:'nova',playerProfit:raw,profit:raw+500,playerTotalFee:3000,playerTotalPaid:3000+raw,billingBasis:'playerProfit',stats:Object.freeze({totalFee:3300,totalPaid:3800+raw})});
    const sent=sheetsSettlement(record);
    assert.equal(sent.playerProfit,net);assert.equal(record.playerProfit,raw);
    assert.equal(sent.profit,raw+500);assert.equal(sent.playerTotalPaid,3000+raw);assert.equal(sent.stats,record.stats);
-   if(raw>0){assert.equal(sent.rawPlayerProfit,raw);assert.equal(sent.exchangeGapPt,raw-net);assert.equal(sent.exchangeGapRate,0.1);}
-   else assert.equal(sent,record);
+   assert.equal(sent.rawPlayerProfit,undefined);assert.equal(sent.exchangeGapPt,undefined);assert.equal(sent.exchangeGapRate,undefined);
+   assert.equal(sent,record);
    assert.deepEqual(sheetsSettlement(record),sent);
   }
  }
@@ -34,7 +34,7 @@ test('standalone server also adjusts only the outbound Sheets payload',async()=>
  const context=vm.createContext({SHEETS_WEBHOOK_URL:'https://sheets.invalid',sheetsSettlement,postJson:async(url,record)=>{sent.push(record);return {status:200};}});
  vm.runInContext(source.match(/async function sendToSheets\([^]*?\n}/)[0],context);
  const record={storeId:'store-debug',machineType:'nova',playerProfit:1000};
- assert.equal((await context.sendToSheets(record)).ok,true);assert.equal(sent[0].playerProfit,900);assert.equal(record.playerProfit,1000);
+ assert.equal((await context.sendToSheets(record)).ok,true);assert.equal(sent[0].playerProfit,1000);assert.equal(record.playerProfit,1000);
 });
 
 for(const storeId of ['store-debug','store-nebula','store-jag-one','store-las-vegas']){

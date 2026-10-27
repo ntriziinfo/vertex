@@ -293,13 +293,13 @@ if(process.env.QA_SHEETS_ASSERT==='1'){
   assert.equal(sheetRecords.length,index+1);
   assert.equal(saved.playerProfit,delta);assert.equal(response.body.record.playerProfit,delta);
   assert.equal(sessions.get(session.sessionId).result_record.playerProfit,delta);
-  assert.equal(sent.playerProfit,eligible&&delta>0?Math.floor(delta*9/10):delta);
+  assert.equal(sent.playerProfit,delta);
   assert.equal(sent.profit,delta+500);assert.deepEqual(sent.stats,snapshot.stats);
   assert.equal(sent.storeId,process.env.VERTEX_STORE_ID);assert.equal(sent.billingBasis,'playerProfit');
   assert.equal(sent.playerTotalFee,3000);assert.equal(sent.playerTotalPaid,3000+delta);
   assert.equal(saved.exchangeGapPt,undefined);
-  if(eligible&&delta>0){assert.equal(sent.rawPlayerProfit,delta);assert.equal(sent.exchangeGapPt,delta-sent.playerProfit);}
-  else assert.deepEqual(sent,saved);
+  assert.equal(sent.exchangeGapPt,undefined);
+  assert.deepEqual(sent,saved);
   const repeated=await request('sessions/end',session,'POST',false);
   assert.equal(repeated.body.alreadyEnded,true);assert.equal(sheetRecords.length,index+1);
  }

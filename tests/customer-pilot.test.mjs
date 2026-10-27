@@ -22,11 +22,11 @@ test('customer floor accepts 12 live debug seats and rejects unknown seats',asyn
   vm.runInContext(source.match(/async function load\(\)\{[^]*?\n}/)[0],ctx);await ctx.load();assert.equal(ctx.fresh,count===12);
  }
 });
-test('historical machine 13 exports settlement with the same positive-profit gap',async()=>{
+test('historical machine 13 exports full settlement without a positive-profit gap',async()=>{
  const source=fs.readFileSync(new URL('../api/index.mjs',import.meta.url),'utf8');const sent=[];
- const ctx=vm.createContext({STORE_ID:'store-debug',SHEETS_WEBHOOK_URL:'https://sheets.invalid',sheetsSettlementPolicy:{sheetsSettlement:r=>({...r,playerProfit:r.playerProfit*0.9})},postJson:async(url,record)=>{sent.push(record);return {status:200};}});
+ const ctx=vm.createContext({STORE_ID:'store-debug',SHEETS_WEBHOOK_URL:'https://sheets.invalid',sheetsSettlementPolicy:{sheetsSettlement:r=>r},postJson:async(url,record)=>{sent.push(record);return {status:200};}});
  vm.runInContext(source.match(/async function sendToSheets\(record\)\{[^]*?\n}/)[0],ctx);
- const result=await ctx.sendToSheets({storeId:'store-debug',machineId:'nova-13',machineType:'nova',playerProfit:1000});assert.equal(result.ok,true);assert.equal(sent[0].playerProfit,900);
+ const result=await ctx.sendToSheets({storeId:'store-debug',machineId:'nova-13',machineType:'nova',playerProfit:1000});assert.equal(result.ok,true);assert.equal(sent[0].playerProfit,1000);
 });
 test('credentials are hashed; customer login covers all 12 NOVA seats and rejects other machines',async()=>{
  const hash=await hashPassword('Test-pass123');assert.equal(await verifyPassword('Test-pass123',hash),true);assert.equal(await verifyPassword('WRONG-pass123',hash),false);
