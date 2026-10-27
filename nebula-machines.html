@@ -35,6 +35,7 @@
 <link rel="stylesheet" href="/nova-data-counter.css?v=20261027-centered-labels">
 <script src="/nova-data-counter.js?v=20261015-mode-history"></script>
 <script src="/machine-data.js?v=20261027-inline-rates"></script>
+<script src="/list-performance.js?v=20261027"></script>
 <script src="/slump-graph.js?v=20261014-fit-history"></script>
 <script>
 'use strict';
@@ -75,12 +76,15 @@ async function load(){
     const responses=await Promise.all(['/api/config','/api/machines'].map(url=>fetch(url,{cache:'no-store',signal:AbortSignal.timeout(12000)})));
     if(responses.some(r=>!r.ok))throw Error('fetch');
     const [config,rows]=await Promise.all(responses.map(r=>r.json()));
+    const previousLoginEnabled=customerLoginEnabled;
     customerLoginEnabled=config.storeId==='store-debug'&&config.customerLoginEnabled===true;
     const expected=12;
     const idPattern=config.storeId==='store-debug'?/^nova-(0[1-9]|1[0-2])$/:config.storeId==='store-nebula'?/^nebula-nova-(0[1-9]|1[0-2])$/:null;
     if(!idPattern||!Array.isArray(rows)||rows.length!==expected||new Set(rows.map(m=>m.machineId)).size!==expected||rows.some(m=>m.storeId!==config.storeId||!idPattern.test(m.machineId)||m.machineType!=='nova'))throw Error('store');
-    machines=rows.sort((a,b)=>a.machineId.localeCompare(b.machineId));fresh=true;lastUpdate=Date.now();
-    $('notice').hidden=true;$('updated').textContent=new Date(lastUpdate).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})+' 更新';render();
+    rows.sort((a,b)=>a.machineId.localeCompare(b.machineId));
+    const changed=!fresh||previousLoginEnabled!==customerLoginEnabled||!NovaListPerformance.same(machines,rows);
+    machines=rows;fresh=true;lastUpdate=Date.now();
+    $('notice').hidden=true;$('updated').textContent=new Date(lastUpdate).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})+' 更新';if(changed)render();
   }catch(error){
     fresh=false;$('notice').textContent='台データを取得できませんでした。通信状況を確認して「更新」を押してください。'+(machines.length?' 下の数値は前回取得時のデータです。':'');$('notice').hidden=false;$('updated').textContent='更新できませんでした';
     if(machines.length)render();else $('grid').innerHTML='<p class="empty">台データを読み込めませんでした。</p>';

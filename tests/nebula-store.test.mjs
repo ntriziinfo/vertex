@@ -28,7 +28,7 @@ test('store-specific builds use Nebula customer entry without changing existing 
   const temp=fs.mkdtempSync(path.join(os.tmpdir(),'nebula-build-'));
   try{
     fs.mkdirSync(path.join(temp,'scripts'));
-    const files=['index.html','admin.html','machines.html','play.html','monitor.html','nebula-machines.html','slump-graph.js',"nova-data-counter.js","nova-data-counter.css","machine-data.js",'scripts/build-static.mjs'];
+    const files=['index.html','admin.html','machines.html','play.html','monitor.html','nebula-machines.html','slump-graph.js',"nova-data-counter.js","nova-data-counter.css","machine-data.js","list-performance.js",'scripts/build-static.mjs'];
     for(const file of files)fs.copyFileSync(new URL('../'+file,import.meta.url),path.join(temp,file));
     for(const [store,theme] of [['store-nebula',''],['store-jag-one',''],['store-debug','nebula']]){
       const built=spawnSync(process.execPath,['scripts/build-static.mjs'],{cwd:temp,encoding:'utf8',env:{...process.env,VERTEX_STORE_ID:store,VERTEX_CUSTOMER_THEME:theme}});

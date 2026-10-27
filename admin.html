@@ -78,6 +78,7 @@
 <link rel="stylesheet" href="/nova-data-counter.css?v=20261027-centered-labels">
 <script src="/nova-data-counter.js?v=20261015-mode-history"></script>
 <script src="/machine-data.js?v=20261027-inline-rates"></script>
+<script src="/list-performance.js?v=20261027"></script>
 <script src="/slump-graph.js?v=20261014-fit-history"></script>
 <script>
 const $ = id => document.getElementById(id);
@@ -292,8 +293,9 @@ async function loadMachines(){
     if(statusEl) statusEl.textContent = '台一覧の更新に失敗しました。前回の表示を維持しています。';
     return false;
   }
+  const changed = !NovaListPerformance.same(machines,data);
   machines = data;
-  renderMachines();
+  if(changed)renderMachines();
   return true;
 }
 function renderCurrentPasswordList(){
@@ -735,7 +737,8 @@ function logoutAdmin(){
 }
 $('authForm').addEventListener('submit', e=>{ e.preventDefault(); enterAdmin($('gatePassword').value); });
 $('logoutBtn').addEventListener('click', logoutAdmin);
-window.addEventListener('resize', renderAdminSlumpGraphs);
+let graphResizeFrame=0;
+window.addEventListener('resize',()=>{if(!graphResizeFrame)graphResizeFrame=requestAnimationFrame(()=>{graphResizeFrame=0;renderAdminSlumpGraphs();});});
 let machineRefreshInFlight=false;
 async function refreshAll(){
   if(!adminSecret || document.hidden || machineRefreshInFlight) return;
