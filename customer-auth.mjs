@@ -9,7 +9,7 @@ export function userId(value){
   return value.toLowerCase();
 }
 export function password(value){
-  if(typeof value!=='string'||value.length<8||value.length>128)throw fail(400,'パスワードは8〜128文字です');
+  if(typeof value!=='string'||value.length<4||value.length>128)throw fail(400,'パスワードは4〜128文字です');
   return value;
 }
 export async function hashPassword(value){
