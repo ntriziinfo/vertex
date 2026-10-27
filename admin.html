@@ -18,6 +18,7 @@
   .compactIdentity{display:flex;align-items:center;flex-wrap:wrap;gap:5px 8px;min-width:0}.compactSetting{padding:3px 7px;border:1px solid #80614b;border-radius:5px;background:#34291e;color:#ffe07c;font-size:13px;font-weight:800;white-space:nowrap}.compactPlayer{max-width:100%;padding:3px 6px;border-radius:5px;background:#422435;color:#ffbdcd;font-size:12px;font-weight:600;overflow-wrap:anywhere}.compactChevron{flex-shrink:0}
 .floorControlRow.hasCustomerRegistration{grid-template-columns:minmax(280px,1.15fr) auto minmax(460px,2fr)}.customerRegistration{display:flex;align-items:center;justify-content:center;align-self:center;min-height:44px;padding:0 18px;border-radius:6px;background:#f0c85a;color:#1b1300;font-weight:800;text-decoration:none;white-space:nowrap}.customerRegistration[hidden]{display:none}.customerRegistration:focus-visible{outline:3px solid #fff;outline-offset:3px}@media(max-width:1180px){.floorControlRow.hasCustomerRegistration{grid-template-columns:1fr}.customerRegistration{justify-self:start}}
 .machineTitle{gap:8px;align-items:center;flex-wrap:wrap}.machineTitle .machinePlayerStatus{flex:1;font-size:12px;font-weight:400;color:#b9c1ce;overflow-wrap:anywhere}.machineTitle .pill{flex-shrink:0}.machineDetails .novaGameSplit,.machineDetails .novaCounterNote{display:none}
+.graphHeading{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.graphHeading .graphCurrent{font-size:clamp(12px,1.1vw,16px);white-space:normal;overflow-wrap:anywhere}.graphHeading .graphCurrent small{display:block;font-size:11px;margin:0 0 3px}@media(max-width:980px){.graphHeading .graphCurrent{font-size:16px}}
 </style>
 <style>
   .machineSummary{width:100%;height:auto;padding:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;border-radius:4px;min-width:0}.machineSummary:focus-visible{outline:2px solid #c3b2ff;outline-offset:5px}.compactTitle{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:18px;font-weight:800;margin-bottom:3px}.compactChevron{color:#bba0ff;font-size:20px;transition:transform .15s}.machines[data-view="compact"]{align-items:start}.machines[data-view="compact"] .machineTitle{display:none}.machines[data-view="compact"] .machine[data-expanded="true"]{border-color:#9980c7}.machines[data-view="compact"] .machine[data-expanded="true"] .machineDetails{display:grid;border-top:1px solid #3d344e;padding-top:12px;margin-top:3px}.machines[data-view="compact"] .machineDetails > :not(.passwordIssue){display:none}.machine[data-expanded="true"] .compactChevron{transform:rotate(180deg)}
@@ -218,17 +219,12 @@ function renderMachines(){
       ${NovaStoreData.markup(m)}
 
       <div class="adminGraphWrap">
-        <div class="graphHeading"><span>差枚グラフ / pt</span><b class="graphCurrent ${profit>=0?'positive':'negative'}"><small>現在差枚</small>${s ? signed(profit) + ' pt' : '—'}</b></div>
+        <div class="graphHeading" aria-label="差枚 / pt"><b class="graphCurrent positive"><small>最高</small>${s ? signed(graphBounds(m).max) + ' pt' : '—'}</b><b class="graphCurrent negative"><small>最低</small>${s ? signed(graphBounds(m).min) + ' pt' : '—'}</b><b class="graphCurrent ${profit>=0?'positive':'negative'}"><small>現在</small>${s ? signed(profit) + ' pt' : '—'}</b></div>
         <div class="graph-scroll"><div class="graph-track"><canvas class="adminSlumpGraph" data-machine="${m.machineId}" role="img"></canvas></div></div><div class="graph-axis-note">左が過去・右が最新 / 全履歴を幅に合わせて表示</div>
-      </div>
-      <div class="graphStats">
-        <div class="stat"><span>総回転数</span><b>${s ? fmt(stat(s,'totalSpins')) + ' G' : '—'}</b></div>
-        <div class="stat"><span>最高差枚</span><b class="positive">${s ? signed(graphBounds(m).max) + ' pt' : '—'}</b></div>
-        <div class="stat"><span>最低差枚</span><b class="negative">${s ? signed(graphBounds(m).min) + ' pt' : '—'}</b></div>
       </div>
       ${passwordIssueMarkup(m)}
       <fieldset class="row" style="border:0;padding:0;margin:0;min-width:0" id="controls-${m.machineId}" ${operation?.busy ? 'disabled' : ''}>
-        <label class="field"><span>設定</span><select class="settingMini" id="setting-${m.machineId}" onchange="rememberMachineDraft('${m.machineId}')">${[1,2,3,4,5,6].map(n => '<option value="' + n + '" ' + (String(draft?.setting ?? machineSettingValue(m)) === String(n) ? 'selected' : '') + '>設定' + n + '</option>').join('')}</select></label>
+        <label class="field"><select aria-label="設定" class="settingMini" id="setting-${m.machineId}" onchange="rememberMachineDraft('${m.machineId}')">${[1,2,3,4,5,6].map(n => '<option value="' + n + '" ' + (String(draft?.setting ?? machineSettingValue(m)) === String(n) ? 'selected' : '') + '>設定' + n + '</option>').join('')}</select></label>
         <button onclick="applySetting('${m.machineId}')">設定反映</button>
         ${m.machineType==='nova' ? `<button class="ghost superSpeedToggle" aria-pressed="${m.capabilities?.superSpeedAllowed===true}" onclick="setSuperSpeed('${m.machineId}',${m.capabilities?.superSpeedAllowed!==true},this)">超ハイスピード ${m.capabilities?.superSpeedAllowed===true?'ON':'OFF'}</button>` : ''}
         <button class="danger" id="force-end-${m.machineId}" ${m.currentSessionId || m.lastEndedSession || m.stats || passwordIssues.get(m.machineId)?.current ? '' : 'disabled'} onclick="forceEndMachine('${m.machineId}')">強制終了</button>
