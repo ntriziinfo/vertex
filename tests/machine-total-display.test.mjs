@@ -30,7 +30,7 @@ test('admin cards ignore a saved personal view and use cabinet totals for all va
   c.input=machine;
   vm.runInContext('machines=[input]; renderMachines();',c);
   const html=element('machines').innerHTML;
-  assert.match(html,/12,873 G/);assert.match(html,/\+5,432 pt/);
+  assert.match(html,/data-counter="total"/);assert.equal(c.totalViewForMachine(machine).stats.totalSpins,12873);assert.doesNotMatch(html,/class="graphStats"/);assert.match(html,/\+5,432 pt/);
   assert.match(html,/\+6,000 pt/);assert.match(html,/-2,000 pt/);
   assert.doesNotMatch(html,/>73 G<|-219|個人/);
   assert.equal(element('floorCurrentProfit').textContent,'+5,432 pt');
