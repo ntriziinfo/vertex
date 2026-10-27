@@ -75,9 +75,9 @@
 <dialog id="issueSpeedDialog" style="background:#1b1f28;color:#fff;border:1px solid #d5b954;border-radius:12px;padding:24px;max-width:min(440px,92vw)">
   <form method="dialog"><h2 style="margin-top:0">超ハイスピードをONにしますか？</h2><p id="issueSpeedCustomer"></p><p class="muted">今回のお客様の使用許可を設定して、パスワードを発行します。</p><div class="row"><button value="on">ONにして発行</button><button value="off" class="ghost" autofocus>OFFで発行</button><button value="cancel" class="ghost">戻る</button></div></form>
 </dialog>
-<link rel="stylesheet" href="/nova-data-counter.css?v=20261015-mode-history">
+<link rel="stylesheet" href="/nova-data-counter.css?v=20261027-inline-rates">
 <script src="/nova-data-counter.js?v=20261015-mode-history"></script>
-<script src="/machine-data.js?v=20261015-mode-history"></script>
+<script src="/machine-data.js?v=20261027-inline-rates"></script>
 <script src="/slump-graph.js?v=20261014-fit-history"></script>
 <script>
 const $ = id => document.getElementById(id);
@@ -216,11 +216,11 @@ function renderMachines(){
       ${m.machineType!=='nova' ? `<div class="muted">${escapeHtml(machineTypeLabel(m))}${m.poolId ? ' / プール: ' + escapeHtml(m.poolId) : ''}</div>` : ''}
       ${m.capabilities && m.capabilities.jackpot ? `<div class="stat"><span>5台共有JACKPOT</span><b>${fmt(m.jackpotPool && m.jackpotPool.currentPt)}pt</b></div>` : ''}
 
-      ${NovaStoreData.markup(m)}
+      ${NovaStoreData.markup(m,{showRates:true})}
 
       <div class="adminGraphWrap">
         <div class="graphHeading" aria-label="差枚 / pt"><b class="graphCurrent positive"><small>最高</small>${s ? signed(graphBounds(m).max) + ' pt' : '—'}</b><b class="graphCurrent negative"><small>最低</small>${s ? signed(graphBounds(m).min) + ' pt' : '—'}</b><b class="graphCurrent ${profit>=0?'positive':'negative'}"><small>現在</small>${s ? signed(profit) + ' pt' : '—'}</b></div>
-        <div class="graph-scroll"><div class="graph-track"><canvas class="adminSlumpGraph" data-machine="${m.machineId}" role="img"></canvas></div></div><div class="graph-axis-note">左が過去・右が最新 / 全履歴を幅に合わせて表示</div>
+        <div class="graph-scroll"><div class="graph-track"><canvas class="adminSlumpGraph" data-machine="${m.machineId}" role="img"></canvas></div></div>
       </div>
       ${passwordIssueMarkup(m)}
       <fieldset class="row" style="border:0;padding:0;margin:0;min-width:0" id="controls-${m.machineId}" ${operation?.busy ? 'disabled' : ''}>

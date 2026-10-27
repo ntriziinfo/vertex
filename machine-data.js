@@ -2,13 +2,15 @@
 globalThis.NovaStoreData=(()=>{
   let graphView='line';
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  function markup(machine){
+  function markup(machine,{showRates=false}={}){
     if(machine.machineType!=='nova')return '';
-    return `<section class="novaStoreData" data-machine-counter="${esc(machine.machineId)}" aria-label="筐体の遊技データ">
+    const stats=machine.machineTotalStats||{};
+    const rate=(hits,partial=false)=>!partial&&stats.totalSpins>0&&hits>0?'1/'+(stats.totalSpins/hits).toFixed(1):'—';
+    return `<section class="novaStoreData${showRates?' withRates':''}" data-machine-counter="${esc(machine.machineId)}" aria-label="筐体の遊技データ">
       <div class="novaDataHead">
         <div class="novaDataNumber"><span data-counter="current-label">現在回転数</span><b data-counter="current">—</b></div>
         <div class="novaDataNumber"><span>総ゲーム数</span><b data-counter="total">—</b></div>
-        <div class="novaDataHits"><div><span>BIG</span><b data-counter="big">—</b></div><div><span>AT</span><b data-counter="at">—</b></div></div>
+        <div class="novaDataHits"><div><span>BIG</span><b data-counter="big">—</b>${showRates?`<small class="novaHitRate" aria-label="BIG確率">${rate(stats.bigCount)}</small>`:""}</div><div><span>AT</span><b data-counter="at">—</b>${showRates?`<small class="novaHitRate" aria-label="AT初当たり確率">${rate(stats.atFirstCount,stats.atFirstCountPartial)}</small>`:""}</div></div>
       </div>
       <div class="novaGameSplit"><span>通常 <b data-counter="normal">—</b> G</span><span>AT中 <b data-counter="art">—</b> G</span></div>
       <div class="novaStoreHitPanel" hidden>
