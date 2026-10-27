@@ -22,7 +22,12 @@ test('customer AT initial probability uses accumulated games and first entries, 
   assert.equal(c.atFirstRate({totalSpins:0,atFirstCount:0}),'—');
   assert.equal(c.atFirstRate({totalSpins:1000,atFirstCount:0}),'—');
   assert.equal(c.atFirstRate({totalSpins:1000,atFirstCount:2,atFirstCountPartial:true}),'—');
-  assert.match(source,/AT初当たり確率/);assert.doesNotMatch(source,/AT初当たり回数/);
+  if(file==='nebula-machines.html'){
+    vm.runInContext(fs.readFileSync('machine-data.js','utf8'),c);
+    const markup=c.NovaStoreData.markup({machineType:'nova',machineId:'nova-01',machineTotalStats:{totalSpins:1000,bigCount:4,atFirstCount:2}},{showRates:true});
+    assert.match(markup,/AT初当たり確率/);assert.match(markup,/1\/500.0/);assert.match(markup,/1\/250.0/);
+    assert.doesNotMatch(c.NovaStoreData.markup({machineType:'nova',machineTotalStats:{totalSpins:1000,atFirstCount:2,atFirstCountPartial:true}},{showRates:true}),/1\/500.0/);
+  }else assert.match(source,/AT初当たり確率/);assert.doesNotMatch(source,/AT初当たり回数/);
  }
 });
 
