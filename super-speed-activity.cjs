@@ -4,7 +4,7 @@ function validDate(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value)&&!Number.isNaN(Date.parse(value))&&new Date(value).toISOString().slice(0,10)===value;
 }
 function event(password,machineId,playerName,kind,now=Date.now(),sessionId='') {
-  const key=crypto.createHash('sha256').update(password).digest('hex'),day=dateJst(now);
+  const key=crypto.createHash('sha256').update(password||('session:'+sessionId)).digest('hex'),day=dateJst(now);
   return {id:`${key}:${day}:${kind}`,activity_date:day,issuance_key:key,machine_id:String(machineId),player_name:playerName,event_type:kind,occurred_at_ms:now,session_id:sessionId};
 }
 function summarize(events) {

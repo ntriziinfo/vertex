@@ -54,7 +54,8 @@ export function createCustomerAuth({env=process.env,repo}){
       const valid=await verifyPassword(pass,account?.password_hash);
       if(!valid||!account?.enabled)throw fail(403,'ユーザーIDまたはパスワードを確認してください');
       // Reservation is transactional: same user resumes, another user's seat is never taken.
-      return repo.claim({userId:id,machineId:body.requestedMachineId,passwordHash:account.password_hash});
+      if(body.superSpeedAllowed!==undefined&&typeof body.superSpeedAllowed!=='boolean')throw fail(400,'超ハイスピードの選択が不正です');
+      return repo.claim({userId:id,machineId:body.requestedMachineId,passwordHash:account.password_hash,superSpeedAllowed:body.superSpeedAllowed===true});
     }
   };
 }

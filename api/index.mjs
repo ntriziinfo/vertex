@@ -487,7 +487,12 @@ function sessionDelta(session, snapshot){
 async function sendToSheets(record){
   if(!SHEETS_WEBHOOK_URL) return {ok:false, skipped:true, reason:"GOOGLE_SHEETS_WEBHOOK_URL is not set"};
   try{
-    const result = await postJson(SHEETS_WEBHOOK_URL, sheetsSettlementPolicy.sheetsSettlement(record));
+    const outbound={...sheetsSettlementPolicy.sheetsSettlement(record)};
+    if(STORE_ID==='store-debug'&&record.machineType==='nova'&&record.sessionId){
+      const events=await sb('super_speed_activity?session_id=eq.'+encodeURIComponent(record.sessionId)+'&event_type=eq.used&select=occurred_at_ms&order=occurred_at_ms.asc');
+      if(events.length)outbound.superSpeedUsage=events.map(event=>({businessDate:new Date(Number(event.occurred_at_ms)+6*3600000).toISOString().slice(0,10).replaceAll('-','/'),usedAt:new Date(Number(event.occurred_at_ms)+9*3600000).toISOString().slice(0,19).replace('T',' ').replaceAll('-','/')}));
+    }
+    const result = await postJson(SHEETS_WEBHOOK_URL, outbound);
     const ok = Number(result && result.status) >= 200 && Number(result && result.status) < 300;
     return ok ? {ok:true, result} : {ok:false, error:`Sheets webhook returned ${result && result.status || "unknown"}`};
   }catch(e){ return {ok:false, error:e.message}; }
@@ -516,12 +521,12 @@ function customerAuth(origin){
     find:async id=>(await sb('customer_accounts?user_id=eq.'+encodeURIComponent(id)+'&select=*&limit=1'))[0],
     save:async account=>sb('customer_accounts?on_conflict=user_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({...account,updated_at:new Date().toISOString()})}),
     consume:(key,limit)=>rpc('customer_login_attempt',{p_key:key,p_limit:limit}),
-    async claim({userId,machineId,passwordHash}){
+    async claim({userId,machineId,passwordHash,superSpeedAllowed}){
       const before=await hydrateMachineTotal(await getMachine(machineId));
       if(!before.gameUrl)throw Object.assign(new Error('ゲームURLが未設定です'),{statusCode:503});
       const baseline=machineDisplayBaseline(before);
-      const result=await rpc('customer_claim',{
-        p_user_id:userId,p_password_hash:passwordHash,p_machine_id:machineId,
+      const result=await rpc('customer_claim_speed',{
+        p_user_id:userId,p_password_hash:passwordHash,p_machine_id:machineId,p_super_speed:superSpeedAllowed,
         p_session_id:makeId('sess'),p_token:crypto.randomBytes(32).toString('hex'),
         p_reset:before.resetSerial,p_snapshot:before.lastSnapshot,
         p_start_snapshot:{...before.lastSnapshot,machineDisplayBaseline:baseline,playerCreditCarry:machineResume.creditCarryFor(before,userId)},p_now:ms()

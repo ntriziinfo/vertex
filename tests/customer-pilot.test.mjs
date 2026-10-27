@@ -24,7 +24,7 @@ test('customer floor accepts 12 live debug seats and rejects unknown seats',asyn
 });
 test('historical machine 13 exports settlement with the same positive-profit gap',async()=>{
  const source=fs.readFileSync(new URL('../api/index.mjs',import.meta.url),'utf8');const sent=[];
- const ctx=vm.createContext({SHEETS_WEBHOOK_URL:'https://sheets.invalid',sheetsSettlementPolicy:{sheetsSettlement:r=>({...r,playerProfit:r.playerProfit*0.9})},postJson:async(url,record)=>{sent.push(record);return {status:200};}});
+ const ctx=vm.createContext({STORE_ID:'store-debug',SHEETS_WEBHOOK_URL:'https://sheets.invalid',sheetsSettlementPolicy:{sheetsSettlement:r=>({...r,playerProfit:r.playerProfit*0.9})},postJson:async(url,record)=>{sent.push(record);return {status:200};}});
  vm.runInContext(source.match(/async function sendToSheets\(record\)\{[^]*?\n}/)[0],ctx);
  const result=await ctx.sendToSheets({storeId:'store-debug',machineId:'nova-13',machineType:'nova',playerProfit:1000});assert.equal(result.ok,true);assert.equal(sent[0].playerProfit,900);
 });

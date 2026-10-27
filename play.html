@@ -19,6 +19,11 @@
     <p id="error" class="bad"></p>
   </div>
 </div>
+<dialog id="speedChoice" aria-labelledby="speedChoiceTitle" style="background:#121722;color:#fff7df;border:1px solid #ffd36a;border-radius:12px;padding:24px;max-width:440px">
+<h2 id="speedChoiceTitle">超ハイスピードモードを使用しますか？</h2>
+<p>※別途現金100万円頂戴します。</p><p class="muted">同じ営業日は1回分です（翌3時まで）。</p>
+<div style="display:flex;gap:16px"><button id="speedYes" type="button">はい</button><button id="speedNo" type="button">いいえ</button></div>
+</dialog>
 <div id="play" hidden>
   <div class="topbar"><div><b id="machineLabel"></b> <span id="playerLabel"></span></div><button id="endBtn" class="danger">終了してデータ送信</button></div>
   <iframe id="slot" class="slotFrame" allow="autoplay; fullscreen"></iframe>
@@ -111,6 +116,16 @@ function friendlyError(error){
   };
   return map[error] || error || "開始できません";
 }
+function chooseCustomerSpeed(){
+  return new Promise(resolve=>{
+    const dialog=$('speedChoice');
+    const finish=value=>{dialog.close();resolve(value);};
+    $('speedYes').onclick=()=>finish(true);
+    $('speedNo').onclick=()=>finish(false);
+    dialog.oncancel=event=>{event.preventDefault();finish(null);};
+    dialog.showModal();$('speedNo').focus();
+  });
+}
 async function start(){
   if(!brandingReady)return;
   if($('startBtn').disabled || active) return;
@@ -120,7 +135,9 @@ async function start(){
   const password = customerLogin?$('password').value:$('password').value.trim().toUpperCase();
   if(!password){ $('error').textContent = 'パスワードを入力してください'; $('startBtn').disabled = false; $('startBtn').textContent = 'この台で開始'; return; }
   try{
-  const res = await fetch('/api/sessions/start', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password, requestedMachineId:entryMachineId,...(customerLogin?{userId:$('userId').value.trim()}: {})}),signal:AbortSignal.timeout(12000)});
+  const superSpeedAllowed=customerLogin?await chooseCustomerSpeed():undefined;
+  if(superSpeedAllowed===null){$('startBtn').disabled=false;$('startBtn').textContent='この台で開始';return;}
+  const res = await fetch('/api/sessions/start', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password, requestedMachineId:entryMachineId,...(customerLogin?{userId:$('userId').value.trim(),superSpeedAllowed}: {})}),signal:AbortSignal.timeout(12000)});
   const data = await res.json();
   if(!data.ok){ $('error').textContent = friendlyError(data.error); $('startBtn').disabled = false; $('startBtn').textContent = 'この台で開始'; return; }
   active = data.session;
