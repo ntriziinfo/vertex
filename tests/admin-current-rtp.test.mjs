@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 const source=fs.readFileSync('admin.html','utf8');
 const fn=name=>source.match(new RegExp(`(?:async )?function ${name}\\([^]*?\\n}`))[0];
-const report=()=>({schema:'nova-current-rtp/v1',status:'ready',gamesPerSetting:1000000000,commit:'a'.repeat(40),conditions:'10億G連続・MY／差枚停止なし',settings:[1,2,3,4,5,6].map(setting=>({setting,rtpPct:94+setting}))});
+const report=()=>({schema:'nova-current-rtp/v1',status:'ready',gamesPerSetting:1000000000,commit:'a'.repeat(40),modelHash:'b'.repeat(64),conditions:'10億G連続・MY／差枚停止なし',settings:[1,2,3,4,5,6].map(setting=>({setting,rtpPct:94+setting}))});
 function harness(){
  const c=vm.createContext({novaRtpReport:null,novaRtpLoading:false,AbortSignal,renderMachines(){c.renders=(c.renders||0)+1;}});
  for(const name of ['verifiedNovaRtp','loadNovaRtp','machineSettingValue','machineSettingRtp'])vm.runInContext(fn(name),c);
@@ -15,9 +15,12 @@ test('NOVA reads the shared report and never falls back to another machines fixe
  c.novaRtpReport=report();assert.equal(c.machineSettingRtp({machineType:'nova',assignedSetting:6}),100);
  assert.equal(c.machineSettingRtp({machineType:'rising',assignedSetting:6}),108);
  assert.equal(c.machineSettingRtp({machineType:'jackspot',assignedSetting:6}),105);
- for(const change of [r=>r.status='pending',r=>r.gamesPerSetting=100000000,r=>r.settings[0].setting=2,r=>r.settings[0].rtpPct=null,r=>r.commit='old']){
+ for(const change of [r=>r.status='pending',r=>r.gamesPerSetting=100000000,r=>r.settings[0].setting=2,r=>r.settings[0].rtpPct=null,r=>r.commit='old',r=>r.modelHash=undefined]){
   const r=report();change(r);assert.equal(c.verifiedNovaRtp(r),false);
  }
+ const pooled={...report(),conditions:'2.5億G×4系列合算・MY／差枚停止なし'};assert(c.verifiedNovaRtp(pooled));
+ assert.match(source,/id="floorAverageRtp" class="rtp">未取得/);
+ assert.match(source,/data-machine-rtp=/);
 });
 test('fetch refreshes ready data, coalesces requests and removes old values on pending or failure',async()=>{
  const c=harness();let resolve,calls=0;

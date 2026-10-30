@@ -42,7 +42,7 @@
     <div class="floorControlRow">
       <div class="floorProfit">
         <div class="floorMetric"><span>全台合計差枚</span><b id="floorCurrentProfit">+0 pt</b></div>
-        <div class="floorMetric"><span>全台平均機械割</span><b id="floorAverageRtp" class="rtp">90.0%</b></div>
+        <div class="floorMetric"><span>全台平均機械割</span><b id="floorAverageRtp" class="rtp">未取得</b></div>
       </div>
       <a id="customerRegistrationLink" class="customerRegistration" href="https://docs.google.com/spreadsheets/d/1LSJyfqOJE5EeG9CmRGIM2jMrSKizsKfPa3fwc2iMrzU/edit?gid=1278137184#gid=1278137184" target="_blank" rel="noopener noreferrer" hidden>ユーザー登録</a>
       <div class="bulkControls">
@@ -105,7 +105,8 @@ let novaRtpLoading = false;
 function verifiedNovaRtp(data){
   return data?.schema==='nova-current-rtp/v1' && data.status==='ready'
     && data.gamesPerSetting===1000000000 && /^[a-f0-9]{40}$/.test(data.commit || '')
-    && data.conditions==='10億G連続・MY／差枚停止なし'
+    && /^[a-f0-9]{64}$/.test(data.modelHash || '')
+    && ['10億G連続・MY／差枚停止なし','2.5億G×4系列合算・MY／差枚停止なし'].includes(data.conditions)
     && Array.isArray(data.settings) && data.settings.length===6
     && [1,2,3,4,5,6].every(n=>{
       const rows=data.settings.filter(row=>row.setting===n);
@@ -217,11 +218,11 @@ function renderMachines(){
   }
   const floorAverageRtp = customerMachines.length
     ? customerMachines.reduce((sum, machine) => sum + machineSettingRtp(machine), 0) / customerMachines.length
-    : 0;
+    : NaN;
   const floorAverageRtpEl = $('floorAverageRtp');
   if(floorAverageRtpEl){
     const hasNova=customerMachines.some(m=>m.machineType==='nova');
-    floorAverageRtpEl.textContent = Number.isFinite(floorAverageRtp) ? `${floorAverageRtp.toFixed(hasNova?2:1)}%` : '試算待ち';
+    floorAverageRtpEl.textContent = Number.isFinite(floorAverageRtp) ? `${floorAverageRtp.toFixed(hasNova?2:1)}%` : '未取得';
     floorAverageRtpEl.title=hasNova ? (novaRtpReport ? `${novaRtpReport.conditions} / ${novaRtpReport.commit.slice(0,7)}` : '最新仕様の10億G試算結果を待っています（取得できない場合も旧値は表示しません）') : '';
   }
   $('machineCountLabel').textContent = `${floorMachines.length}台`;
@@ -244,6 +245,7 @@ function renderMachines(){
       ${m.capabilities && m.capabilities.jackpot ? `<div class="stat"><span>5台共有JACKPOT</span><b>${fmt(m.jackpotPool && m.jackpotPool.currentPt)}pt</b></div>` : ''}
 
       ${NovaStoreData.markup(m,{showRates:true})}
+      ${m.machineType==='nova' ? `<div class="muted" data-machine-rtp="${escapeHtml(m.machineId)}">設定${machineSettingValue(m)}の参考機械割：${Number.isFinite(machineSettingRtp(m)) ? machineSettingRtp(m).toFixed(2)+'%' : '未取得'}</div>` : ''}
 
       <div class="adminGraphWrap">
         <div class="graphHeading" aria-label="差枚 / pt"><b class="graphCurrent positive"><small>最高</small>${s ? signed(graphBounds(m).max) + ' pt' : '—'}</b><b class="graphCurrent negative"><small>最低</small>${s ? signed(graphBounds(m).min) + ' pt' : '—'}</b><b class="graphCurrent ${profit>=0?'positive':'negative'}"><small>現在</small>${s ? signed(profit) + ' pt' : '—'}</b></div>
@@ -781,6 +783,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden){void load
 loadVertexConfig();
 void loadNovaRtp();
 setInterval(()=>{if(!document.hidden)void loadNovaRtp();},60000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)void loadNovaRtp();});
 if(adminSecret){ enterAdmin(adminSecret); } else { $('gatePassword').focus(); }
 </script>
 </body>
