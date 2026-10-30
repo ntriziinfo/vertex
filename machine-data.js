@@ -14,7 +14,7 @@ globalThis.NovaStoreData=(()=>{
       </div>
       <div class="novaGameSplit"><span>通常 <b data-counter="normal">—</b> G</span><span>AT中 <b data-counter="art">—</b> G</span></div>
       <div class="novaStoreHitPanel" hidden>
-      <div class="novaHitLegend"><span class="big">■ BIG</span><span class="art">■ AT・特化</span> / 1目盛り100G</div>
+      <div class="novaHitLegend"><span class="big">■ BIG</span><span class="art">■ AT・特化</span><span class="challenge">■ スーパーノヴァチャレンジ</span><span>1目盛り100G</span></div>
       <div class="novaHitChart"><div class="novaHitScale"><span>800</span><span>400</span><span>0</span></div><div class="novaHitBars" aria-label="当たり履歴"></div></div>
       <nav class="novaHitPager" aria-label="当たり履歴のページ"><button type="button" data-hit-page="latest">最新</button><button type="button" data-hit-page="newer">新しい</button><span data-counter="page"></span><button type="button" data-hit-page="older">古い</button><button type="button" data-hit-page="oldest">最初</button></nav>
       <div class="novaCounterNote" data-counter="detail">台累計データを確認中</div>

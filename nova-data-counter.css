@@ -11,7 +11,7 @@
 .novaDataHits div:first-child span{color:#ff6073}.novaDataHits div:last-child span{color:#5bef9f;}
 .novaGameSplit{display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap;font-size:12px;margin:9px 0;color:#bbcbd7;}
 .novaGameSplit b{color:#fff;font-variant-numeric:tabular-nums;}
-.novaHitLegend{display:flex;gap:10px;font-size:10px;margin:6px 0;color:#adc4d8;}
+.novaHitLegend{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:10px;margin:6px 0;color:#adc4d8;}
 .novaHitLegend .big{color:#ff5269}.novaHitLegend .art{color:#38e891;}
 .novaHitChart{display:flex;gap:5px;padding:7px 5px 3px;background:#030812;border:2px solid #257add;border-radius:5px;}
 .novaHitScale{display:flex;flex-direction:column;justify-content:space-between;padding-bottom:17px;width:28px;flex:none;font:10px ui-monospace,monospace;color:#a5bed3;}
@@ -22,6 +22,7 @@
 .novaHitPager button:disabled{opacity:.35;cursor:default;}
 .novaHitPager span{white-space:nowrap;font-variant-numeric:tabular-nums;}
 .novaHitColumn[data-kind=BIG]{color:#ff4359}.novaHitColumn[data-kind=CURRENT]{color:#ffce54;}
+.novaHitLegend .challenge,.novaHitColumn[data-kind=ZONE][data-zone=supernova_challenge]{color:#ffd84d;}
 .novaHitCells{display:flex;flex-direction:column;gap:3px;height:107px;}
 .novaHitCells i{display:block;flex:1;background:#26323c;border-radius:1px;}
 .novaHitCells i.lit{background:currentColor;box-shadow:0 0 3px currentColor;}
