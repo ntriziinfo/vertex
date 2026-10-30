@@ -103,10 +103,10 @@ const BULK_SETTING_RTP = Object.freeze([90, 93, 96, 101, 104, 108]);
 let novaRtpReport = null;
 let novaRtpLoading = false;
 function verifiedNovaRtp(data){
+  const gamesByCondition={'1億G連続・MY／差枚停止なし':100000000,'10億G連続・MY／差枚停止なし':1000000000,'2.5億G×4系列合算・MY／差枚停止なし':1000000000};
   return data?.schema==='nova-current-rtp/v1' && data.status==='ready'
-    && data.gamesPerSetting===1000000000 && /^[a-f0-9]{40}$/.test(data.commit || '')
+    && Object.hasOwn(gamesByCondition,data.conditions) && gamesByCondition[data.conditions]===data.gamesPerSetting && /^[a-f0-9]{40}$/.test(data.commit || '')
     && /^[a-f0-9]{64}$/.test(data.modelHash || '')
-    && ['10億G連続・MY／差枚停止なし','2.5億G×4系列合算・MY／差枚停止なし'].includes(data.conditions)
     && Array.isArray(data.settings) && data.settings.length===6
     && [1,2,3,4,5,6].every(n=>{
       const rows=data.settings.filter(row=>row.setting===n);
@@ -223,7 +223,7 @@ function renderMachines(){
   if(floorAverageRtpEl){
     const hasNova=customerMachines.some(m=>m.machineType==='nova');
     floorAverageRtpEl.textContent = Number.isFinite(floorAverageRtp) ? `${floorAverageRtp.toFixed(hasNova?2:1)}%` : '未取得';
-    floorAverageRtpEl.title=hasNova ? (novaRtpReport ? `${novaRtpReport.conditions} / ${novaRtpReport.commit.slice(0,7)}` : '最新仕様の10億G試算結果を待っています（取得できない場合も旧値は表示しません）') : '';
+    floorAverageRtpEl.title=hasNova ? (novaRtpReport ? `${novaRtpReport.conditions} / ${novaRtpReport.commit.slice(0,7)}` : '最新仕様の1億G試算結果を待っています（取得できない場合も旧値は表示しません）') : '';
   }
   $('machineCountLabel').textContent = `${floorMachines.length}台`;
   syncCompleteLimitControl();

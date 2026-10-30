@@ -28,6 +28,9 @@ test('NOVA reads the shared report and never falls back to another machines fixe
   const r=report();change(r);assert.equal(c.verifiedNovaRtp(r),false);
  }
  const pooled={...report(),conditions:'2.5億G×4系列合算・MY／差枚停止なし'};assert(c.verifiedNovaRtp(pooled));
+ const shorter={...report(),gamesPerSetting:100000000,conditions:'1億G連続・MY／差枚停止なし'};assert(c.verifiedNovaRtp(shorter));
+ assert.equal(c.verifiedNovaRtp({...shorter,gamesPerSetting:99999999}),false);
+ assert.equal(c.verifiedNovaRtp({...shorter,conditions:'unknown'}),false);
  assert.match(source,/id="floorAverageRtp" class="rtp">未取得/);
  assert.match(source,/data-machine-rtp=/);
 });
