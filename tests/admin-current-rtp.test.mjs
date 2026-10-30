@@ -10,6 +10,15 @@ function harness(){
  for(const name of ['verifiedNovaRtp','loadNovaRtp','machineSettingValue','machineSettingRtp'])vm.runInContext(fn(name),c);
  return c;
 }
+
+test('production admin CSP permits the exact live RTP endpoint without broadening other pages',()=>{
+ const config=JSON.parse(fs.readFileSync('vercel.json','utf8'));
+ const headerFor=page=>config.headers.find(row=>row.source===page).headers.find(header=>header.key.toLowerCase()==='content-security-policy').value;
+ const connections=page=>headerFor(page).split(';').map(value=>value.trim().split(/\s+/)).find(parts=>parts[0]==='connect-src').slice(1);
+ const endpoint=fn('loadNovaRtp').match(/fetch\('([^']+)'/)[1];
+ assert.deepEqual(connections('/admin.html'),["'self'",new URL(endpoint).origin]);
+ assert.deepEqual(connections('/play.html'),["'self'"]);
+});
 test('NOVA reads the shared report and never falls back to another machines fixed RTP',()=>{
  const c=harness();assert(Number.isNaN(c.machineSettingRtp({machineType:'nova',assignedSetting:6})));
  c.novaRtpReport=report();assert.equal(c.machineSettingRtp({machineType:'nova',assignedSetting:6}),100);
