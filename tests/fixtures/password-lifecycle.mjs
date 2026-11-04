@@ -2,6 +2,9 @@ import assert from 'node:assert/strict';
 import {createRequire,syncBuiltinESMExports} from 'node:module';
 import {EventEmitter} from 'node:events';
 const require=createRequire(import.meta.url),https=require('node:https');
+// This fixture models the legacy tables. V2 RPCs have their own gateway fixture.
+// Do not inherit the production deployment's opt-in switch during build tests.
+process.env.VERTEX_SETTLEMENT_V2='0';
 const policy=require('../../password-issuance.cjs');
 const machines=new Map(['one','two'].map(id=>[id,{machine_id:id,current_session_id:'',current_player_name:'',reset_serial:0}]));
 const passwords=new Map(),sessions=new Map(),results=[];
