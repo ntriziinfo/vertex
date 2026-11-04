@@ -4,12 +4,14 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
+    {"source":"/api/settlement-retry","destination":"/api/settlement-retry"},
     {
       "source": "/api/(.*)",
       "destination": "/api/gateway?path=$1"
     }
   ],
   "functions": {
+    "api/settlement-retry.mjs":{"maxDuration":300},
     "api/gateway.mjs": {
       "maxDuration": 30,
       "includeFiles": "play.html"
@@ -18,6 +20,7 @@
       "maxDuration": 10
     }
   },
+  "crons":[{"path":"/api/settlement-retry","schedule":"5 18 * * *"}],
   "headers": [
     {
       "source": "/(.*)",

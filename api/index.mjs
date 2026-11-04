@@ -1,3 +1,5 @@
+import {deliver,createDeliveryWorker} from '../settlement-delivery.mjs';
+import {verifySnapshot} from '../snapshot-integrity.mjs';
 import machineResume from "../machine-resume.cjs";
 import {enabled as customerLoginEnabled,createCustomerAuth,customerMachine} from '../customer-auth.mjs';
 import * as https from "node:https";
@@ -16,6 +18,7 @@ const SUPABASE_URL = String(process.env.SUPABASE_URL || "").replace(/\/$/, "");
 const SUPABASE_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || "");
 const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || "");
 const SHEETS_WEBHOOK_URL = String(process.env.GOOGLE_SHEETS_WEBHOOK_URL || "").trim();
+const SETTLEMENT_V2=STORE_ID==='store-debug' && process.env.VERTEX_SETTLEMENT_V2==='1';
 const JACKPOT_CONTRIBUTION_RATE = 0.10;
 const JACKPOT_SPIN_COST_PT = 100;
 const JACKPOT_CONTRIBUTION_PT = Math.round(JACKPOT_SPIN_COST_PT * JACKPOT_CONTRIBUTION_RATE);
@@ -62,6 +65,7 @@ function requestJson(urlString, options={}){
     });
     req.on("error", reject);
     if(body) req.write(body);
+    req.setTimeout?.(10000,()=>req.destroy(new Error('upstream timeout')));
     req.end();
   });
 }
@@ -462,7 +466,9 @@ function sessionStartStats(session, snapshot){
 }
 function snapshotForSession(session, machine, submittedSnapshot=null){
   const expectedSessionId = String(session && session.sessionId || "");
-  for(const snapshot of [submittedSnapshot, machine && machine.lastSnapshot]){
+  const candidates=[submittedSnapshot,machine&&machine.lastSnapshot].filter(snapshot=>snapshot&&String(snapshot.playSessionId||'')===expectedSessionId);
+  if(SETTLEMENT_V2)candidates.sort((a,b)=>Number(b.capturedAt||0)-Number(a.capturedAt||0));
+  for(const snapshot of candidates){
     if(snapshot && String(snapshot.playSessionId || "") === expectedSessionId) return snapshot;
   }
   return {playSessionId:expectedSessionId, playSessionStartStats:{}, stats:{}};
@@ -492,10 +498,32 @@ async function sendToSheets(record){
       const events=await sb('super_speed_activity?session_id=eq.'+encodeURIComponent(record.sessionId)+'&event_type=eq.used&select=occurred_at_ms&order=occurred_at_ms.asc');
       if(events.length)outbound.superSpeedUsage=events.map(event=>({businessDate:new Date(Number(event.occurred_at_ms)+6*3600000).toISOString().slice(0,10).replaceAll('-','/'),usedAt:new Date(Number(event.occurred_at_ms)+9*3600000).toISOString().slice(0,19).replace('T',' ').replaceAll('-','/')}));
     }
+    if(SETTLEMENT_V2)return deliver(SHEETS_WEBHOOK_URL,outbound);
     const result = await postJson(SHEETS_WEBHOOK_URL, outbound);
     const ok = Number(result && result.status) >= 200 && Number(result && result.status) < 300;
     return ok ? {ok:true, result} : {ok:false, error:`Sheets webhook returned ${result && result.status || "unknown"}`};
   }catch(e){ return {ok:false, error:e.message}; }
+}
+const deliveryWorker=createDeliveryWorker({sb,send:sendToSheets});
+export async function retrySettlements(options={limit:1}){return SETTLEMENT_V2?deliveryWorker.drain(options):[];}
+async function finalizeNova(session,machine,body){
+ for(let attempt=0;attempt<2;attempt++){
+  const snapshot=snapshotForSession(session,machine,body.snapshot);
+  const check=verifySnapshot(snapshot,{previous:machine.lastSnapshot});
+  if(!check.ok)throw Object.assign(new Error('収支データを確認できません。画面を閉じず再送してください。'),{statusCode:422});
+  if(check.alerts.length)console.warn('NOVA accounting observation',{sessionId:session.sessionId,issues:check.alerts});
+  snapshot.settings={...snapshot.settings,...adminSettings.completionSettings(machine.lastSnapshot?.settings,machine.machineType),setting:machine.assignedSetting};
+  machine.lastSnapshot=snapshot;
+  await hydrateMachineTotal(machine);
+  const record=await customerSettlementRecord({...resultPayload(session,machine,{...body,snapshot}),forced:!!body.forced,...(body.forced?{forcedBy:'admin'}:{})});
+  const machineTotal=completedMachineTotal(machine,record);
+  try{
+   const result=await sb('rpc/nova_finalize_session',{method:'POST',body:JSON.stringify({p_session_id:session.sessionId,p_record:record,p_snapshot:snapshot,p_machine_total:machineTotal})});
+   // Durable transaction has finished. An external timeout cannot lose the result.
+   try{const delivery=await deliveryWorker.one(session.sessionId);if(delivery)result.sheets=delivery;}catch{result.sheets={ok:false,pending:true,status:'pending'};}
+   return result;
+  }catch(error){if(attempt===0&&error.message.includes('NEWER_SNAPSHOT_EXISTS')){machine=await getMachine(session.machineId);continue;}throw error;}
+ }
 }
 function resultPayload(session, machine, body){
   const snapshot = body.snapshot || machine.lastSnapshot || {};
@@ -692,8 +720,9 @@ export default async function handler(req, res){
       const body = await readBody(req);
       const session = await getSession(String(body.sessionId || ""));
       if(!session || session.token !== String(body.token || "")) return json(res, 403, {ok:false, error:"invalid session"});
-      if(session.status === "ended") return json(res, 200, {ok:true, alreadyEnded:true, released:await releaseClosedSession(session), record:session.resultRecord || null});
+      if(session.status === "ended") return json(res, 200, {ok:true, alreadyEnded:true, released:await releaseClosedSession(session), record:session.resultRecord || null,sheets:session.sheets || null});
       const machine = await getMachine(session.machineId);
+      if(SETTLEMENT_V2&&machine.machineType==='nova')return json(res,200,await finalizeNova(session,machine,body));
       const snapshot = snapshotForSession(session, machine, body.snapshot);
       if(body.snapshot && snapshot === body.snapshot){
         snapshot.settings={...snapshot.settings,...adminSettings.completionSettings(machine.lastSnapshot?.settings,machine.machineType)};
@@ -732,6 +761,15 @@ export default async function handler(req, res){
       }
       if(String(machine.lastSnapshot?.playSessionId)===incomingSessionId && Number(body.capturedAt||0)<Number(machine.lastSnapshot?.capturedAt||0))return json(res,200,{ok:true,ignored:true});
       const completion=adminSettings.completionSettings(machine.lastSnapshot?.settings,machine.machineType);
+      if(SETTLEMENT_V2&&machine.machineType==='nova'){
+        const check=verifySnapshot(body,{previous:machine.lastSnapshot});
+        if(!check.ok)return json(res,422,{ok:false,error:'収支データの整合性を確認できません',issues:check.issues});
+        if(check.alerts.length)console.warn('NOVA accounting observation',{sessionId:incomingSessionId,issues:check.alerts});
+        if(check.stale)return json(res,200,{ok:true,ignored:true});
+        const snapshot={...body,settings:{...body.settings,...completion},machineId,online:true,updatedAt:ms()};
+        const saved=await sb('rpc/nova_save_snapshot',{method:'POST',body:JSON.stringify({p_machine_id:machineId,p_session_id:incomingSessionId,p_reset_serial:machine.resetSerial,p_snapshot:snapshot})});
+        return json(res,200,{ok:true,ignored:!saved});
+      }
       machine.lastSnapshot = {...body, settings:{...body.settings,...completion},machineId, online:true, updatedAt:ms()};
       machine.updatedAt = ms();
       // A state request may pass authentication, then arrive after end/reset or a
@@ -837,6 +875,7 @@ export default async function handler(req, res){
             if(machine.lastSnapshot?.endPreparedAt&&machine.lastSnapshot.playSessionId===session.sessionId)break;
           }
         }
+        if(SETTLEMENT_V2&&machine.machineType==='nova')return json(res,200,{...await finalizeNova(session,machine,{forced:true}),forced:true});
         await hydrateMachineTotal(machine);
         const record = await customerSettlementRecord({...resultPayload(session, machine, {snapshot:snapshotForSession(session, machine)}), forced:true, forcedBy:"admin"});
         const machineTotal=completedMachineTotal(machine,record);
@@ -858,6 +897,7 @@ export default async function handler(req, res){
         await upsertMachine(machine);
         return json(res, 200, {ok:true, released:true, alreadyEnded:true, record:machine.lastEndedSession.record || null, sheets:machine.lastEndedSession.sheets || null});
       }
+      if(SETTLEMENT_V2&&machine.machineType==='nova')return json(res,409,{ok:false,error:'精算する有効なセッションを確認できません。終了記録を確認してください。'});
       if(!machine.lastSnapshot) return json(res, 400, {ok:false, error:"終了できるデータがありません"});
       const forcedSession = {sessionId:makeId("forced"), token:"", password:"", machineId:machine.machineId, playerName:machine.currentPlayerName || "強制終了", status:"active", startedAt:0, endedAt:0, startSnapshot:machine.lastSnapshot || null};
       const record = await customerSettlementRecord({...resultPayload(forcedSession, machine, {}), forced:true, forcedBy:"admin"});
@@ -881,6 +921,17 @@ export default async function handler(req, res){
       const rows = [];
       for(const machine of await getAllMachines()) rows.push(await insertCommand(machine.machineId, command));
       return json(res, 200, {ok:true, delivered:rows.length});
+    }
+    if(pathname==='/api/admin/settlements'&&req.method==='GET'){
+      if(!adminOk(req))return json(res,401,{ok:false,error:'admin password required'});
+      if(!SETTLEMENT_V2)return json(res,200,{ok:true,enabled:false,jobs:[]});
+      const jobs=await sb('settlement_outbox?select=session_id,status,attempts,next_attempt_at,last_error,delivered_at&status=neq.sent&order=next_attempt_at.asc&limit=100');
+      return json(res,200,{ok:true,enabled:true,jobs});
+    }
+    if(pathname==='/api/admin/settlements/retry'&&req.method==='POST'){
+      if(!adminOk(req))return json(res,401,{ok:false,error:'admin password required'});
+      if(!SETTLEMENT_V2)return json(res,404,{ok:false});
+      return json(res,200,{ok:true,results:await retrySettlements()});
     }
     if(pathname === "/api/results" && req.method === "GET"){
       if(!adminOk(req)) return json(res, 401, {ok:false, error:"admin password required"});

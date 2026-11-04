@@ -69,6 +69,8 @@
   </section>
   <section class="panel">
     <h2>終了履歴</h2>
+    <div id="settlementStatus" hidden role="status"></div>
+    <button id="settlementRetry" class="ghost" type="button" hidden onclick="retryPendingSettlements()">未送信分を再送</button>
     <div id="results" class="results"></div>
   </section>
 </main>
@@ -336,6 +338,26 @@ async function loadResults(){
   const data = await res.json().catch(() => []);
   const rows = Array.isArray(data) ? data : [];
   $('results').innerHTML = rows.map(r => `<div class="item"><b>${escapeHtml(r.machineName || machineLabelById(r.machineId))}</b><span>${escapeHtml(r.playerName)}</span><span>${r.sheets && r.sheets.ok ? '<span class="ok">Sheets</span>' : '<span class="muted">local</span>'}</span><span>${new Date(r.endedAt).toLocaleString('ja-JP')}</span></div>`).join('') || '<div class="muted">まだありません</div>';
+}
+let settlementRequest=0,settlementRetrying=false;
+async function loadSettlements(){
+  if(!adminSecret||!customerLoginEnabled)return;
+  const revision=++settlementRequest;
+  try{
+    const res=await fetch('/api/admin/settlements',{headers:adminHeaders(),cache:'no-store',signal:AbortSignal.timeout(10000)});
+    const data=await res.json();if(revision!==settlementRequest||!adminSecret||!res.ok||!data.enabled)return;
+    const jobs=Array.isArray(data.jobs)?data.jobs:[];
+    $('settlementStatus').hidden=false;
+    $('settlementStatus').textContent=jobs.length?`スプシへ送信待ち：${jobs.length}件（終了記録は保存済み・自動再送対象）`:'スプシ送信：新しい終了分の送信待ちはありません';
+    $('settlementStatus').className=jobs.length?'bad':'ok';$('settlementRetry').hidden=!jobs.length;
+  }catch{if(adminSecret&&revision===settlementRequest){$('settlementStatus').hidden=false;$('settlementStatus').textContent='スプシ送信状況を取得できません。次回更新で再確認します。';}}
+}
+async function retryPendingSettlements(){
+  if(settlementRetrying||!adminSecret)return;
+  settlementRetrying=true;
+  $('settlementRetry').disabled=true;
+  try{await fetch('/api/admin/settlements/retry',{method:'POST',headers:adminHeaders(),signal:AbortSignal.timeout(30000)});}catch{}
+  finally{settlementRetrying=false;$('settlementRetry').disabled=false;await loadSettlements();}
 }
 function compactPasswordMarkup(id){
   if(customerLoginEnabled)return '顧客ID認証';
@@ -752,10 +774,12 @@ async function enterAdmin(password){
   document.body.classList.remove('locked');
   await Promise.allSettled([loadMachines(), loadResults(),loadCurrentPasswords()]);
   void loadSpeedActivity();
+  void loadSettlements();
 }
 function logoutAdmin(){
   fetch('/api/admin/logout', {method:'POST'}).catch(()=>{});
   adminSecret = '';
+  settlementRequest++;$('settlementStatus').hidden=true;$('settlementRetry').hidden=true;
   passwordCurrentRequest++;passwordIssues.clear();
   speedActivityRequest++;$('speedActivityList').replaceChildren();$('speedActivityPanel').hidden=true;
   $('machines').replaceChildren();$('passwordList').replaceChildren();
@@ -777,6 +801,7 @@ async function refreshAll(){
 }
 setInterval(refreshAll, 5000);
 setInterval(()=>{if(!document.hidden)void loadSpeedActivity();},30000);
+setInterval(()=>{if(!document.hidden){void loadSettlements();if(!$('settlementRetry').hidden)void retryPendingSettlements();}},60000);
 setInterval(()=>{if(!document.hidden)void loadCurrentPasswords();},5000);
 window.addEventListener('focus',()=>{void loadCurrentPasswords();void refreshAll();});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){void loadCurrentPasswords();void refreshAll();}});

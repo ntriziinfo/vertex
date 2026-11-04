@@ -1,3 +1,4 @@
+import {verifySnapshot} from '../snapshot-integrity.mjs';
 import {readFile} from 'node:fs/promises';
 import {enabled as customerPilotEnabled} from '../customer-auth.mjs';
 import * as crypto from "node:crypto";
@@ -573,13 +574,21 @@ export default async function gateway(req, res){
     }
 
     if(pathname === "/api/sessions/end" && req.method === "POST"){
-      await verifySessionEnd(body);
+      const ending=await verifySessionEnd(body);
+      if(process.env.VERTEX_SETTLEMENT_V2==='1'&&STORE_ID==='store-debug'&&!ending.alreadyEnded&&body.snapshot){
+        const check=verifySnapshot(body.snapshot,{previous:ending.machine?.last_snapshot});
+        if(!check.ok)return sendJson(res,req,422,{ok:false,error:'収支データの整合性を確認できません',issues:check.issues});
+      }
     }
 
     const stateMatch = pathname.match(/^\/api\/machines\/([^/]+)\/state$/);
     if(stateMatch && req.method === "POST"){
       const machineId = decodeURIComponent(stateMatch[1]);
       const active = await assertActiveSession(req, machineId, body);
+      if(process.env.VERTEX_SETTLEMENT_V2==='1'&&STORE_ID==='store-debug'&&active.machine.machine_type==='nova'){
+        const check=verifySnapshot(body,{previous:active.machine.last_snapshot});
+        if(!check.ok)return sendJson(res,req,422,{ok:false,error:'収支データの整合性を確認できません',issues:check.issues});
+      }
       req.body = constrainSnapshot(body, active.machine);
     }
 
