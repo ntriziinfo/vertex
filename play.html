@@ -6,6 +6,7 @@
   <title>VERTEX プレイ入口</title>
   <style>
     [hidden]{display:none!important}
+    h1{line-height:1.4}
     *{box-sizing:border-box} body{margin:0;background:#05060c;color:#fff7df;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Yu Gothic",sans-serif}.login{min-height:100vh;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 20% 20%,rgba(255,54,93,.22),transparent 30%),linear-gradient(145deg,#05060c,#16091f)}.card{width:min(460px,92vw);background:#121722;border:1px solid rgba(255,211,106,.45);border-radius:8px;padding:24px;box-shadow:0 20px 70px rgba(0,0,0,.45)}h1{margin:0 0 14px;font-size:26px}.field{display:grid;gap:8px;margin:16px 0}.field input{height:48px;border-radius:6px;border:1px solid #3b4352;background:#070a10;color:#fff;font-size:22px;letter-spacing:.08em;text-align:center;text-transform:uppercase}button{height:44px;border:0;border-radius:6px;padding:0 16px;font-weight:900;cursor:pointer;background:#ffd36a;color:#1c1200}.muted{color:#aab2c2;font-size:13px}.bad{color:#ff8f8f}.topbar{height:54px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:#11151e;border-bottom:1px solid #333b49;padding:0 14px}.topbar b{color:#ffe07c}.danger{background:#d94b4b;color:#fff}.slotFrame{width:100%;height:calc(100vh - 54px);border:0;display:block;background:#05060c}.ended{min-height:100vh;display:grid;place-items:center;background:#10141c;text-align:center;padding:24px}.ended h2{font-size:34px;margin:0 0 12px}@media(max-width:700px){.topbar{height:auto;min-height:54px;align-items:flex-start;flex-direction:column;padding:10px}.slotFrame{height:calc(100vh - 96px)}}
   </style>
 </head>
@@ -13,8 +14,11 @@
 <div id="login" class="login">
   <div class="card">
     <h1><span id="storeName">VERTEX</span> <span id="entryMachineTitle"></span></h1>
-    <p class="muted" id="entryHelp">管理画面で発行されたパスワードを入力してください。</p>
-    <label class="field"><span>パスワード</span><input id="password" maxlength="12" autocomplete="one-time-code"></label>
+    <!-- login-fields:start -->
+    <p class="muted" id="entryHelp">登録済みのユーザーIDとパスワードで入場できます。</p>
+    <label class="field"><span>ユーザーID</span><input id="userId" maxlength="32" autocomplete="username" autocapitalize="none" spellcheck="false" style="text-transform:none"></label>
+    <label class="field"><span>パスワード</span><input id="password" type="password" maxlength="128" autocomplete="current-password" style="text-transform:none"></label>
+    <!-- login-fields:end -->
     <button id="startBtn" disabled>この台で開始</button>
     <p id="error" class="bad"></p>
   </div>
@@ -35,7 +39,8 @@
 const $ = id => document.getElementById(id);
 let active = null;
 let slotOrigin = "";
-let customerLogin=false,brandingReady=false;
+const customerLogin = $('userId') !== null;
+let brandingReady=false;
 let resumeState=null, machineDisplayBaseline=null, novaHandoff=false, pendingSnapshot=null;
 let machineNames = new Map();
 let sessionWatchTimer = null, sessionWatchInFlight = false, sessionWatchRequested = false;
@@ -85,20 +90,18 @@ try{
 }catch(error){}
 async function loadBranding(){
   try{
-    const [configResponse, machinesResponse] = await Promise.all([fetch('/api/config'), fetch('/api/machines')]);
+    const [configResponse, machinesResponse] = await Promise.all([fetch('/api/config',{signal:AbortSignal.timeout(12000)}), fetch('/api/machines',{signal:AbortSignal.timeout(12000)})]);
+    if(!configResponse.ok || !machinesResponse.ok)throw Error('config');
     const config = await configResponse.json();
-    if(!configResponse.ok)throw Error('config');
-    customerLogin=config.storeId==='store-debug'&&config.customerLoginEnabled===true&&/^nova-(0[1-9]|1[0-2])$/.test(entryMachineId);
-    if(customerLogin){
-      const label=document.createElement('label');label.className='field';label.innerHTML='<span>ユーザーID</span><input id="userId" maxlength="32" autocomplete="username" autocapitalize="none" spellcheck="false" style="text-transform:none">';
-      $('password').closest('label').before(label);
-      $('password').type='password';$('password').maxLength=128;$('password').autocomplete='current-password';$('password').style.textTransform='none';
-      enableLastPasswordCharacter($('password'));
-    }
-    brandingReady=true;$('startBtn').disabled=false;
+    const accountEntry=config.storeId==='store-debug'&&config.customerLoginEnabled===true&&/^nova-(0[1-9]|1[0-2])$/.test(entryMachineId);
+    // Entry fields are selected before serving HTML. Never fall back to an issued
+    // password form if account configuration is delayed, unavailable or disabled.
+    if(customerLogin !== accountEntry)throw Error('entry mode mismatch');
     const machines = await machinesResponse.json();
+    if(!Array.isArray(machines))throw Error('machines');
     if(config.storeName){ $('storeName').textContent = config.storeName; document.title = `${config.storeName} プレイ入口`; }
-    machineNames = new Map((Array.isArray(machines) ? machines : []).map(machine=>[String(machine.machineId), machine.displayName || machine.machineId]));
+    machineNames = new Map(machines.map(machine=>[String(machine.machineId), machine.displayName || machine.machineId]));
+    brandingReady=true;$('startBtn').disabled=false;
   }catch(error){$('error').textContent='店舗情報を取得できません。ページを再読み込みしてください。';}
   if(entryMachineId){
     $('entryMachineTitle').textContent = machineName(entryMachineId);
@@ -296,6 +299,7 @@ window.addEventListener('message', event=>{
 $('startBtn').addEventListener('click', start);
 $('password').addEventListener('keydown', e=>{ if(e.key === 'Enter') start(); });
 $('endBtn').addEventListener('click', endSession);
+if(customerLogin)enableLastPasswordCharacter($('password'));
 loadBranding();
 </script>
 </body>

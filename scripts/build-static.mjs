@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import entry from "../play-entry.cjs";
 
 const root = path.resolve(import.meta.dirname, "..");
 const output = path.join(root, "dist");
@@ -13,6 +14,7 @@ for(const file of publicFiles){
   const source = path.join(root, nebula && file === "machines.html" ? "nebula-machines.html" : file);
   if(!fs.existsSync(source)) throw new Error(`Missing public file: ${file}`);
   let html = fs.readFileSync(source, "utf8");
+  if(file === "play.html") html = entry.renderPlayEntry(html, process.env.VERTEX_STORE_ID);
   if(nebula){
     html = html.replaceAll("VERTEX", "NEBULA");
     if(file === "index.html") html = html.replaceAll("/admin.html", "/machines.html").replaceAll("店舗管理", "台選び");

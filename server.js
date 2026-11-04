@@ -5,6 +5,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const passwordIssuance = require('./password-issuance.cjs');
+const {renderPlayEntry} = require('./play-entry.cjs');
 const speedActivity = require('./super-speed-activity.cjs');
 const {sheetsSettlement} = require('./sheets-settlement.cjs');
 const { URL } = require("url");
@@ -552,7 +553,7 @@ function serveFile(res, pathname){
       ".mp4":"video/mp4"
     };
     res.writeHead(200, {"Content-Type":types[ext] || "application/octet-stream"});
-    res.end(data);
+    res.end(clean === '/play.html' ? renderPlayEntry(data.toString('utf8'), STORE_ID) : data);
   });
 }
 

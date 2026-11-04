@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
+import entry from '../play-entry.cjs';
 
 test('Nebula loads twelve NOVA machines with IDs separate from the existing store',()=>{
   const probe=spawnSync(process.execPath,['-e','process.stdout.write(JSON.stringify(require("./machine-config.cjs")))'],{
@@ -28,9 +29,9 @@ test('store-specific builds use Nebula customer entry without changing existing 
   const temp=fs.mkdtempSync(path.join(os.tmpdir(),'nebula-build-'));
   try{
     fs.mkdirSync(path.join(temp,'scripts'));
-    const files=['index.html','admin.html','machines.html','play.html','monitor.html','nebula-machines.html','slump-graph.js',"nova-data-counter.js","nova-data-counter.css","machine-data.js","list-performance.js",'scripts/build-static.mjs'];
+    const files=['index.html','admin.html','machines.html','play.html','monitor.html','nebula-machines.html','slump-graph.js',"nova-data-counter.js","nova-data-counter.css","machine-data.js","list-performance.js",'play-entry.cjs','scripts/build-static.mjs'];
     for(const file of files)fs.copyFileSync(new URL('../'+file,import.meta.url),path.join(temp,file));
-    for(const [store,theme] of [['store-nebula',''],['store-jag-one',''],['store-debug','nebula']]){
+    for(const [store,theme] of [['store-nebula',''],['store-jag-one',''],['store-las-vegas',''],['store-debug',''],['store-debug','nebula']]){
       const built=spawnSync(process.execPath,['scripts/build-static.mjs'],{cwd:temp,encoding:'utf8',env:{...process.env,VERTEX_STORE_ID:store,VERTEX_CUSTOMER_THEME:theme}});
       assert.equal(built.status,0,built.stderr);
       const read=file=>fs.readFileSync(path.join(temp,'dist',file),'utf8');
@@ -41,7 +42,18 @@ test('store-specific builds use Nebula customer entry without changing existing 
         assert.match(read('play.html'),/台選びに戻る/);
         if(store==='store-debug')assert.match(read('admin.html'),/url=https:\/\/vertex-debug.vercel.app\/admin.html/);
       }else{
-        for(const file of files.slice(0,4))assert.equal(read(file),fs.readFileSync(path.join(temp,file),'utf8'));
+        for(const file of files.slice(0,4)){
+          const source=fs.readFileSync(path.join(temp,file),'utf8');
+          assert.equal(read(file),file==='play.html'?entry.renderPlayEntry(source,store):source);
+        }
+      }
+      if(store==='store-debug'){
+        assert.match(read('play.html'),/id="userId"/);
+        assert.match(read('play.html'),/id="password" type="password" maxlength="128"/);
+        assert.doesNotMatch(read('play.html'),/管理画面で発行された|one-time-code/);
+      }else{
+        assert.doesNotMatch(read('play.html'),/id="userId"/);
+        assert.match(read('play.html'),/autocomplete="one-time-code"/);
       }
     }
   }finally{
