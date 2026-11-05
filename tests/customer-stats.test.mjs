@@ -84,6 +84,28 @@ test('normal small-role counters persist across player deltas, checkpoints and r
   assert.equal(machineDisplayBaseline(machine).normalRoleSuikaCount,0);
 });
 
+test('first-hit sample starts on upgrade and keeps its own denominator across customers and resets',()=>{
+ const machine={machineId:'nova-01',resetSerial:2};
+ function close(sessionId,stats,startStats={}){
+   const record={machineId:machine.machineId,resetSerial:machine.resetSerial,sessionId,stats,startStats};
+   machine.lastEndedSession={sessionId,record,machineTotal:completedMachineTotal(machine,record)};
+ }
+ const legacy={totalSpins:5000,bigCount:11,atFirstCount:9,dataNormalGames:3000};
+ close('old',legacy);
+ assert.equal(machineDisplayBaseline(machine).firstHitEligibleGames,0);
+ const recorded={...legacy,totalSpins:5200,firstHitEligibleGames:130,firstHitBigCount:2,firstHitAtCount:1};
+ close('a',recorded,legacy);
+ machine.currentSessionId='b';
+ machine.lastSnapshot={playSessionId:'b',playSessionStartStats:recorded,stats:{...recorded,totalSpins:5400,firstHitEligibleGames:190,firstHitBigCount:3,firstHitAtCount:2}};
+ for(const snapshot of [machine,JSON.parse(JSON.stringify(machine))]){
+   const {stats}=machineTotalFor(snapshot);
+   assert.deepEqual([stats.firstHitEligibleGames,stats.firstHitBigCount,stats.firstHitAtCount],[190,3,2]);
+   assert.equal(machineDisplayBaseline(snapshot).firstHitEligibleGames,130);
+ }
+ machine.resetSerial++;machine.currentSessionId='';machine.lastSnapshot=null;
+ assert.equal(machineDisplayBaseline(machine).firstHitEligibleGames,0);
+});
+
 test('BIG AT and special-zone history spans player changes with cumulative game offsets',()=>{
  const machine={machineId:'nova-01',resetSerial:1};
  const first={machineId:machine.machineId,sessionId:'first',resetSerial:1,stats:{totalSpins:500,atFirstCount:1,dataNormalGames:400,dataAtGames:100,dataHitSeq:2,dataHits:[{seq:1,spin:350,kind:'BIG',zone:'',games:350},{seq:2,spin:400,kind:'AT',zone:'',games:50}]}};

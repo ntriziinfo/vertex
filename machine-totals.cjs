@@ -1,4 +1,4 @@
-const ROLE_STAT_KEYS = ["normalRoleGames", "normalRoleSuikaCount", "normalRoleWeakNovaCount", "normalRoleStrongNovaCount", "normalRoleReplayCount", "normalRoleBellCount", "normalRoleNaviBellCount"];
+const ROLE_STAT_KEYS = ["firstHitEligibleGames", "firstHitBigCount", "firstHitAtCount", "normalRoleGames", "normalRoleSuikaCount", "normalRoleWeakNovaCount", "normalRoleStrongNovaCount", "normalRoleReplayCount", "normalRoleBellCount", "normalRoleNaviBellCount"];
 const DATA_STAT_KEYS = ["dataNormalGames", "dataAtGames", "dataHitSeq"];
 const STAT_KEYS = ["totalSpins", "bigCount", "midCount", "atFirstCount", "totalFee", "totalPaid", ...ROLE_STAT_KEYS, ...DATA_STAT_KEYS];
 
