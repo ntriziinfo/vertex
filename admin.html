@@ -274,7 +274,7 @@ function renderMachines(){
         <label class="field"><select aria-label="設定" class="settingMini" id="setting-${m.machineId}" onchange="rememberMachineDraft('${m.machineId}')">${[1,2,3,4,5,6].map(n => '<option value="' + n + '" ' + (String(draft?.setting ?? machineSettingValue(m)) === String(n) ? 'selected' : '') + '>設定' + n + '</option>').join('')}</select></label>
         <button onclick="applySetting('${m.machineId}')">設定反映</button>
         ${m.machineType==='nova' ? `<button class="ghost superSpeedToggle" aria-pressed="${m.capabilities?.superSpeedAllowed===true}" onclick="setSuperSpeed('${m.machineId}',${m.capabilities?.superSpeedAllowed!==true},this)">超ハイスピード ${m.capabilities?.superSpeedAllowed===true?'ON':'OFF'}</button>` : ''}
-        <button class="danger" id="force-end-${m.machineId}" ${m.currentSessionId || m.lastEndedSession || m.stats || passwordIssues.get(m.machineId)?.current ? '' : 'disabled'} onclick="forceEndMachine('${m.machineId}')">強制終了</button>
+        ${useTargetAverageRtp && m.currentSessionId ? `<button type="button" class="ghost" onclick="inspectRecoveryState('${m.machineId}')">保存状態を確認</button>` : ''}<button class="danger" id="force-end-${m.machineId}" ${m.currentSessionId || m.lastEndedSession || m.stats || passwordIssues.get(m.machineId)?.current ? '' : 'disabled'} onclick="forceEndMachine('${m.machineId}')">強制終了</button>
         <button class="danger" onclick="resetMachine('${m.machineId}')">管理リセット</button>
         <button class="ghost" onclick="window.open('/play.html?machine=${encodeURIComponent(m.machineId)}','_blank','noopener')">入口</button>
       </fieldset>
@@ -564,6 +564,14 @@ async function submitMachineUpdate(id, action, body){
 }
 function machineSettingValue(machine){
   return Math.max(1, Math.min(6, Math.round(Number(machine && machine.settings && machine.settings.setting) || Number(machine && machine.assignedSetting) || 1)));
+}
+async function inspectRecoveryState(id){
+  const response=await fetch('/api/admin/machines/'+encodeURIComponent(id)+'/recovery-state',{headers:adminHeaders(),cache:'no-store'});
+  const data=await response.json();
+  if(!response.ok){alert(data.error||'取得失敗');return;}
+  let dialog=document.getElementById('recoveryStateDialog');
+  if(!dialog){dialog=document.createElement('dialog');dialog.id='recoveryStateDialog';dialog.style.cssText='max-width:90vw;max-height:85vh;background:#151922;color:#fff';dialog.innerHTML='<button onclick="this.closest(\'dialog\').close()">閉じる</button><pre id="recoveryStateData" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre>';document.body.append(dialog);}
+  document.getElementById('recoveryStateData').textContent=JSON.stringify(data,null,2);dialog.showModal();
 }
 function machineAverageRtp(machine){
   if(useTargetAverageRtp && machine?.machineType==='nova')return [95,97,99,103,111,116][machineSettingValue(machine)-1];
