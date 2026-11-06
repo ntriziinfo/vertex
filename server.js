@@ -623,7 +623,8 @@ const server = http.createServer(async (req, res)=>{
       return sendJson(res, 200, {ok:true, pool});
     }
 
-    if(url.pathname === "/api/machines" && req.method === "GET"){
+    if((url.pathname === "/api/machines" || url.pathname === "/api/admin/machines") && req.method === "GET"){
+      if(url.pathname === "/api/admin/machines"&&!adminOk(req))return sendJson(res,401,{ok:false,error:"admin password required"});
       return sendJson(res, 200, publicMachines());
     }
 

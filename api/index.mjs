@@ -1,3 +1,4 @@
+import {customerPlayerNames} from '../customer-player-names.mjs';
 import {deliver,createDeliveryWorker} from '../settlement-delivery.mjs';
 import {verifySnapshot} from '../snapshot-integrity.mjs';
 import machineResume from "../machine-resume.cjs";
@@ -636,7 +637,9 @@ export default async function handler(req, res){
       if(currentPt === null) return json(res, 400, {ok:false, error:`currentPt must be an integer from 0 to ${MAX_JACKPOT_PT}`});
       return json(res, 200, {ok:true, pool:await setJackpotPoolAmount(poolId, currentPt)});
     }
-    if(pathname === "/api/machines" && req.method === "GET"){
+    if((pathname === "/api/machines" || pathname === "/api/admin/machines") && req.method === "GET"){
+      const adminView=pathname === "/api/admin/machines";
+      if(adminView&&!adminOk(req))return json(res,401,{ok:false,error:"admin password required"});
       const machines = await getAllMachines();
       const poolIds = [...new Set(machines.map(machine=>machine.poolId).filter(Boolean))];
       const poolEntries = await Promise.all(poolIds.map(async poolId=>{
@@ -647,7 +650,8 @@ export default async function handler(req, res){
       // Checkpoints keep normal polling independent of completed-session history.
       // Only legacy machines without a checkpoint need a one-time reconstruction.
       await Promise.all(machines.map(hydrateMachineTotal));
-      return json(res, 200, machines.map(machine=>publicMachine(machine, machineTotalFor(machine, []), pools.get(machine.poolId) || null)));
+      const rows=machines.map(machine=>publicMachine(machine, machineTotalFor(machine, []), pools.get(machine.poolId) || null));
+      return json(res, 200, adminView&&customerLoginEnabled()?await customerPlayerNames(rows,sb):rows);
     }
     if(pathname === "/api/admin/issue-password" && req.method === "POST"){
       if(!adminOk(req)) return json(res, 401, {ok:false, error:"admin password required"});
