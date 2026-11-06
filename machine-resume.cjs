@@ -26,7 +26,7 @@ function forSession(machine,session){
   if(!saved?.stats)return {...meta,baseline:null,state:{savedAt:Number(saved?.updatedAt)||Number(session.startedAt)||0,
     settings:{...saved?.settings,setting:machine.assignedSetting||saved?.settings?.setting||1}}};
   return {...meta,baseline:same?saved.playSessionStartStats||null:null,state:{
-    savedAt:Number(saved.capturedAt||saved.updatedAt)||0,settings:{...(saved.resumeSettings||saved.settings),setting:machine.assignedSetting||saved.settings?.setting||1},
+    savedAt:Number(saved.capturedAt||saved.updatedAt)||0,settings:{...(saved.resumeSettings||saved.settings),...require('./admin-settings.cjs').completionSettings(saved.settings,machine.machineType),setting:machine.assignedSetting||saved.settings?.setting||1},
     stats:saved.stats,normalState:saved.normalState||{},completeTrialState:saved.completeTrialState||{},
     runtimeState:saved.runtimeState||{session:saved.session||{},replayAccountingVersion:2},
     displaySinceBonusOffset:Math.max(0,(Number(saved.machineDisplayStats?.sinceBonus)||0)-(Number(saved.normalState?.sinceBonus)||0))

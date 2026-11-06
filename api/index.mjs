@@ -749,6 +749,14 @@ export default async function handler(req, res){
       const row = await insertCommand(machine.machineId, {type:"prepareEnd", sessionId:session.sessionId});
       return json(res, 200, {ok:true, delivered:true, commandId:row.id});
     }
+    const recoveryMatch=pathname.match(/^\/api\/admin\/machines\/([^/]+)\/recovery-state$/);
+    if(recoveryMatch&&req.method==='GET'){
+      if(!adminOk(req))return json(res,401,{ok:false,error:'admin password required'});
+      const id=decodeURIComponent(recoveryMatch[1]);
+      if(STORE_ID!=='store-debug'||!validMachineId(id))return json(res,404,{ok:false,error:'machine not found'});
+      const machine=await getMachine(id);
+      return json(res,200,{ok:true,machineId:id,currentSessionId:machine.currentSessionId,resetSerial:machine.resetSerial,snapshot:machine.lastSnapshot});
+    }
     let m = pathname.match(/^\/api\/machines\/([^/]+)\/state$/);
     if(m && req.method === "POST"){
       const machineId = decodeURIComponent(m[1]);
