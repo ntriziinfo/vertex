@@ -19,6 +19,7 @@
 .floorControlRow.hasCustomerRegistration{grid-template-columns:minmax(280px,1.15fr) auto minmax(460px,2fr)}.customerRegistration{display:flex;align-items:center;justify-content:center;align-self:center;min-height:44px;padding:0 18px;border-radius:6px;background:#f0c85a;color:#1b1300;font-weight:800;text-decoration:none;white-space:nowrap}.customerRegistration[hidden]{display:none}.customerRegistration:focus-visible{outline:3px solid #fff;outline-offset:3px}@media(max-width:1180px){.floorControlRow.hasCustomerRegistration{grid-template-columns:1fr}.customerRegistration{justify-self:start}}
 .machineTitle{gap:8px;align-items:center;flex-wrap:wrap}.machineTitle .machinePlayerStatus{flex:1;font-size:12px;font-weight:400;color:#b9c1ce;overflow-wrap:anywhere}.machineTitle .pill{flex-shrink:0}.machineDetails .novaGameSplit,.machineDetails .novaCounterNote{display:none}
 .graphHeading{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.graphHeading .graphCurrent{font-size:clamp(12px,1.1vw,16px);white-space:normal;overflow-wrap:anywhere}.graphHeading .graphCurrent small{display:block;font-size:11px;margin:0 0 3px}@media(max-width:980px){.graphHeading .graphCurrent{font-size:16px}}
+.machine[hidden]{display:none}
 </style>
 <style>
   .machineSummary{width:100%;height:auto;padding:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;border-radius:4px;min-width:0}.machineSummary:focus-visible{outline:2px solid #c3b2ff;outline-offset:5px}.compactTitle{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:18px;font-weight:800;margin-bottom:3px}.compactChevron{color:#bba0ff;font-size:20px;transition:transform .15s}.machines[data-view="compact"]{align-items:start}.machines[data-view="compact"] .machineTitle{display:none}.machines[data-view="compact"] .machine[data-expanded="true"]{border-color:#9980c7}.machines[data-view="compact"] .machine[data-expanded="true"] .machineDetails{display:grid;border-top:1px solid #3d344e;padding-top:12px;margin-top:3px}.machines[data-view="compact"] .machineDetails > :not(.passwordIssue){display:none}.machine[data-expanded="true"] .compactChevron{transform:rotate(180deg)}
@@ -53,8 +54,8 @@
       </div>
     </div>
     <div id="bulkStatus" class="bulkStatus muted"></div>
-    <div class="adminDataSwitch" role="group" aria-label="全台の表示切替"><span>表示</span><button type="button" data-admin-view="line" aria-pressed="true" onclick="setAdminDataView('line')">グラフ</button><button type="button" data-admin-view="hits" aria-pressed="false" onclick="setAdminDataView('hits')">目盛り</button><button type="button" data-admin-view="compact" aria-pressed="false" onclick="setAdminDataView('compact')">簡略</button></div>
-    <div id="machines" class="machines"></div>
+    <div class="adminDataSwitch" role="group" aria-label="全台の表示切替"><span>表示</span><button type="button" data-admin-view="line" aria-pressed="true" onclick="setAdminDataView('line')">グラフ</button><button type="button" data-admin-view="hits" aria-pressed="false" onclick="setAdminDataView('hits')">目盛り</button><button type="button" data-admin-view="compact" aria-pressed="false" onclick="setAdminDataView('compact')">簡略</button><button type="button" id="adminPlayingOnly" aria-pressed="false" onclick="toggleAdminPlayingOnly()">遊戯中</button></div>
+    <div id="machines" class="machines"></div><p id="adminPlayingEmpty" class="muted" hidden>遊戯中の台はありません。</p>
   </section>
 
   <section class="panel">
@@ -86,6 +87,7 @@
 const $ = id => document.getElementById(id);
 let machines = [];
 let adminDataView = 'line';
+let adminPlayingOnly = false;
 const expandedMachineDetails = new Set();
 const machineOperations = new Map();
 const machineDrafts = new Map();
@@ -170,6 +172,18 @@ function totalViewForMachine(machine){
 function historyFor(machine){ return machine._displayHistory || [{spin:0, profit:0}]; }
 function graphBounds(machine){ const profits = historyFor(machine).map(p => Number(p.profit) || 0); return {min:Math.min(0, ...profits), max:Math.max(0, ...profits)}; }
 function drawSlump(canvas, history){ VertexSlumpGraph.draw(canvas,history); }
+function toggleAdminPlayingOnly(){
+  adminPlayingOnly = !adminPlayingOnly;
+  renderAdminSlumpGraphs();
+}
+function applyAdminPlayingFilter(){
+  const activeIds = new Set(machineRows().filter(machine=>machine.currentSessionId).map(machine=>String(machine.machineId)));
+  document.querySelectorAll('[data-admin-machine]').forEach(card=>{
+    card.hidden = adminPlayingOnly && !activeIds.has(card.dataset.adminMachine);
+  });
+  $('adminPlayingOnly').setAttribute('aria-pressed',String(adminPlayingOnly));
+  $('adminPlayingEmpty').hidden = !adminPlayingOnly || activeIds.size > 0;
+}
 function setAdminDataView(view){
   if(!['line','hits','compact'].includes(view))return;
   adminDataView=view;
@@ -182,6 +196,7 @@ function toggleMachineDetails(id){
   renderAdminSlumpGraphs();
 }
 function renderAdminSlumpGraphs(){
+  applyAdminPlayingFilter();
   const hasNova=machineRows().some(machine=>machine.machineType==='nova');
   if(adminDataView==='hits'&&!hasNova)adminDataView='line';
   $('machines').dataset.view=adminDataView;
