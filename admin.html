@@ -88,6 +88,7 @@ const $ = id => document.getElementById(id);
 let machines = [];
 let adminDataView = 'line';
 let adminPlayingOnly = false;
+let useTargetAverageRtp = false;
 const expandedMachineDetails = new Set();
 const machineOperations = new Map();
 const machineDrafts = new Map();
@@ -234,13 +235,13 @@ function renderMachines(){
     floorProfitEl.classList.toggle('negative', floorProfit < 0);
   }
   const floorAverageRtp = customerMachines.length
-    ? customerMachines.reduce((sum, machine) => sum + machineSettingRtp(machine), 0) / customerMachines.length
+    ? customerMachines.reduce((sum, machine) => sum + machineAverageRtp(machine), 0) / customerMachines.length
     : NaN;
   const floorAverageRtpEl = $('floorAverageRtp');
   if(floorAverageRtpEl){
     const hasNova=customerMachines.some(m=>m.machineType==='nova');
     floorAverageRtpEl.textContent = Number.isFinite(floorAverageRtp) ? `${floorAverageRtp.toFixed(hasNova?2:1)}%` : '未取得';
-    floorAverageRtpEl.title=hasNova ? (novaRtpReport ? `${novaRtpReport.conditions} / ${novaRtpReport.commit.slice(0,7)}` : '最新仕様の1億G試算結果を待っています（取得できない場合も旧値は表示しません）') : '';
+    floorAverageRtpEl.title=useTargetAverageRtp ? '作成時の目標機械割を各台の設定番号で平均しています（実測値ではありません）' : hasNova ? (novaRtpReport ? `${novaRtpReport.conditions} / ${novaRtpReport.commit.slice(0,7)}` : '最新仕様の1億G試算結果を待っています（取得できない場合も旧値は表示しません）') : '';
   }
   $('machineCountLabel').textContent = `${floorMachines.length}台`;
   syncCompleteLimitControl();
@@ -564,6 +565,10 @@ async function submitMachineUpdate(id, action, body){
 function machineSettingValue(machine){
   return Math.max(1, Math.min(6, Math.round(Number(machine && machine.settings && machine.settings.setting) || Number(machine && machine.assignedSetting) || 1)));
 }
+function machineAverageRtp(machine){
+  if(useTargetAverageRtp && machine?.machineType==='nova')return [95,97,99,103,111,116][machineSettingValue(machine)-1];
+  return machineSettingRtp(machine);
+}
 function machineSettingRtp(machine){
   if(machine?.machineType==='nova')return novaRtpReport?.settings.find(row=>row.setting===machineSettingValue(machine))?.rtpPct ?? NaN;
   const profiles = {
@@ -728,6 +733,7 @@ async function loadVertexConfig(){
     const res = await fetch('/api/config', {cache:'no-store'});
     const config = await res.json();
     if(!res.ok || !config.storeName) return;
+    useTargetAverageRtp=config.storeId==='store-debug';
     customerLoginEnabled=config.storeId==='store-debug'&&config.customerLoginEnabled===true;
     $('passwordList').closest('section').hidden=customerLoginEnabled;
     $('customerRegistrationLink').hidden=!customerLoginEnabled;
