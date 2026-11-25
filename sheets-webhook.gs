@@ -1,14 +1,17 @@
 // Deployed to the existing NOVA revenue spreadsheet only.
 // A:Q are settlement fields. R:U contain accounting formulas: never write them.
-function doGet(){return ContentService.createTextOutput(JSON.stringify({ok:true,version:'settlement-v2-20261104'})).setMimeType(ContentService.MimeType.JSON);}
+function doGet(){return ContentService.createTextOutput(JSON.stringify({ok:true,version:'settlement-rate-20261126'})).setMimeType(ContentService.MimeType.JSON);}
 function doPost(e) {
   const data=JSON.parse(e.postData.contents);
   if(!data.sessionId || data.storeId!=='store-debug' || !data.endedAt)throw new Error('invalid settlement identity');
   const book=SpreadsheetApp.getActiveSpreadsheet();
   const sheet=book.getSheetByName('results');
   if(!sheet)throw new Error('results sheet missing');
+  const pointRate=data.pointRate===undefined?2000:Number(data.pointRate);
+  if(![500,1000,2000].includes(pointRate))throw new Error('invalid point rate');
   const lock=LockService.getScriptLock();lock.waitLock(20000);
   try {
+    if(sheet.getMaxColumns()<23)sheet.insertColumnsAfter(sheet.getMaxColumns(),23-sheet.getMaxColumns());
     const key='store-debug:'+String(data.sessionId);
     const last=Math.max(3,sheet.getLastRow());
     const keys=sheet.getRange(3,22,last-2,1).getValues().flat();
@@ -16,6 +19,7 @@ function doPost(e) {
     // Persist the receipt first so a retry after a crash completes the same row.
     if(!duplicate){sheet.getRange(row,22).setValue(key);SpreadsheetApp.flush();}
     if(!duplicate || !sheet.getRange(row,1).getValue()){
+      sheet.getRange(row,23).setValue(pointRate);
       sheet.getRange(row,1,1,17).setValues([[
         data.endedAt,data.machineId,data.playerName,data.setting,
         data.totalSpins,data.bigCount,data.regCount,data.grapeCount,data.totalFee,

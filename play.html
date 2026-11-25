@@ -8,7 +8,8 @@
     [hidden]{display:none!important}
     h1{line-height:1.4}
     *{box-sizing:border-box} body{margin:0;background:#05060c;color:#fff7df;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Yu Gothic",sans-serif}.login{min-height:100vh;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 20% 20%,rgba(255,54,93,.22),transparent 30%),linear-gradient(145deg,#05060c,#16091f)}.card{width:min(460px,92vw);background:#121722;border:1px solid rgba(255,211,106,.45);border-radius:8px;padding:24px;box-shadow:0 20px 70px rgba(0,0,0,.45)}h1{margin:0 0 14px;font-size:26px}.field{display:grid;gap:8px;margin:16px 0}.field input{height:48px;border-radius:6px;border:1px solid #3b4352;background:#070a10;color:#fff;font-size:22px;letter-spacing:.08em;text-align:center;text-transform:uppercase}button{height:44px;border:0;border-radius:6px;padding:0 16px;font-weight:900;cursor:pointer;background:#ffd36a;color:#1c1200}.muted{color:#aab2c2;font-size:13px}.bad{color:#ff8f8f}.topbar{height:54px;display:flex;align-items:center;justify-content:space-between;gap:12px;background:#11151e;border-bottom:1px solid #333b49;padding:0 14px}.topbar b{color:#ffe07c}.danger{background:#d94b4b;color:#fff}.slotFrame{width:100%;height:calc(100vh - 54px);border:0;display:block;background:#05060c}.ended{min-height:100vh;display:grid;place-items:center;background:#10141c;text-align:center;padding:24px}.ended h2{font-size:34px;margin:0 0 12px}@media(max-width:700px){.topbar{height:auto;min-height:54px;align-items:flex-start;flex-direction:column;padding:10px}.slotFrame{height:calc(100vh - 96px)}}
-  </style>
+  .field select{width:100%;height:44px;border-radius:6px;border:1px solid #3d4656;background:#0f1218;color:#fff;padding:0 10px}
+</style>
 </head>
 <body>
 <div id="login" class="login">
@@ -19,6 +20,7 @@
     <label class="field"><span>ユーザーID</span><input id="userId" maxlength="32" autocomplete="username" autocapitalize="none" spellcheck="false" style="text-transform:none"></label>
     <label class="field"><span>パスワード</span><input id="password" type="password" maxlength="128" autocomplete="current-password" style="text-transform:none"></label>
     <!-- login-fields:end -->
+    <label class="field" id="pointRateField" hidden><span>遊技レート（台リセットまで固定）</span><select id="pointRate"><option value="2000">1pt＝2,000円</option><option value="1000">1pt＝1,000円</option><option value="500">1pt＝500円</option></select></label>
     <button id="startBtn" disabled>この台で開始</button>
     <p id="error" class="bad"></p>
   </div>
@@ -101,6 +103,8 @@ async function loadBranding(){
     if(!Array.isArray(machines))throw Error('machines');
     if(config.storeName){ $('storeName').textContent = config.storeName; document.title = `${config.storeName} プレイ入口`; }
     machineNames = new Map(machines.map(machine=>[String(machine.machineId), machine.displayName || machine.machineId]));
+    const selected=machines.find(m=>String(m.machineId)===entryMachineId);
+    if(customerLogin&&selected){$('pointRateField').hidden=false;$('pointRate').value=String(selected.pointRate||2000);$('pointRate').disabled=selected.pointRateLocked===true;}
     brandingReady=true;$('startBtn').disabled=false;
   }catch(error){$('error').textContent='店舗情報を取得できません。ページを再読み込みしてください。';}
   if(entryMachineId){
@@ -145,7 +149,7 @@ async function start(){
     superSpeedAllowed=rights.superSpeedAllowed===true?false:await chooseCustomerSpeed();
   }
   if(superSpeedAllowed===null){$('startBtn').disabled=false;$('startBtn').textContent='この台で開始';return;}
-  const res = await fetch('/api/sessions/start', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password, requestedMachineId:entryMachineId,...(customerLogin?{userId:$('userId').value.trim(),superSpeedAllowed}: {})}),signal:AbortSignal.timeout(12000)});
+  const res = await fetch('/api/sessions/start', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password, pointRate:Number($('pointRate').value),requestedMachineId:entryMachineId,...(customerLogin?{userId:$('userId').value.trim(),superSpeedAllowed}: {})}),signal:AbortSignal.timeout(12000)});
   const data = await res.json();
   if(!data.ok){ $('error').textContent = friendlyError(data.error); $('startBtn').disabled = false; $('startBtn').textContent = 'この台で開始'; return; }
   active = data.session;

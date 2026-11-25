@@ -27,7 +27,7 @@ test('snapshot arithmetic, malformed values and future timestamps cannot be acce
 function sheetMock(){
  const cells=new Map(),writes=[];let crashColumn=0;
  const key=(r,c)=>r+':'+c;
- return {cells,writes,set crashColumn(c){crashColumn=c;},getLastRow(){return Math.max(3,...[...cells.keys()].map(k=>Number(k.split(':')[0])));},getRange(r,c,h=1,w=1){return {
+ return {cells,writes,getMaxColumns(){return 23;},set crashColumn(c){crashColumn=c;},getLastRow(){return Math.max(3,...[...cells.keys()].map(k=>Number(k.split(':')[0])));},getRange(r,c,h=1,w=1){return {
  getValues:()=>Array.from({length:h},(_,i)=>Array.from({length:w},(_,j)=>cells.get(key(r+i,c+j))??'')),
  getDisplayValues:()=>Array.from({length:h},(_,i)=>Array.from({length:w},(_,j)=>String(cells.get(key(r+i,c+j))??''))),
  getValue:()=>cells.get(key(r,c))??'',setValue(v){cells.set(key(r,c),v);writes.push({r,c,w:1});if(crashColumn===c){crashColumn=0;throw Error('injected crash');}},
@@ -38,12 +38,13 @@ test('Apps Script resumes reserved row after failure and never duplicates result
  const sheet=sheetMock(),cash=sheetMock();let locked=false;
  const ctx=vm.createContext({SpreadsheetApp:{getActiveSpreadsheet:()=>({getSheetByName:n=>n==='results'?sheet:cash}),flush(){}},LockService:{getScriptLock:()=>({waitLock(){assert.equal(locked,false);locked=true;},releaseLock(){locked=false;}})},ContentService:{MimeType:{JSON:'json'},createTextOutput:s=>({setMimeType:()=>JSON.parse(s)})}});
  vm.runInContext(fs.readFileSync('sheets-webhook.gs','utf8'),ctx);
- const data={sessionId:'qa-s',storeId:'store-debug',machineType:'nova',endedAt:'2026-11-04',playerName:'QA',superSpeedUsage:[{businessDate:'2026/11/04',usedAt:'12:00'}]};
+ const data={pointRate:500,sessionId:'qa-s',storeId:'store-debug',machineType:'nova',endedAt:'2026-11-04',playerName:'QA',superSpeedUsage:[{businessDate:'2026/11/04',usedAt:'12:00'}]};
  const call=()=>ctx.doPost({postData:{contents:JSON.stringify(data)}});
  sheet.crashColumn=22;assert.throws(call,/injected/);assert.equal(locked,false);
  sheet.crashColumn=1;assert.throws(call,/injected/);assert.equal(locked,false);
  assert.equal(call().duplicate,true);assert.equal(call().duplicate,true);
  assert.equal(sheet.getLastRow(),4);assert.equal(cash.getLastRow(),5);
- assert.ok(sheet.writes.every(x=>x.c===22||x.c===1&&x.w===17),'formula columns untouched');
+ assert.ok(sheet.writes.every(x=>x.c===22||x.c===23||x.c===1&&x.w===17),'formula columns untouched');
  assert.equal(cash.getRange(5,3).getValue(),1000000);
+ assert.equal(sheet.getRange(4,23).getValue(),500);
 });

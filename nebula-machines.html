@@ -20,7 +20,8 @@
     .machine-total-label{color:var(--accent);font-size:11px;margin:0 0 10px}
   .graph-scroll{overflow:hidden;min-width:0}.graph-track{width:100%;min-width:0}.graph-track canvas{width:100%;max-width:100%}.graph-axis-note{padding:0 12px 6px;font-size:10px;color:#aca7be}
 .machine .novaGameSplit,.machine .novaCounterNote{display:none}.graph-heading{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.graph-current{font-size:15px;white-space:normal;overflow-wrap:anywhere}.graph-current small{display:block;margin:0 0 3px}.head{margin-bottom:12px}.novaStoreData{margin-bottom:12px}
-.graph-wrap{margin-bottom:14px}</style>
+.graph-wrap{margin-bottom:14px}.pointRate{font-size:13px;line-height:1.5;margin-top:4px;color:#b7d9ff}
+</style>
 </head>
 <body>
 <header class="masthead"><div class="wrap"><div class="brand">NEBULA<small>NOVA SLOT LOUNGE</small></div><span class="live"><i></i>台選び</span></div></header>
@@ -66,7 +67,7 @@ function render(){
     const bounds=(m.machineTotalSlumpHistory||[]).reduce((b,p)=>({min:Math.min(b.min,num(p.profit)),max:Math.max(b.max,num(p.profit))}),{min:Math.min(0,profit),max:Math.max(0,profit)});
     const number=String(m.machineId).match(/(\d+)$/)?.[1]||'—';
     const label=!fresh?'状況未確認':m.locked?'利用中':'空き台';
-    return `<article class="machine"><div class="head"><div class="identity"><h2>${esc(m.displayName||('NOVA '+number+'番台'))}</h2></div><span class="pill ${!fresh?'unknown':m.locked?'busy':''}">${label}</span></div>${NovaStoreData.markup(m,{showRates:true})}<div class="graph-wrap"><div class="graph-heading"><span class="graph-current positive"><small>最高</small>${signed(bounds.max)} pt</span><span class="graph-current negative"><small>最低</small>${signed(bounds.min)} pt</span><span class="graph-current ${profit>=0?'positive':'negative'}"><small>現在</small>${signed(profit)} pt</span></div><div class="graph-scroll"><div class="graph-track"><canvas class="graph" data-id="${esc(m.machineId)}" role="img"></canvas></div></div></div>${fresh?`<a class="play ${m.locked?'busy':''}" href="/play.html?machine=${encodeURIComponent(m.machineId)}" aria-label="${esc(m.displayName)}${m.locked?'へ再入場':'で遊ぶ'}"><span>${m.locked?'ただいま利用中・再入場':'この台で遊ぶ'}</span><span aria-hidden="true">→</span></a>`:`<div class="play disabled" aria-disabled="true"><span>更新して空き状況を確認</span></div>`}</article>`;
+    return `<article class="machine"><div class="head"><div class="identity"><h2>${esc(m.displayName||('NOVA '+number+'番台'))}</h2><div class="pointRate">${m.pointRateLocked?`1pt＝${Number(m.pointRate||2000).toLocaleString()}円`:`レート選択可：2,000／1,000／500円`}</div></div><span class="pill ${!fresh?'unknown':m.locked?'busy':''}">${label}</span></div>${NovaStoreData.markup(m,{showRates:true})}<div class="graph-wrap"><div class="graph-heading"><span class="graph-current positive"><small>最高</small>${signed(bounds.max)} pt</span><span class="graph-current negative"><small>最低</small>${signed(bounds.min)} pt</span><span class="graph-current ${profit>=0?'positive':'negative'}"><small>現在</small>${signed(profit)} pt</span></div><div class="graph-scroll"><div class="graph-track"><canvas class="graph" data-id="${esc(m.machineId)}" role="img"></canvas></div></div></div>${fresh?`<a class="play ${m.locked?'busy':''}" href="/play.html?machine=${encodeURIComponent(m.machineId)}" aria-label="${esc(m.displayName)}${m.locked?'へ再入場':'で遊ぶ'}"><span>${m.locked?'ただいま利用中・再入場':'この台で遊ぶ'}</span><span aria-hidden="true">→</span></a>`:`<div class="play disabled" aria-disabled="true"><span>更新して空き状況を確認</span></div>`}</article>`;
   }).join('') || '<p class="empty">'+(machines.length?'現在、空き台はありません。':'表示できる台がありません。更新して再確認してください。')+'</p>';
   graphs();
 }

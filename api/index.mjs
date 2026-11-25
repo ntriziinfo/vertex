@@ -1,3 +1,4 @@
+import pointRate from '../point-rate.cjs';
 import {customerPlayerNames} from '../customer-player-names.mjs';
 import {deliver,createDeliveryWorker} from '../settlement-delivery.mjs';
 import {verifySnapshot} from '../snapshot-integrity.mjs';
@@ -136,7 +137,7 @@ function machineFromRow(row){
     machineType:definition.machineType || row.machine_type || "generic",
     gameUrl:definition.gameUrl || row.game_url || "",
     poolId:definition.poolId || row.pool_id || "",
-    capabilities:{...(definition.capabilities || row.capabilities || {}),superSpeedAutoStart:row.capabilities?.superSpeedAutoStart===true,superSpeedAllowed:row.capabilities?.superSpeedAllowed === true && (!row.capabilities?.superSpeedExpiresAt || Number(row.capabilities.superSpeedExpiresAt)>ms())},
+    capabilities:{...(definition.capabilities || row.capabilities || {}),pointRate:row.capabilities?.pointRate,pointRateResetSerial:row.capabilities?.pointRateResetSerial,superSpeedAutoStart:row.capabilities?.superSpeedAutoStart===true,superSpeedAllowed:row.capabilities?.superSpeedAllowed === true && (!row.capabilities?.superSpeedExpiresAt || Number(row.capabilities.superSpeedExpiresAt)>ms())},
     online:Date.now() - Number(row.updated_at_ms || 0) < 90000,
     locked:!!row.locked,
     resetSerial:Number(row.reset_serial || 0),
@@ -153,7 +154,7 @@ function publicMachine(machine, machineTotal, jackpotPool=null){
   const stats = snapshot && snapshot.stats ? snapshot.stats : null;
   const storedSettings = snapshot && snapshot.settings ? snapshot.settings : {setting:machine.assignedSetting || 1, completeLimitPt:19000};
   const settings = {...storedSettings,...adminSettings.completionSettings(storedSettings,machine.machineType)};
-  return {storeId:STORE_ID, machineId:machine.machineId, displayName:machine.displayName || machineLabel(machine.machineId), machineType:machine.machineType || "generic", gameUrl:machine.gameUrl || "", poolId:machine.poolId || "", jackpotPool:jackpotPool || (snapshot && snapshot.jackpotPool) || null, capabilities:machine.capabilities || {completeLimit:false, jackpot:false}, online:!!machine.online, locked:!!machine.locked, currentSessionId:machine.currentSessionId || "", currentPlayerName:machine.currentPlayerName || "", updatedAt:machine.updatedAt || 0, resetSerial:machine.resetSerial || 0, assignedSetting:machine.assignedSetting || (stats && stats.setting) || settings.setting || 1, lastEndedSession:machine.lastEndedSession || null, playSessionId:snapshot && snapshot.playSessionId || "", playSessionStartStats:snapshot && snapshot.playSessionStartStats || null, settings, stats, slumpHistory:stats && Array.isArray(stats.slumpHistory) ? stats.slumpHistory : [{spin:0, profit:0}], machineTotalStats:machineTotal.stats, machineTotalSlumpHistory:machineTotal.history};
+  return {...pointRate.machineRate(machine),storeId:STORE_ID, machineId:machine.machineId, displayName:machine.displayName || machineLabel(machine.machineId), machineType:machine.machineType || "generic", gameUrl:machine.gameUrl || "", poolId:machine.poolId || "", jackpotPool:jackpotPool || (snapshot && snapshot.jackpotPool) || null, capabilities:machine.capabilities || {completeLimit:false, jackpot:false}, online:!!machine.online, locked:!!machine.locked, currentSessionId:machine.currentSessionId || "", currentPlayerName:machine.currentPlayerName || "", updatedAt:machine.updatedAt || 0, resetSerial:machine.resetSerial || 0, assignedSetting:machine.assignedSetting || (stats && stats.setting) || settings.setting || 1, lastEndedSession:machine.lastEndedSession || null, playSessionId:snapshot && snapshot.playSessionId || "", playSessionStartStats:snapshot && snapshot.playSessionStartStats || null, settings, stats, slumpHistory:stats && Array.isArray(stats.slumpHistory) ? stats.slumpHistory : [{spin:0, profit:0}], machineTotalStats:machineTotal.stats, machineTotalSlumpHistory:machineTotal.history};
 }
 async function getMachine(id){
   const rows = await sb("machine_states?machine_id=eq." + encodeURIComponent(String(id)) + "&select=*&limit=1");
@@ -532,7 +533,7 @@ function resultPayload(session, machine, body){
   const settings = snapshot.settings || {};
   const delta = sessionDelta(session, snapshot);
   const endedAtMs = ms();
-  return {type:"slot-session-ended", storeId:STORE_ID, storeName:STORE_NAME, endedAt:new Date(endedAtMs).toISOString(), endedAtMs, machineId:machine.machineId, machineName:machine.displayName || machineLabel(machine.machineId), machineType:machine.machineType || "generic", playerName:session.playerName || body.playerName || "", ...machineResume.creditFields(machine,session,delta.playerProfit), sessionId:session.sessionId, resetSerial:Number(session.resetSerialAtStart ?? machine.resetSerial) || 0, setting:settings.setting || machine.assignedSetting || "", totalSpins:stats.totalSpins || 0, bigCount:stats.bigCount || 0, regCount:stats.midCount || 0, grapeCount:stats.grapeCount || 0, totalFee:stats.totalFee || 0, totalPaid:stats.totalPaid || 0, profit:Number(stats.profit ?? ((stats.totalPaid || 0) - (stats.totalFee || 0))) || 0, playerSpins:delta.playerSpins, playerBigCount:delta.playerBigCount, playerRegCount:delta.playerRegCount, playerGrapeCount:delta.playerGrapeCount, playerTotalFee:delta.playerTotalFee, playerTotalPaid:delta.playerTotalPaid, playerProfit:delta.playerProfit, billingBasis:"playerProfit", playerBaselineSource:delta.baselineSource, startStats:delta.startStats, currentResultText:snapshot.state ? snapshot.state.resultText || "" : "", stats, settings, normalState:snapshot.normalState || {}, session:snapshot.session || {}};
+  return {type:"slot-session-ended", storeId:STORE_ID, storeName:STORE_NAME, endedAt:new Date(endedAtMs).toISOString(), endedAtMs, machineId:machine.machineId, machineName:machine.displayName || machineLabel(machine.machineId), machineType:machine.machineType || "generic", playerName:session.playerName || body.playerName || "", ...machineResume.creditFields(machine,session,delta.playerProfit), sessionId:session.sessionId, resetSerial:Number(session.resetSerialAtStart ?? machine.resetSerial) || 0, setting:settings.setting || machine.assignedSetting || "", totalSpins:stats.totalSpins || 0, bigCount:stats.bigCount || 0, regCount:stats.midCount || 0, grapeCount:stats.grapeCount || 0, totalFee:stats.totalFee || 0, totalPaid:stats.totalPaid || 0, profit:Number(stats.profit ?? ((stats.totalPaid || 0) - (stats.totalFee || 0))) || 0, playerSpins:delta.playerSpins, playerBigCount:delta.playerBigCount, playerRegCount:delta.playerRegCount, playerGrapeCount:delta.playerGrapeCount, playerTotalFee:delta.playerTotalFee, playerTotalPaid:delta.playerTotalPaid, playerProfit:delta.playerProfit, pointRate:pointRate.settlementRate(session),playerProfitYen:delta.playerProfit*pointRate.settlementRate(session),billingBasis:"playerProfit", playerBaselineSource:delta.baselineSource, startStats:delta.startStats, currentResultText:snapshot.state ? snapshot.state.resultText || "" : "", stats, settings, normalState:snapshot.normalState || {}, session:snapshot.session || {}};
 }
 
 async function customerSettlementRecord(record){
@@ -554,18 +555,18 @@ function customerAuth(origin){
       const day=new Date(ms()+6*3600000).toISOString().slice(0,10);
       const rows=await sb('customer_speed_days?user_id=eq.'+encodeURIComponent(userId)+'&business_date=eq.'+day+'&select=user_id&limit=1');return rows.length>0;
     },
-    async claim({userId,machineId,passwordHash,superSpeedAllowed}){
+    async claim({userId,machineId,passwordHash,superSpeedAllowed,pointRate:chosenRate}){
       const before=await hydrateMachineTotal(await getMachine(machineId));
       if(!before.gameUrl)throw Object.assign(new Error('ゲームURLが未設定です'),{statusCode:503});
       const baseline=machineDisplayBaseline(before);
-      const result=await rpc('customer_claim_speed',{
-        p_user_id:userId,p_password_hash:passwordHash,p_machine_id:machineId,p_super_speed:superSpeedAllowed,
+      const result=await rpc('customer_claim_rate',{
+        p_user_id:userId,p_password_hash:passwordHash,p_machine_id:machineId,p_super_speed:superSpeedAllowed,p_point_rate:chosenRate,
         p_session_id:makeId('sess'),p_token:crypto.randomBytes(32).toString('hex'),
         p_reset:before.resetSerial,p_snapshot:before.lastSnapshot,
         p_start_snapshot:{...before.lastSnapshot,machineDisplayBaseline:baseline,playerCreditCarry:machineResume.creditCarryFor(before,userId)},p_now:ms()
       });
       if(!result.ok){
-        const messages={'credentials':'ユーザーIDまたはパスワードを確認してください','other-seat':'別の台で遊技中です。先にその台で終了してください','busy':'この台は他のお客様が利用中です','legacy-reservation':'従来の発行番号が残っています。店舗側で終了を確認してください','changed':'台の状態が更新されました。もう一度お試しください','machine':'この台は利用できません'};
+        const messages={'rate-locked':'レートが確定しています。台選び画面で確認し、同じレートで開始してください','rate-invalid':'レートの選択が不正です','credentials':'ユーザーIDまたはパスワードを確認してください','other-seat':'別の台で遊技中です。先にその台で終了してください','busy':'この台は他のお客様が利用中です','legacy-reservation':'従来の発行番号が残っています。店舗側で終了を確認してください','changed':'台の状態が更新されました。もう一度お試しください','machine':'この台は利用できません'};
         throw Object.assign(new Error(messages[result.error]||'開始できません'),{statusCode:result.error==='credentials'?403:409});
       }
       const session=sessionFromRow(result.session),machine=machineFromRow(result.machine);

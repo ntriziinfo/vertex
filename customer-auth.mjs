@@ -1,3 +1,4 @@
+import pointRate from './point-rate.cjs';
 import {randomBytes, scrypt as rawScrypt, timingSafeEqual, createHash} from 'node:crypto';
 import {promisify} from 'node:util';
 const scrypt=promisify(rawScrypt);
@@ -56,7 +57,7 @@ export function createCustomerAuth({env=process.env,repo}){
       if(body.checkSpeedOnly===true)return {ok:true,superSpeedAllowed:await repo.speedAccess(id)};
       // Reservation is transactional: same user resumes, another user's seat is never taken.
       if(body.superSpeedAllowed!==undefined&&typeof body.superSpeedAllowed!=='boolean')throw fail(400,'超ハイスピードの選択が不正です');
-      return repo.claim({userId:id,machineId:body.requestedMachineId,passwordHash:account.password_hash,superSpeedAllowed:body.superSpeedAllowed===true});
+      return repo.claim({userId:id,machineId:body.requestedMachineId,passwordHash:account.password_hash,superSpeedAllowed:body.superSpeedAllowed===true,pointRate:pointRate.validate(body.pointRate??2000)});
     }
   };
 }

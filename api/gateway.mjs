@@ -337,6 +337,8 @@ export function sanitizePublicMachine(machine){
     currentPlayerName:source.locked ? "利用中" : "",
     updatedAt:Number(source.updatedAt || 0),
     jackpotPool:source.jackpotPool || null,
+    pointRate:source.pointRate||2000,
+    pointRateLocked:source.pointRateLocked===true,
     machineTotalStats:source.machineTotalStats || {},
     machineTotalSlumpHistory:Array.isArray(source.machineTotalSlumpHistory) ? source.machineTotalSlumpHistory.slice(-720) : [{spin:0, profit:0}]
   };
