@@ -12,3 +12,11 @@ test('reject non-debug stores, machine 13, empty sessions and invalid zones',()=
  for(const zoneG of [0,99,150,900,'100'])assert.throws(()=>scenarioCommand({...input,zoneG},context));
 });
 test('cancellation is also session bound',()=>{assert.equal(scenarioCommand({type:'cancelDebugScenario'},context).sessionId,'current');});
+
+test('AT commands bind to current session and accept only supported flags',()=>{
+ for(const result of ['BELL','WEAK_NOVA','URA_CHALLENGE','SORTIE_AIM_WIN_RED','ZONE_ura_ouma']){
+  const c=scenarioCommand({type:'reserveDebugAtForce',result,sessionId:'spoof'},context);assert.equal(c.sessionId,'current');assert.equal(c.result,result);
+ }
+ assert.throws(()=>scenarioCommand({type:'reserveDebugAtForce',result:'BIG'},context));
+ assert.equal(scenarioCommand({type:'cancelDebugAtForce'},context).sessionId,'current');
+});

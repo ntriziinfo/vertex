@@ -926,7 +926,7 @@ export default async function handler(req, res){
       if(!adminOk(req)) return json(res, 401, {ok:false, error:"admin password required"});
       const machineId = decodeURIComponent(m[1]);
       let command = await readBody(req);
-      if(['reserveDebugScenario','cancelDebugScenario'].includes(command.type)){
+      if(['reserveDebugScenario','cancelDebugScenario','reserveDebugAtForce','cancelDebugAtForce'].includes(command.type)){
         try{command=scenarioCommand(command,{storeId:STORE_ID,machine:await getMachine(machineId),uuid:crypto.randomUUID(),sortieG:crypto.randomInt(10,21)});}
         catch(error){return json(res,400,{ok:false,error:error.message});}
       }
@@ -936,7 +936,7 @@ export default async function handler(req, res){
     if(pathname === "/api/command-all" && req.method === "POST"){
       if(!adminOk(req)) return json(res, 401, {ok:false, error:"admin password required"});
       const command = await readBody(req);
-      if(['reserveDebugScenario','cancelDebugScenario'].includes(command.type))return json(res,400,{ok:false,error:'台を個別指定してください'});
+      if(['reserveDebugScenario','cancelDebugScenario','reserveDebugAtForce','cancelDebugAtForce'].includes(command.type))return json(res,400,{ok:false,error:'台を個別指定してください'});
       const rows = [];
       for(const machine of await getAllMachines()) rows.push(await insertCommand(machine.machineId, command));
       return json(res, 200, {ok:true, delivered:rows.length});

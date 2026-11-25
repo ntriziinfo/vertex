@@ -39,6 +39,10 @@
 <button type="button" id="scenarioSend">予約を送信</button><button type="button" class="ghost" onclick="document.getElementById('hiddenScenarioPanel').hidden=true">閉じる</button>
 <button type="button" id="scenarioCancel">予約を取り消す</button>
 <p id="scenarioStatus" role="status"></p>
+<hr><h3>AT中の強制フラグ</h3>
+<label class="field">強制内容<select id="atForceResult"><option value="">選択してください</option><option value="MISS">ハズレ</option><option value="ONE_COIN">1枚役</option><option value="REPLAY">リプレイ</option><option value="BELL">ベル（8pt）</option><option value="BELL15">ベル（15pt）</option><option value="WEAK_SUICA">スイカ</option><option value="WEAK_NOVA">弱チェリー</option><option value="STRONG_NOVA">強チェリー</option><option value="SUPER_NOVA">スーパーノヴァ目</option><option value="URA_CHALLENGE">スーパーノヴァチャレンジ</option><option value="SORTIE_AIM_WIN_RED">出陣確定の狙え</option><option value="ZONE_sosuke">宗介ゾーン</option><option value="ZONE_toto">ととゾーン</option><option value="ZONE_urapi">うらぴゾーン</option><option value="ZONE_giru">ギルゾーン</option><option value="ZONE_sora">空ゾーン</option><option value="ZONE_ouma">逢魔ゾーン</option><option value="ZONE_ura_giru">裏ギルゾーン</option><option value="ZONE_ura_sora">裏空ゾーン</option><option value="ZONE_ura_ouma">裏逢魔ゾーン</option></select></label>
+<p class="muted">上の対象台へ1回だけ送信します。AT中のみ受付。特化・前兆・チャレンジ中は通常AT消化へ戻るまで待機し、通常時へ戻った場合は破棄します。指定小役の抽選・払い出しは既存仕様どおりです。</p>
+<button type="button" id="atForceSend" disabled>AT強制フラグを送信</button><button type="button" id="atForceCancel">AT強制フラグを取り消す</button><p id="atForceStatus" role="status"></p>
 </section>
   <section id="jackpotAdminPanel" class="panel" hidden>
     <h2>共有JACKPOT管理</h2>
@@ -108,7 +112,22 @@ async function sendScenario(cancel=false){
   }catch(error){$('scenarioStatus').textContent=error.message;}
   finally{$('scenarioSend').disabled=$('scenarioCancel').disabled=false;}
 }
+async function sendAtForce(cancel=false){
+ const result=$('atForceResult').value;if(!cancel&&!result)return;
+ const machineId=$('scenarioMachine').value;
+ $('atForceSend').disabled=$('atForceCancel').disabled=true;
+ try{
+  const response=await fetch('/api/machines/'+encodeURIComponent(machineId)+'/command',{method:'POST',headers:{'Content-Type':'application/json',...adminHeaders()},body:JSON.stringify({type:cancel?'cancelDebugAtForce':'reserveDebugAtForce',result})});
+  const data=await response.json();if(!response.ok||!data.ok)throw Error(data.error||'送信失敗');
+  $('atForceStatus').textContent=cancel?'取消を送信しました。':'AT強制フラグを送信しました。台の受信時にAT中なら、次の通常AT消化で1回反映します。';
+  commandWakeChannel?.postMessage({type:'vertex-commands-available',machineId});
+ }catch(error){$('atForceStatus').textContent=error.message;}
+ finally{$('atForceSend').disabled=!$('atForceResult').value;$('atForceCancel').disabled=false;}
+}
 function initScenarioPanel(){
+$('atForceResult').addEventListener('change',()=>{$('atForceSend').disabled=!$('atForceResult').value;});
+$('atForceSend').addEventListener('click',()=>sendAtForce());
+$('atForceCancel').addEventListener('click',()=>sendAtForce(true));
 $('scenarioSend').addEventListener('click',()=>sendScenario());
 $('scenarioCancel').addEventListener('click',()=>sendScenario(true));
 let hiddenTitleClicks=0, hiddenTitleLast=0;
