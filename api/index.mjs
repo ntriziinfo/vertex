@@ -1,5 +1,6 @@
 import pointRate from '../point-rate.cjs';
 import {customerPlayerNames} from '../customer-player-names.mjs';
+import {scenarioCommand} from '../debug-scenario.mjs';
 import {deliver,createDeliveryWorker} from '../settlement-delivery.mjs';
 import {verifySnapshot} from '../snapshot-integrity.mjs';
 import machineResume from "../machine-resume.cjs";
@@ -924,13 +925,18 @@ export default async function handler(req, res){
     if(m && req.method === "POST"){
       if(!adminOk(req)) return json(res, 401, {ok:false, error:"admin password required"});
       const machineId = decodeURIComponent(m[1]);
-      const command = await readBody(req);
+      let command = await readBody(req);
+      if(['reserveDebugScenario','cancelDebugScenario'].includes(command.type)){
+        try{command=scenarioCommand(command,{storeId:STORE_ID,machine:await getMachine(machineId),uuid:crypto.randomUUID(),sortieG:crypto.randomInt(10,21)});}
+        catch(error){return json(res,400,{ok:false,error:error.message});}
+      }
       const row = await insertCommand(machineId, command);
       return json(res, 200, {ok:true, delivered:true, commandId:row.id});
     }
     if(pathname === "/api/command-all" && req.method === "POST"){
       if(!adminOk(req)) return json(res, 401, {ok:false, error:"admin password required"});
       const command = await readBody(req);
+      if(['reserveDebugScenario','cancelDebugScenario'].includes(command.type))return json(res,400,{ok:false,error:'台を個別指定してください'});
       const rows = [];
       for(const machine of await getAllMachines()) rows.push(await insertCommand(machine.machineId, command));
       return json(res, 200, {ok:true, delivered:rows.length});
