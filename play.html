@@ -20,7 +20,7 @@
     <label class="field"><span>ユーザーID</span><input id="userId" maxlength="32" autocomplete="username" autocapitalize="none" spellcheck="false" style="text-transform:none"></label>
     <label class="field"><span>パスワード</span><input id="password" type="password" maxlength="128" autocomplete="current-password" style="text-transform:none"></label>
     <!-- login-fields:end -->
-    <label class="field" id="pointRateField" hidden><span>遊技レート（台リセットまで固定）</span><select id="pointRate"><option value="2000">1pt＝2,000円</option><option value="1000">1pt＝1,000円</option><option value="500">1pt＝500円</option></select></label>
+    <label class="field" id="pointRateField" hidden><span>遊技レート（台リセットまで固定）</span><select id="pointRate"><option value="" selected>レートを選択してください</option><option value="2000">1pt＝2,000円</option><option value="1000">1pt＝1,000円</option><option value="500">1pt＝500円</option></select></label>
     <button id="startBtn" disabled>この台で開始</button>
     <p id="error" class="bad"></p>
   </div>
@@ -90,6 +90,12 @@ try{
     $('slot').contentWindow?.postMessage({type:'vertex-commands-available', machineId:String(active.machineId)}, slotOrigin);
   };
 }catch(error){}
+let startPending=false;
+function updateStartAvailability(){
+  $('startBtn').disabled=!brandingReady||startPending||!!active||(customerLogin&&!['2000','1000','500'].includes($('pointRate').value));
+}
+function finishStartAttempt(){startPending=false;updateStartAvailability();}
+$('pointRate').addEventListener('change',updateStartAvailability);
 async function loadBranding(){
   try{
     const [configResponse, machinesResponse] = await Promise.all([fetch('/api/config',{signal:AbortSignal.timeout(12000)}), fetch('/api/machines',{signal:AbortSignal.timeout(12000)})]);
@@ -104,8 +110,8 @@ async function loadBranding(){
     if(config.storeName){ $('storeName').textContent = config.storeName; document.title = `${config.storeName} プレイ入口`; }
     machineNames = new Map(machines.map(machine=>[String(machine.machineId), machine.displayName || machine.machineId]));
     const selected=machines.find(m=>String(m.machineId)===entryMachineId);
-    if(customerLogin&&selected){$('pointRateField').hidden=false;$('pointRate').value=String(selected.pointRate||2000);$('pointRate').disabled=selected.pointRateLocked===true;}
-    brandingReady=true;$('startBtn').disabled=false;
+    if(customerLogin&&selected){$('pointRateField').hidden=false;$('pointRate').value=selected.pointRateLocked===true?String(selected.pointRate):'';$('pointRate').disabled=selected.pointRateLocked===true;}
+    brandingReady=true;finishStartAttempt();
   }catch(error){$('error').textContent='店舗情報を取得できません。ページを再読み込みしてください。';}
   if(entryMachineId){
     $('entryMachineTitle').textContent = machineName(entryMachineId);
@@ -135,12 +141,13 @@ function chooseCustomerSpeed(){
 }
 async function start(){
   if(!brandingReady)return;
+  updateStartAvailability();
   if($('startBtn').disabled || active) return;
   $('error').textContent = '';
-  $('startBtn').disabled = true;
+  startPending=true;updateStartAvailability();
   $('startBtn').textContent = '確認中...';
   const password = customerLogin?$('password').value:$('password').value.trim().toUpperCase();
-  if(!password){ $('error').textContent = 'パスワードを入力してください'; $('startBtn').disabled = false; $('startBtn').textContent = 'この台で開始'; return; }
+  if(!password){ $('error').textContent = 'パスワードを入力してください'; finishStartAttempt(); $('startBtn').textContent = 'この台で開始'; return; }
   try{
   let superSpeedAllowed;
   if(customerLogin){
@@ -148,10 +155,10 @@ async function start(){
     const rights=await check.json();if(!check.ok||!rights.ok)throw new Error(rights.error||'認証できませんでした');
     superSpeedAllowed=rights.superSpeedAllowed===true?false:await chooseCustomerSpeed();
   }
-  if(superSpeedAllowed===null){$('startBtn').disabled=false;$('startBtn').textContent='この台で開始';return;}
+  if(superSpeedAllowed===null){finishStartAttempt();$('startBtn').textContent='この台で開始';return;}
   const res = await fetch('/api/sessions/start', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password, pointRate:Number($('pointRate').value),requestedMachineId:entryMachineId,...(customerLogin?{userId:$('userId').value.trim(),superSpeedAllowed}: {})}),signal:AbortSignal.timeout(12000)});
   const data = await res.json();
-  if(!data.ok){ $('error').textContent = friendlyError(data.error); $('startBtn').disabled = false; $('startBtn').textContent = 'この台で開始'; return; }
+  if(!data.ok){ $('error').textContent = friendlyError(data.error); finishStartAttempt(); $('startBtn').textContent = 'この台で開始'; return; }
   active = data.session;
   $('password').value='';
   $('password').dispatchEvent(new Event('change'));
@@ -168,7 +175,7 @@ async function start(){
   }catch(error){
     $('error').textContent = error.name==='Error'?friendlyError(error.message):'通信できませんでした。同じパスワードでもう一度お試しください。';
   }
-  $('startBtn').disabled = false;
+  finishStartAttempt();
   $('startBtn').textContent = 'この台で開始';
 }
 function closeEndedSession(){
